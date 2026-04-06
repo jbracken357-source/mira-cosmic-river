@@ -1,0 +1,178 @@
+@import "tailwindcss";
+
+/* Design Tokens */
+@theme {
+  /* Colors - Deep Space Sci-Fi Palette */
+  --color-deep-space: #0a0612;
+  --color-void-black: #050208;
+  --color-stellar-orange: #ff6b35;
+  --color-stellar-orange-dim: #cc5529;
+  --color-nebula-violet: #a78bfa;
+  --color-nebula-violet-dim: #8b6fe8;
+  --color-white-dwarf-blue: #60a5fa;
+  --color-solar-white: #fef3c7;
+  --color-glass-base: rgba(255, 255, 255, 0.05);
+  --color-glass-border: rgba(255, 255, 255, 0.1);
+  --color-glass-highlight: rgba(255, 255, 255, 0.15);
+
+  /* Typography */
+  --font-display: 'Cinzel', serif;
+  --font-body: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Spacing */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  --spacing-2xl: 3rem;
+
+  /* Animation */
+  --animation-fast: 150ms;
+  --animation-normal: 300ms;
+  --animation-slow: 500ms;
+  --animation-cinematic: 800ms;
+
+  /* Shadows */
+  --shadow-glow-orange: 0 0 30px rgba(255, 107, 53, 0.4);
+  --shadow-glow-violet: 0 0 30px rgba(167, 139, 250, 0.4);
+  --shadow-glow-blue: 0 0 20px rgba(96, 165, 250, 0.3);
+}
+
+/* Base Styles */
+html {
+  font-family: var(--font-body);
+  background-color: var(--color-deep-space);
+  color: var(--color-solar-white);
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Utility Classes */
+.font-display {
+  font-family: var(--font-display);
+}
+
+.font-body {
+  font-family: var(--font-body);
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+}
+
+/* Glass Morphism */
+.glass-panel {
+  background: var(--color-glass-base);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--color-glass-border);
+  border-radius: 12px;
+}
+
+.glass-button {
+  background: var(--color-glass-base);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--color-glass-border);
+  border-radius: 8px;
+  transition: all var(--animation-normal) ease-out;
+}
+
+.glass-button:hover {
+  background: var(--color-glass-highlight);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.glass-button:focus-visible {
+  outline: 2px solid var(--color-nebula-violet);
+  outline-offset: 2px;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-glass-border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideInFromRight {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInFromBottom {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Selection */
+::selection {
+  background: var(--color-nebula-violet);
+  color: var(--color-deep-space);
+}
