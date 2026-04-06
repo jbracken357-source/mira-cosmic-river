@@ -4,110 +4,64 @@
 
 ---
 
-## Current Status: SCAFFOLD ONLY
-
-The project is an **untouched Vite + React template** with no Mira Cosmic River functionality implemented.
-
----
-
-## What Exists
+## What Was Built
 
 ### Project Setup
 - Vite 8 + React 19 + TypeScript 6
-- ESLint configured
-- Basic CSS with light/dark mode variables
+- Tailwind CSS v4 with CSS-first configuration (@theme)
+- Three.js r182 + React Three Fiber 9 + React Three Drei 10 + Postprocessing 3
+- Framer Motion 12 for animations
+- Zustand for state management
 
-### Files Present
-```
-mira-cosmic-river/
-├── package.json          # React 19 only (no Three.js)
-├── vite.config.ts        # Default config
-├── src/
-│   ├── App.tsx           # Default counter template
-│   ├── App.css           # Default Vite styles
-│   ├── index.css         # Generic system-ui fonts
-│   └── main.tsx          # Entry point
-```
+### 3D Scene Components
+- **Scene.tsx**: Main Canvas with camera, controls, and post-processing
+- **MiraA.tsx**: Primary red giant star with pulsating atmosphere shader
+- **MiraB.tsx**: White dwarf companion with bright core shader
+- **OrbitRing.tsx**: Orbital path visualization with wave distortion
+- **MaterialStream.tsx**: Particle stream between stars (for PARTICLES mode)
 
----
+### UI Components
+- **ControlPanel.tsx**: Glass-morphism panel with all controls
+- **ModeToggle.tsx**: GLOW/WAVE/PARTICLES mode buttons
+- **ParameterSlider.tsx**: Custom slider with visual track and thumb
+- **LanguageSwitch.tsx**: EN/CH toggle button
+- **IntroAnimation.tsx**: Cinematic title/subtitle reveal
 
-## What is Missing
+### State Management
+- **useBinaryStar.ts**: Zustand store for mode, language, playing state, parameters
+- **useAnimation.ts**: Intro animation timing and visibility hooks
 
-### Dependencies (NOT INSTALLED)
-- `three` - 3D rendering
-- `@react-three/fiber` - React Three.js
-- `@react-three/drei` - Helpers
-- `@react-three/postprocessing` - Bloom/effects
-- `tailwindcss` v4 - CSS styling
+### Constants & Design System
+- **colors.ts**: Deep space palette (#0a0612, #ff6b35, #a78bfa, #60a5fa)
+- **animation.ts**: Timing constants and spring physics
+- **physics.ts**: Mira star system orbital parameters
 
-### Components (NOT CREATED)
-- Scene.tsx, MiraA.tsx, MiraB.tsx
-- OrbitRing.tsx, MaterialStream.tsx, Stars.tsx
-- ControlPanel.tsx, ModeToggle.tsx
-- ParameterSlider.tsx, LanguageSwitch.tsx
-- IntroAnimation.tsx
-
-### Shaders (NOT CREATED)
-- miraA.glsl, atmosphere.glsl
-- stream.glsl, orbitRing.glsl, starTail.glsl
-
-### Hooks (NOT CREATED)
-- useBinaryStar.ts
-- useAnimation.ts
-- useParameters.ts
-
-### Constants (NOT CREATED)
-- colors.ts, animation.ts, physics.ts
+### Features Implemented
+1. Binary star system with custom shaders
+2. Three visual modes with smooth transitions
+3. Real-time parameter adjustment (6 sliders)
+4. EN/CH language switching
+5. Bloom post-processing
+6. Orbit camera controls (auto-rotate, zoom)
+7. Cinematic intro animation (staggered reveals)
+8. Responsive glass-morphism UI
 
 ---
 
-## Evaluation Result (Iteration 001)
-
-**Score**: 1/10
-**Verdict**: FAIL
-
-### Critical Issues
-1. No Three.js - WebGL scene cannot render
-2. No binary star components - Mira A/B not implemented
-3. No visual modes - GLOW/WAVE/PARTICLES missing
-4. No control panel - No sliders, no language switch
-5. Default template content remains - Counter button unrelated
+## What Changed This Iteration
+- Complete initial implementation from scratch
+- All ESLint and TypeScript errors fixed
+- Custom shaders for stellar effects
+- Deterministic particle positions (seeded random)
 
 ---
 
-## Next Steps for Generator
-
-1. **Install Dependencies**
-   ```bash
-   npm install three @react-three/fiber @react-three/drei @react-three/postprocessing
-   npm install tailwindcss@next
-   ```
-
-2. **Remove Template Content**
-   - Delete App.tsx counter code
-   - Remove hero.png, react.svg, vite.svg assets
-
-3. **Create File Structure**
-   - Create src/components/Scene/
-   - Create src/components/UI/
-   - Create src/hooks/
-   - Create src/shaders/
-   - Create src/constants/
-
-4. **Implement Core 3D**
-   - Scene.tsx with Canvas
-   - MiraA.tsx with red giant shader
-   - MiraB.tsx with white dwarf
-   - OrbitRing.tsx for orbital path
-
-5. **Add UI Controls**
-   - ControlPanel.tsx with glass morphism
-   - ModeToggle.tsx (GLOW/WAVE/PARTICLES)
-   - LanguageSwitch.tsx (EN/CH)
+## Known Issues
+- None identified (awaiting evaluator feedback)
 
 ---
 
-## Dev Server Status
-- URL: Not started
-- Status: Pending
-- Command: `npm run dev`
+## Dev Server
+- URL: http://localhost:5174
+- Status: Running
+- Command: npm run dev
