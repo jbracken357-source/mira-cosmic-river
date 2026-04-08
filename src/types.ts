@@ -75,8 +75,8 @@ export interface TranslationDict {
 // Shader uniforms
 export interface ShaderUniforms {
   time: number;
-  color: THREE.Color;
+  color: string;
   intensity: number;
   turbulence: number;
-  [key: string]: THREE.IUniform | number | THREE.Color;
+  [key: string]: string | number;
 }

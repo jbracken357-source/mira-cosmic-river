@@ -1,17 +1,6 @@
 import { motion } from 'framer-motion';
 import { useBinaryStar } from '../../hooks';
-import { ANIMATION } from '../../constants';
-
-const TRANSLATIONS = {
-  en: {
-    title: 'Mira Cosmic River',
-    subtitle: 'Binary Star System Visualization',
-  },
-  ch: {
-    title: 'Mira 星河',
-    subtitle: '双星系统可视化',
-  },
-};
+import { ANIMATION, TRANSLATIONS } from '../../constants';
 
 export default function IntroAnimation() {
   const language = useBinaryStar((state) => state.language);

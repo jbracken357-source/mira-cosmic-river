@@ -1,5 +1,5 @@
 import { Scene } from './components/Scene';
-import { ControlPanel, IntroAnimation } from './components/UI';
+import { UI, IntroAnimation } from './components/UI';
 import './App.css';
 
 export default function App() {
@@ -10,7 +10,7 @@ export default function App() {
 
       {/* UI Overlay */}
       <IntroAnimation />
-      <ControlPanel />
+      <UI />
     </main>
   );
 }

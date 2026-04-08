@@ -1,6 +1,7 @@
 import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { Line } from '@react-three/drei';
 import type { VisualMode } from '../../types';
 import { COLORS, PHYSICS } from '../../constants';
 
@@ -17,7 +18,6 @@ export default function OrbitRing({
   inclination,
   mode,
 }: OrbitRingProps) {
-  const ringRef = useRef<THREE.Line>(null);
   const materialRef = useRef<THREE.LineBasicMaterial>(null);
 
   // Calculate ellipse points
@@ -40,11 +40,6 @@ export default function OrbitRing({
     return pts;
   }, [semiMajorAxis, eccentricity, inclination]);
 
-  const geometry = useMemo(() => {
-    const geo = new THREE.BufferGeometry().setFromPoints(points);
-    return geo;
-  }, [points]);
-
   // Color based on mode
   const color = useMemo(() => {
     switch (mode) {
@@ -61,35 +56,31 @@ export default function OrbitRing({
 
   useFrame((state) => {
     if (materialRef.current) {
-      // Subtle opacity animation
       materialRef.current.opacity = 0.3 + 0.1 * Math.sin(state.clock.elapsedTime * 0.5);
     }
   });
 
   // Wave mode distortion
-  const waveGeometry = useMemo(() => {
-    if (mode !== 'wave') return geometry;
+  const wavePoints = useMemo(() => {
+    if (mode !== 'wave') return points;
 
-    const wavePts = points.map((pt, i) => {
+    return points.map((pt, i) => {
       const wave = 0.1 * Math.sin(i * 0.1 + PHYSICS.GRAVITY.waveFrequency);
       return new THREE.Vector3(pt.x, pt.y + wave, pt.z);
     });
-
-    return new THREE.BufferGeometry().setFromPoints(wavePts);
-  }, [mode, points, geometry]);
+  }, [mode, points]);
 
   return (
-    <line
-      ref={ringRef}
-      geometry={mode === 'wave' ? waveGeometry : geometry}
+    <Line
+      points={mode === 'wave' ? wavePoints : points}
+      lineWidth={1}
     >
       <lineBasicMaterial
-        ref={materialRef}
+        ref={materialRef as any}
         color={color}
         transparent
         opacity={0.4}
-        linewidth={1}
       />
-    </line>
+    </Line>
   );
 }

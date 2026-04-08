@@ -1,60 +1,121 @@
-import { useRef, useState } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
-import { Stars as DreiStars, OrbitControls } from '@react-three/drei';
+import { useRef } from 'react';
+import React from 'react';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { Stars as DreiStars, OrbitControls as DreiOrbitControls } from '@react-three/drei';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
-import { useBinaryStar, useParameters } from '../../hooks';
+import { useBinaryStar, useParameters, useMobile } from '../../hooks';
 import { COLORS, PHYSICS, calculateOrbitalPosition } from '../../constants';
+import * as THREE from 'three';
 import MiraA from './MiraA';
 import MiraB from './MiraB';
 import OrbitRing from './OrbitRing';
 import MaterialStream from './MaterialStream';
 
+// Level of Detail settings based on device
+const LOD = {
+  mobile: {
+    starCount: 1500,
+    sphereSegments: 32,
+    bloomLevels: 2,
+  },
+  desktop: {
+    starCount: 5000,
+    sphereSegments: 64,
+    bloomLevels: 4,
+  },
+};
+
 function SceneContent() {
   const parameters = useParameters();
   const mode = useBinaryStar((state) => state.mode);
+  const isMobile = useMobile();
   const timeRef = useRef(0);
+  const orbitControlsRef = useRef<React.ElementRef<typeof DreiOrbitControls>>(null);
+  const introStartTimeRef = useRef(Date.now());
+  const primaryGroupRef = useRef<THREE.Group>(null);
+  const secondaryGroupRef = useRef<THREE.Group>(null);
+  const { camera } = useThree();
 
-  // Use state for positions that need to update
-  const [positions, setPositions] = useState(() =>
-    calculateOrbitalPosition(0, PHYSICS.ORBIT)
-  );
+  const lod = isMobile ? LOD.mobile : LOD.desktop;
 
-  // Update positions on animation frame
+  const positionsRef = useRef({
+    primary: [0, 0, 0] as [number, number, number],
+    secondary: [0, 0, 0] as [number, number, number],
+  });
+
+  // Camera choreography: 2.5s orchestrated intro
+  useFrame(() => {
+    const elapsed = (Date.now() - introStartTimeRef.current) / 1000;
+
+    if (elapsed < 2.5) {
+      if (orbitControlsRef.current) {
+        orbitControlsRef.current.enabled = false;
+      }
+
+      if (elapsed < 1.0) {
+        const t = elapsed;
+        camera.position.lerpVectors(
+          new THREE.Vector3(15, 5, 20),
+          new THREE.Vector3(10, 3, 14),
+          t
+        );
+        camera.lookAt(0, 0, 0);
+      } else {
+        const t = (elapsed - 1.0) / 1.5;
+        camera.position.lerpVectors(
+          new THREE.Vector3(10, 3, 14),
+          new THREE.Vector3(8, 2, 12),
+          t
+        );
+        camera.lookAt(0, 0, 0);
+      }
+    } else if (orbitControlsRef.current && !orbitControlsRef.current.enabled) {
+      orbitControlsRef.current.enabled = true;
+    }
+  });
+
   useFrame((_, delta) => {
     timeRef.current += delta * parameters.orbitSpeed;
     const newPositions = calculateOrbitalPosition(timeRef.current, PHYSICS.ORBIT);
-    setPositions(newPositions);
+    positionsRef.current = {
+      primary: newPositions.primary,
+      secondary: newPositions.secondary,
+    };
+    primaryGroupRef.current?.position.set(...newPositions.primary);
+    secondaryGroupRef.current?.position.set(...newPositions.secondary);
   });
 
   return (
     <>
-      {/* Background stars - distant starfield */}
       <DreiStars
         radius={100}
         depth={50}
-        count={5000}
+        count={lod.starCount}
         factor={4}
         saturation={0}
         fade
         speed={0.5}
       />
 
-      {/* Mira A - the primary red giant */}
-      <MiraA
-        position={positions.primary}
-        radius={PHYSICS.MIRA_A.radius}
-        hue={parameters.primaryColor}
-        turbulence={parameters.turbulence}
-      />
+      <group ref={primaryGroupRef}>
+        <MiraA
+          position={[0, 0, 0]}
+          radius={PHYSICS.MIRA_A.radius}
+          hue={parameters.primaryColor}
+          turbulence={parameters.turbulence}
+          segments={lod.sphereSegments}
+        />
+      </group>
 
-      {/* Mira B - the white dwarf companion */}
-      <MiraB
-        position={positions.secondary}
-        radius={PHYSICS.MIRA_B.radius}
-        hue={parameters.secondaryColor}
-      />
+      <group ref={secondaryGroupRef}>
+        <MiraB
+          position={[0, 0, 0]}
+          radius={PHYSICS.MIRA_B.radius}
+          hue={parameters.secondaryColor}
+          segments={lod.sphereSegments}
+        />
+      </group>
 
-      {/* Orbital path visualization */}
       <OrbitRing
         semiMajorAxis={PHYSICS.ORBIT.semiMajorAxis}
         eccentricity={PHYSICS.ORBIT.eccentricity}
@@ -62,23 +123,21 @@ function SceneContent() {
         mode={mode}
       />
 
-      {/* Material stream between stars */}
       {mode === 'particles' && (
         <MaterialStream
-          from={positions.primary}
-          to={positions.secondary}
+          positionsRef={positionsRef}
           particleCount={parameters.particleDensity}
           turbulence={parameters.turbulence}
         />
       )}
 
-      {/* Camera controls */}
-      <OrbitControls
+      <DreiOrbitControls
+        ref={orbitControlsRef}
         enablePan={false}
         minDistance={5}
         maxDistance={20}
         autoRotate
-        autoRotateSpeed={0.2}
+        autoRotateSpeed={0.5}
         enableDamping
         dampingFactor={0.05}
       />
@@ -88,28 +147,45 @@ function SceneContent() {
 
 function PostProcessing() {
   const parameters = useParameters();
+  const isMobile = useMobile();
+  const lod = isMobile ? LOD.mobile : LOD.desktop;
 
   return (
-    <EffectComposer>
+    <EffectComposer enableNormalPass={false}>
       <Bloom
-        intensity={parameters.bloomIntensity}
-        luminanceThreshold={0.1}
-        luminanceSmoothing={0.9}
+        luminanceThreshold={0.25}
         mipmapBlur
+        intensity={parameters.bloomIntensity}
+        radius={0.4}
+        levels={lod.bloomLevels}
       />
     </EffectComposer>
   );
 }
 
 export default function Scene() {
-  const introComplete = useBinaryStar((state) => state.introComplete);
+  const setIntroComplete = useBinaryStar((state) => state.setIntroComplete);
+
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setIntroComplete(true);
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [setIntroComplete]);
 
   return (
     <Canvas
       camera={{
-        position: [0, 3, 12],
-        fov: 50,
+        position: [8, 2, 12],
+        fov: 35,
       }}
+      gl={{
+        antialias: true,
+        alpha: false,
+        stencil: false,
+        depth: true,
+      }}
+      dpr={[1, 1.5]}
       style={{
         position: 'fixed',
         top: 0,
@@ -117,13 +193,8 @@ export default function Scene() {
         width: '100%',
         height: '100%',
         background: COLORS.DEEP_SPACE,
-        opacity: introComplete ? 1 : 0,
-        transition: 'opacity 800ms ease-out',
-      }}
-      gl={{
-        antialias: true,
-        alpha: false,
-        powerPreference: 'high-performance',
+        opacity: 1,
+        zIndex: 0,
       }}
     >
       <color attach="background" args={[COLORS.DEEP_SPACE]} />

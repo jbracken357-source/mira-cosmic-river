@@ -1,120 +1,95 @@
 import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { COLORS } from '../../constants';
+import { MiraA_Shader, Atmosphere_Shader } from '../../shaders/miraA';
 
 interface MiraAProps {
   position: [number, number, number];
   radius: number;
   hue: number;
   turbulence: number;
+  segments?: number;
 }
 
-// Custom shader for Mira A (red giant with pulsating atmosphere)
-const miraAShaderMaterial = {
-  uniforms: {
-    time: { value: 0 },
-    color: { value: new THREE.Color(COLORS.STELLAR_ORANGE) },
-    turbulence: { value: 0.3 },
-    intensity: { value: 1.5 },
-  },
-  vertexShader: `
-    varying vec3 vNormal;
-    varying vec3 vPosition;
-
-    void main() {
-      vNormal = normalize(normalMatrix * normal);
-      vPosition = position;
-      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-    }
-  `,
-  fragmentShader: `
-    uniform float time;
-    uniform vec3 color;
-    uniform float turbulence;
-    uniform float intensity;
-
-    varying vec3 vNormal;
-    varying vec3 vPosition;
-
-    // Simple noise function for turbulence
-    float noise(vec3 p) {
-      return fract(sin(dot(p, vec3(12.9898, 78.233, 45.5432))) * 43758.5453);
-    }
-
-    void main() {
-      // Fresnel effect for atmospheric glow
-      float fresnel = pow(1.0 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 2.0);
-
-      // Pulsation effect
-      float pulse = 0.9 + 0.1 * sin(time * 1.5);
-
-      // Turbulence variation
-      float turbNoise = noise(vPosition * turbulence * 10.0 + time * 0.5);
-
-      // Combine effects
-      vec3 finalColor = color * intensity * pulse;
-      finalColor += fresnel * color * 0.5;
-      finalColor *= (1.0 + turbNoise * turbulence * 0.2);
-
-      gl_FragColor = vec4(finalColor, 1.0);
-    }
-  `,
-};
-
-export default function MiraA({ position, radius, hue, turbulence }: MiraAProps) {
+export default function MiraA({ position, radius, hue, turbulence, segments = 64 }: MiraAProps) {
   const meshRef = useRef<THREE.Mesh>(null);
   const materialRef = useRef<THREE.ShaderMaterial>(null);
+  const atmosphereRef = useRef<THREE.ShaderMaterial>(null);
 
   // Convert hue to color
-  const color = useMemo(() => {
-    const tempColor = new THREE.Color();
-    tempColor.setHSL(hue / 360, 0.9, 0.5);
-    return tempColor;
+  const colors = useMemo(() => {
+    const baseColor = new THREE.Color();
+    baseColor.setHSL(hue / 360, 0.9, 0.5);
+
+    // Core is hotter/brighter, surface is cooler/darker
+    const colorCore = baseColor.clone().offsetHSL(0.05, 0.1, 0.1);
+    const colorSurface = baseColor.clone().offsetHSL(-0.02, 0.05, -0.1);
+
+    return { colorCore, colorSurface, atmosphere: baseColor.clone().offsetHSL(0.02, 0, 0.2) };
   }, [hue]);
 
   useFrame((state) => {
+    const time = state.clock.elapsedTime;
+
     if (materialRef.current) {
-      materialRef.current.uniforms.time.value = state.clock.elapsedTime;
-      materialRef.current.uniforms.color.value = color;
-      materialRef.current.uniforms.turbulence.value = turbulence;
+      materialRef.current.uniforms.uTime.value = time;
+      materialRef.current.uniforms.uColorCore.value = colors.colorCore;
+      materialRef.current.uniforms.uColorSurface.value = colors.colorSurface;
+      materialRef.current.uniforms.uTurbulence.value = turbulence;
     }
 
-    // Subtle pulsation of the mesh
+    if (atmosphereRef.current) {
+      atmosphereRef.current.uniforms.uColor.value = colors.atmosphere;
+    }
+
+    // Subtle rotation for surface animation
     if (meshRef.current) {
-      const pulse = 1 + 0.05 * Math.sin(state.clock.elapsedTime * 1.5);
-      meshRef.current.scale.setScalar(pulse);
+      meshRef.current.rotation.y = time * 0.02;
+      meshRef.current.rotation.z = time * 0.01;
     }
   });
 
   return (
     <group position={position}>
-      {/* Core star mesh */}
+      {/* Core star mesh with custom shader */}
       <mesh ref={meshRef}>
-        <sphereGeometry args={[radius, 64, 64]} />
+        <sphereGeometry args={[radius, segments, segments]} />
         <shaderMaterial
           ref={materialRef}
-          {...miraAShaderMaterial}
-          transparent={false}
+          {...MiraA_Shader}
         />
       </mesh>
 
-      {/* Atmospheric glow sphere */}
-      <mesh scale={1.2}>
+      {/* Atmospheric halo */}
+      <mesh scale={1.15}>
+        <sphereGeometry args={[radius, Math.max(32, Math.floor(segments * 0.75)), Math.max(32, Math.floor(segments * 0.75))]} />
+        <shaderMaterial
+          ref={atmosphereRef}
+          {...Atmosphere_Shader}
+          side={THREE.BackSide}
+          blending={THREE.AdditiveBlending}
+          transparent={true}
+          depthWrite={false}
+        />
+      </mesh>
+
+      {/* Outer glow sphere */}
+      <mesh scale={1.3}>
         <sphereGeometry args={[radius, 32, 32]} />
         <meshBasicMaterial
-          color={color}
+          color={colors.atmosphere}
           transparent
-          opacity={0.15}
+          opacity={0.08 + turbulence * 0.05}
           side={THREE.BackSide}
+          blending={THREE.AdditiveBlending}
         />
       </mesh>
 
-      {/* Point light for illumination */}
+      {/* Point light for scene illumination */}
       <pointLight
-        color={color}
-        intensity={50}
-        distance={15}
+        color={colors.colorCore}
+        intensity={80 + turbulence * 30}
+        distance={20}
         decay={2}
       />
     </group>
