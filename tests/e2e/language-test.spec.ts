@@ -5,9 +5,18 @@ test.describe('Language Toggle Test', () => {
     await page.goto('http://localhost:5175');
     await page.waitForLoadState('networkidle');
 
-    // Initial state should be EN - use aria-label for specificity
-    const langButton = page.locator('[aria-label*="Switch language"], .glass-button:has-text("EN")').first();
+    // Skip cinematic to get to explore mode faster
+    const skipButton = page.locator('button:has-text("Skip")');
+    await skipButton.first().click();
+    await page.waitForTimeout(500);
+
+    // Find language toggle button (text-based: shows "中文" in EN mode, "EN" in CN mode)
+    const langButton = page.locator('button:has-text("中文"), button:has-text("EN")').first();
     await expect(langButton).toBeVisible();
+
+    // Initial state should show "中文" (EN mode)
+    const initialText = await langButton.textContent();
+    expect(initialText).toBe('中文');
 
     // Take screenshot of EN version
     await page.screenshot({ path: 'tests/e2e/screenshots/en-version.png' });
@@ -16,23 +25,17 @@ test.describe('Language Toggle Test', () => {
     await langButton.click();
     await page.waitForTimeout(500);
 
-    // Should now show CN or 中文
-    const cnButton = page.locator('[aria-label*="Switch language"], .glass-button:has-text("CN"), .glass-button:has-text("中文")').first();
-    await expect(cnButton).toBeVisible();
+    // Should now show "EN"
+    await expect(langButton).toHaveText('EN');
 
     // Take screenshot of CN version
     await page.screenshot({ path: 'tests/e2e/screenshots/cn-version.png' });
 
-    // Verify Chinese title appears
-    const title = page.locator('h1, .title, [class*="title"]').first();
-    const titleText = await title.textContent();
-    console.log('Title after language switch:', titleText);
-
     // Toggle back to EN
-    await cnButton.click();
+    await langButton.click();
     await page.waitForTimeout(300);
 
-    // Should be back to EN
-    await expect(langButton).toBeVisible();
+    // Should be back to showing "中文"
+    await expect(langButton).toHaveText('中文');
   });
 });

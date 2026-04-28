@@ -240,6 +240,21 @@ function SceneContent({ onSelectStar }: { onSelectStar: (star: StarName | null) 
         <meshBasicMaterial visible={false} side={THREE.DoubleSide} />
       </mesh>
 
+      {/* Subtle ambient glow halo around tail area — helps anchor visibility in explore mode */}
+      {cinematicPhase === 'explore' && (
+        <mesh position={[-6, 1, 4]}>
+          <sphereGeometry args={[5, 16, 16]} />
+          <meshBasicMaterial
+            color="#ff6b35"
+            transparent
+            opacity={0.03}
+            side={THREE.BackSide}
+            blending={THREE.AdditiveBlending}
+            depthWrite={false}
+          />
+        </mesh>
+      )}
+
       {/* Background click to deselect */}
       <mesh
         renderOrder={-1}

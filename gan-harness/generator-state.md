@@ -1,7 +1,7 @@
 # Generator State
 
 **Last Updated**: 2026-04-28
-**Current Iteration**: v7 (GAN Design fixes applied)
+**Current Iteration**: v8 (GAN Design — remaining issues)
 
 ---
 
@@ -51,18 +51,17 @@
 9. **Cleaned up unused props** — Removed hue prop from MiraA and MiraB
 10. **Fixed TypeScript errors** — Removed unused useCallback import
 
+### Iteration v8: Remaining Issues (2026-04-28)
+**Fixed issues:**
+1. **Tail visibility in explore mode** — Moved explore camera to [10, 5, 18] looking at [-2, 1, 2] (was [8, 3, 12] at origin). Added subtle ambient orange glow sphere at tail center for visual anchoring.
+2. **Stale E2E tests** — Rewrote mira-cosmic.spec.ts for cinematic + info cards flow. Fixed language-test.spec.ts selectors.
+3. **Mira B accretion disk visibility** — Increased disk scale from 2.5x to 3.5x, widened ring bounds, raised opacity from 0.7 to 0.9.
+
 ---
 
 ## Remaining Issues
 
-1. **Tail visibility in explore mode** — Tail is clearly visible during cinematic but harder to see at the further explore camera distance. Auto-rotate camera moves the view. Could improve by:
-   - Adjusting explore camera position to better frame the tail
-   - Increasing particle count or size further for explore mode
-   - Adding a subtle glow halo around the tail area
-
-2. **Stale E2E tests** — Tests reference old UI (control panel, mode buttons, sliders) that was removed
-
-3. **Mira B accretion disk visibility** — Disk is present but could be more prominent
+None — all v7 remaining items addressed.
 
 ---
 

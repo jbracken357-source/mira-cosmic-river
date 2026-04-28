@@ -7,7 +7,7 @@ export const AccretionDisk_Shader = {
   uniforms: {
     uTime: { value: 0 },
     uColor: { value: new THREE.Color('#e0e7ff') },
-    uOpacity: { value: 0.7 },
+    uOpacity: { value: 0.9 },
   },
   vertexShader: `
     varying vec2 vUv;
@@ -33,7 +33,7 @@ export const AccretionDisk_Shader = {
     void main() {
       // Ring distance from center
       float dist = length(vPosition.xy);
-      float ring = smoothstep(0.0, 0.15, dist) * (1.0 - smoothstep(0.45, 0.5, dist));
+      float ring = smoothstep(0.0, 0.1, dist) * (1.0 - smoothstep(0.55, 0.6, dist));
 
       // Inner glow
       float innerGlow = exp(-dist * 4.0);

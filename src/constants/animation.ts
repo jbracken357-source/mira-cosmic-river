@@ -33,11 +33,11 @@ export const CAMERA = {
     lookAt: [0, 2, -8] as [number, number, number],
     fov: 55,
   },
-  // Exploration: comfortable viewing distance
+  // Exploration: closer angle that keeps tail in frame
   EXPLORE: {
-    position: [8, 3, 12] as [number, number, number],
-    lookAt: [0, 0, 0] as [number, number, number],
-    fov: 40,
+    position: [10, 5, 18] as [number, number, number],
+    lookAt: [-2, 1, 2] as [number, number, number],
+    fov: 45,
   },
   // FOV range during pull-back
   FOV_START: 35,

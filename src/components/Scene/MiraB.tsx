@@ -129,7 +129,7 @@ export default function MiraB({ position, radius, segments = 64 }: MiraBProps) {
       />
 
       {/* Accretion disk */}
-      <mesh rotation-x={Math.PI / 2.5} scale={2.5}>
+      <mesh rotation-x={Math.PI / 2.5} scale={3.5}>
         <circleGeometry args={[radius, 64]} />
         <shaderMaterial
           ref={diskMaterialRef}
