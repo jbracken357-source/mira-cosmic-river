@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { createTailMaterial } from '../../shaders/tail';
 
 interface MiraTailProps {
-  opacity?: number;
+  opacityRef: React.MutableRefObject<number>;
   particleCount?: number;
   tailLength?: number;
 }
@@ -31,10 +31,10 @@ function generateTailData(count: number, length: number) {
     const angle = Math.random() * Math.PI * 2;
     const radius = Math.sqrt(Math.random()) * spread;
 
-    // Tail extends in -X direction with slight -Z offset for visibility
-    positions[i * 3] = -l * 0.8;    // behind Mira A
+    // Tail extends in -X direction with +Z offset toward the camera
+    positions[i * 3] = -l * 0.6;     // behind Mira A (reduced for visibility)
     positions[i * 3 + 1] = Math.cos(angle) * radius + curve;
-    positions[i * 3 + 2] = Math.sin(angle) * radius - l * 0.3; // slight Z offset
+    positions[i * 3 + 2] = Math.sin(angle) * radius + l * 0.5; // +Z toward camera
 
     seeds[i] = Math.random();
     sizes[i] = 0.5 + Math.random() * 1.5;
@@ -46,7 +46,7 @@ function generateTailData(count: number, length: number) {
 }
 
 export default function MiraTail({
-  opacity = 0,
+  opacityRef,
   particleCount = 10000,
   tailLength = 25,
 }: MiraTailProps) {
@@ -85,11 +85,7 @@ export default function MiraTail({
     if (materialRef.current) {
       const mat = materialRef.current;
       mat.uniforms.uTime.value += 0.016;
-      mat.uniforms.uOpacity.value = THREE.MathUtils.lerp(
-        mat.uniforms.uOpacity.value,
-        opacity,
-        0.03,
-      );
+      mat.uniforms.uOpacity.value = opacityRef.current;
       mat.uniforms.uMouse.value.copy(mouseRef.current);
       mat.uniforms.uMouseInfluence.value = THREE.MathUtils.lerp(
         mat.uniforms.uMouseInfluence.value,

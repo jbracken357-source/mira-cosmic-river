@@ -6,27 +6,24 @@ import { MiraA_Shader, Atmosphere_Shader } from '../../shaders/miraA';
 interface MiraAProps {
   position: [number, number, number];
   radius: number;
-  hue: number;
   turbulence: number;
   segments?: number;
 }
 
-export default function MiraA({ position, radius, hue, turbulence, segments = 64 }: MiraAProps) {
+export default function MiraA({ position, radius, turbulence, segments = 64 }: MiraAProps) {
   const meshRef = useRef<THREE.Mesh>(null);
   const materialRef = useRef<THREE.ShaderMaterial>(null);
   const atmosphereRef = useRef<THREE.ShaderMaterial>(null);
 
-  // Convert hue to color - deep red giant tones
+  // Convert hue to color — deep red giant tones
+  // Product direction: core #ff3d00, surface #ff8a50
   const colors = useMemo(() => {
-    const baseColor = new THREE.Color();
-    baseColor.setHSL(hue / 360, 0.85, 0.35); // Darker luminosity
+    const colorCore = new THREE.Color('#ff3d00');
+    const colorSurface = new THREE.Color('#ff8a50');
+    const atmosphere = new THREE.Color('#331100');
 
-    // Core is slightly hotter/brighter, surface is cooler/darker
-    const colorCore = baseColor.clone().offsetHSL(0.03, 0.1, 0.05);
-    const colorSurface = baseColor.clone().offsetHSL(-0.02, 0.05, -0.08);
-
-    return { colorCore, colorSurface, atmosphere: baseColor.clone().offsetHSL(0.02, 0, 0.15) };
-  }, [hue]);
+    return { colorCore, colorSurface, atmosphere };
+  }, []);
 
   useFrame((state) => {
     const time = state.clock.elapsedTime;
@@ -34,6 +31,9 @@ export default function MiraA({ position, radius, hue, turbulence, segments = 64
     if (materialRef.current) {
       materialRef.current.uniforms.uTime.value = time;
       materialRef.current.uniforms.uTurbulence.value = turbulence;
+      // Pass computed colors to shader (overrides hardcoded defaults)
+      materialRef.current.uniforms.uColorCore.value = colors.colorCore;
+      materialRef.current.uniforms.uColorSurface.value = colors.colorSurface;
     }
 
     // Subtle rotation for surface animation

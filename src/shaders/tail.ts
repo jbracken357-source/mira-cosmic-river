@@ -152,7 +152,7 @@ export function createTailMaterial(): THREE.ShaderMaterial {
       uOpacity: { value: 0 },
       uMouse: { value: new THREE.Vector2(0, 0) },
       uMouseInfluence: { value: 0 },
-      uParticleSize: { value: 5.0 },
+      uParticleSize: { value: 8.0 },
       uColorNear: { value: new THREE.Color('#ff6b35') },
       uColorMid: { value: new THREE.Color('#a78bfa') },
       uColorFar: { value: new THREE.Color('#4f46e5') },

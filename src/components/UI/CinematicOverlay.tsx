@@ -83,7 +83,7 @@ export default function CinematicOverlay() {
             className="absolute bottom-16 md:bottom-24 left-6 md:left-12 right-6 md:right-12 pointer-events-none select-none"
           >
             <p className="text-white/80 text-base md:text-xl font-extralight italic tracking-wide leading-relaxed bg-black/40 backdrop-blur-sm px-4 py-3 rounded-lg inline-block">
-              {t.cinematic2}
+              {t.cinematic3}
             </p>
           </motion.div>
         )}

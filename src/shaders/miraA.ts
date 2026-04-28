@@ -82,8 +82,8 @@ export const NOISE_GLSL = `
 export const MiraA_Shader = {
   uniforms: {
     uTime: { value: 0 },
-    uColorCore: { value: new THREE.Color('#881100') },
-    uColorSurface: { value: new THREE.Color('#550800') },
+    uColorCore: { value: new THREE.Color('#1a0500') },
+    uColorSurface: { value: new THREE.Color('#0d0200') },
     uTurbulence: { value: 0.3 },
     uNoiseAmp: { value: 0.35 },
   },
@@ -152,7 +152,7 @@ export const MiraA_Shader = {
 // Atmosphere Halo Shader for the glow effect around Mira A
 export const Atmosphere_Shader = {
   uniforms: {
-    uColor: { value: new THREE.Color('#884400') },
+    uColor: { value: new THREE.Color('#331100') },
   },
   vertexShader: `
     varying vec3 vNormal;

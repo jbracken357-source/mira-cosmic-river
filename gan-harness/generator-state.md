@@ -1,67 +1,71 @@
-# Generator State - Iteration 001
+# Generator State
 
-**Last Updated**: 2026-04-06
+**Last Updated**: 2026-04-28
+**Current Iteration**: v7 (GAN Design fixes applied)
 
 ---
 
-## What Was Built
+## What Was Built (All Iterations)
 
-### Project Setup
+### Iteration 001: Initial Implementation (2026-04-06)
 - Vite 8 + React 19 + TypeScript 6
-- Tailwind CSS v4 with CSS-first configuration (@theme)
-- Three.js r182 + React Three Fiber 9 + React Three Drei 10 + Postprocessing 3
-- Framer Motion 12 for animations
-- Zustand for state management
+- Tailwind CSS v4, Three.js r182, R3F 9, R3Drei 10, Postprocessing 3
+- Framer Motion 12, Zustand
+- Binary star system with custom shaders
+- Three visual modes (GLOW/WAVE/PARTICLES)
+- 6 parameter sliders
+- EN/CH language switching
+- Glass-morphism control panel
 
-### 3D Scene Components
-- **Scene.tsx**: Main Canvas with camera, controls, and post-processing
-- **MiraA.tsx**: Primary red giant star with pulsating atmosphere shader
-- **MiraB.tsx**: White dwarf companion with bright core shader
-- **OrbitRing.tsx**: Orbital path visualization with wave distortion
-- **MaterialStream.tsx**: Particle stream between stars (for PARTICLES mode)
+### Iteration 002: Product Direction Pivot (2026-04-27)
+- Removed 3 modes → single cohesive experience
+- Removed sliders → info cards on star click
+- Added 15s cinematic camera sequence
+- Added tail particle system (10,000 particles, mouse-reactive)
+- Added custom twinkling StarField
+- Added closing message on idle
 
-### UI Components
-- **ControlPanel.tsx**: Glass-morphism panel with all controls
-- **ModeToggle.tsx**: GLOW/WAVE/PARTICLES mode buttons
-- **ParameterSlider.tsx**: Custom slider with visual track and thumb
-- **LanguageSwitch.tsx**: EN/CH toggle button
-- **IntroAnimation.tsx**: Cinematic title/subtitle reveal
+### Iterations v3-v5: Visual Refinement
+- Mira A pulsation shader refinement
+- Mira B accretion disk
+- Material stream always visible
+- Tail shader improvements
+- Cinematic text overlay
 
-### State Management
-- **useBinaryStar.ts**: Zustand store for mode, language, playing state, parameters
-- **useAnimation.ts**: Intro animation timing and visibility hooks
+### Iteration v6: UI Polish
+- InfoCards component for star click
+- Closing message with Caveat font
+- Explore mode UI
+- Multiple screenshot verifications
 
-### Constants & Design System
-- **colors.ts**: Deep space palette (#0a0612, #ff6b35, #a78bfa, #60a5fa)
-- **animation.ts**: Timing constants and spring physics
-- **physics.ts**: Mira star system orbital parameters
-
-### Features Implemented
-1. Binary star system with custom shaders
-2. Three visual modes with smooth transitions
-3. Real-time parameter adjustment (6 sliders)
-4. EN/CH language switching
-5. Bloom post-processing
-6. Orbit camera controls (auto-rotate, zoom)
-7. Cinematic intro animation (staggered reveals)
-8. Responsive glass-morphism UI
-
----
-
-## What Changed This Iteration
-- Complete initial implementation from scratch
-- All ESLint and TypeScript errors fixed
-- Custom shaders for stellar effects
-- Deterministic particle positions (seeded random)
+### Iteration v7: GAN Design Fixes (2026-04-28)
+**Fixed issues:**
+1. **Mira A color** — Changed from yellow/white to deep red-orange (#ff3d00 core, #ff8a50 surface)
+2. **Background color** — Darkened to #060308 per product direction
+3. **Mira B color** — Changed to #e0e7ff (cool white) per product direction
+4. **Tail opacity** — Fixed by computing opacity in useFrame instead of React render cycle
+5. **Tail visibility** — Rotated tail group by 22 degrees for better viewing angle
+6. **Tail particle size** — Increased from 5.0 to 8.0
+7. **Cinematic text bug** — Fixed tail reveal phase using t.cinematic3 instead of t.cinematic2
+8. **Tail card clickability** — Added invisible box mesh as click target
+9. **Cleaned up unused props** — Removed hue prop from MiraA and MiraB
+10. **Fixed TypeScript errors** — Removed unused useCallback import
 
 ---
 
-## Known Issues
-- None identified (awaiting evaluator feedback)
+## Remaining Issues
+
+1. **Tail visibility in explore mode** — Tail is clearly visible during cinematic but harder to see at the further explore camera distance. Auto-rotate camera moves the view. Could improve by:
+   - Adjusting explore camera position to better frame the tail
+   - Increasing particle count or size further for explore mode
+   - Adding a subtle glow halo around the tail area
+
+2. **Stale E2E tests** — Tests reference old UI (control panel, mode buttons, sliders) that was removed
+
+3. **Mira B accretion disk visibility** — Disk is present but could be more prominent
 
 ---
 
 ## Dev Server
-- URL: http://localhost:5174
-- Status: Running
-- Command: npm run dev
+- Command: `npm run dev`
+- Build: `npm run build` (passes cleanly)

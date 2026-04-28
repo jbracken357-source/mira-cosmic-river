@@ -1,4 +1,4 @@
-import { useRef, useCallback } from 'react';
+import { useRef } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls as DreiOrbitControls } from '@react-three/drei';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
@@ -53,6 +53,7 @@ function SceneContent({ onSelectStar }: { onSelectStar: (star: StarName | null) 
   const timeRef = useRef(0);
   const cinematicStartRef = useRef(Date.now());
   const orbitControlsRef = useRef<React.ElementRef<typeof DreiOrbitControls>>(null);
+  const tailOpacityRef = useRef(0);
   const { camera } = useThree() as { camera: THREE.PerspectiveCamera };
 
   const positionsRef = useRef({
@@ -141,12 +142,24 @@ function SceneContent({ onSelectStar }: { onSelectStar: (star: StarName | null) 
       primary: newPositions.primary,
       secondary: newPositions.secondary,
     };
+
+    // Compute tail opacity in the animation loop (Zustand updates don't trigger re-renders)
+    const cp = cinematicPhase;
+    const ct = t;
+    if (cp === 'dark' || cp === 'stars-appear') {
+      tailOpacityRef.current = 0;
+    } else if (cp === 'pull-back' && ct < CINEMATIC.TAIL_REVEAL_START) {
+      const ot = clamp01((ct - CINEMATIC.PULL_BACK_START) / (CINEMATIC.TAIL_REVEAL_START - CINEMATIC.PULL_BACK_START));
+      tailOpacityRef.current = ot * 0.15;
+    } else if (cp === 'pull-back' || cp === 'tail-reveal') {
+      const ot = clamp01((ct - CINEMATIC.TAIL_REVEAL_START) / (CINEMATIC.TAIL_FULL - CINEMATIC.TAIL_REVEAL_START));
+      tailOpacityRef.current = easeInOutCubic(ot) * 0.85;
+    } else {
+      tailOpacityRef.current = 0.85;
+    }
   });
 
-  // Tail opacity
-  const tailOpacity = useTailOpacity();
-
-  // Invisible clickable planes for stars (raycasting targets)
+  // Tail opacity is computed in useFrame and stored in tailOpacityRef
   return (
     <>
       {/* Custom twinkling star field */}
@@ -157,7 +170,6 @@ function SceneContent({ onSelectStar }: { onSelectStar: (star: StarName | null) 
         <MiraA
           position={[0, 0, 0]}
           radius={PHYSICS.MIRA_A.radius}
-          hue={30}
           turbulence={0.3}
           segments={lod.sphereSegments}
         />
@@ -178,7 +190,6 @@ function SceneContent({ onSelectStar }: { onSelectStar: (star: StarName | null) 
       <MiraB
         position={positionsRef.current.secondary}
         radius={PHYSICS.MIRA_B.radius}
-        hue={270}
         segments={lod.sphereSegments}
       />
       {/* Invisible click target for Mira B */}
@@ -208,12 +219,26 @@ function SceneContent({ onSelectStar }: { onSelectStar: (star: StarName | null) 
         turbulence={0.3}
       />
 
-      {/* The Tail — hero feature */}
-      <MiraTail
-        opacity={tailOpacity}
-        particleCount={lod.tailParticles}
-        tailLength={PHYSICS.TAIL.length}
-      />
+      {/* The Tail — hero feature, rotated for visibility from default camera angle */}
+      <group rotation={[0, Math.PI * 0.12, 0]}>
+        <MiraTail
+          opacityRef={tailOpacityRef}
+          particleCount={lod.tailParticles}
+          tailLength={PHYSICS.TAIL.length}
+        />
+      </group>
+      {/* Invisible click target for tail card */}
+      <mesh
+        position={[-8, 2, 6]}
+        userData={{ starName: 'tail' }}
+        onClick={(e) => {
+          e.stopPropagation();
+          if (cinematicPhase === 'explore') onSelectStar('tail');
+        }}
+      >
+        <boxGeometry args={[12, 8, 2]} />
+        <meshBasicMaterial visible={false} side={THREE.DoubleSide} />
+      </mesh>
 
       {/* Background click to deselect */}
       <mesh
@@ -239,23 +264,6 @@ function SceneContent({ onSelectStar }: { onSelectStar: (star: StarName | null) 
       />
     </>
   );
-}
-
-// Hook to compute tail opacity from cinematic time
-function useTailOpacity(): number {
-  const cinematicTime = useBinaryStar((state) => state.cinematicTime);
-  const cinematicPhase = useBinaryStar((state) => state.cinematicPhase);
-
-  if (cinematicPhase === 'dark' || cinematicPhase === 'stars-appear') return 0;
-  if (cinematicPhase === 'pull-back' && cinematicTime < CINEMATIC.TAIL_REVEAL_START) {
-    const t = clamp01((cinematicTime - CINEMATIC.PULL_BACK_START) / (CINEMATIC.TAIL_REVEAL_START - CINEMATIC.PULL_BACK_START));
-    return t * 0.15;
-  }
-  if (cinematicPhase === 'pull-back' || cinematicPhase === 'tail-reveal') {
-    const t = clamp01((cinematicTime - CINEMATIC.TAIL_REVEAL_START) / (CINEMATIC.TAIL_FULL - CINEMATIC.TAIL_REVEAL_START));
-    return easeInOutCubic(t) * 0.85;
-  }
-  return 0.85;
 }
 
 function PostProcessing() {

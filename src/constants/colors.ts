@@ -17,8 +17,8 @@ export function getHex(color: ColorWithEmotion | string): string {
 // Emotion labels available via COLOR_INFO
 export const COLORS = {
   // Primary background
-  DEEP_SPACE: '#0a0612',
-  VOID_BLACK: '#050208',
+  DEEP_SPACE: '#060308',
+  VOID_BLACK: '#030105',
 
   // Star colors
   STELLAR_ORANGE: '#ff6b35',
@@ -36,7 +36,7 @@ export const COLORS = {
 
   // Three.js compatible colors (0x format)
   THREE: {
-    DEEP_SPACE: 0x0a0612,
+    DEEP_SPACE: 0x060308,
     STELLAR_ORANGE: 0xff6b35,
     WARM_GLOW: 0xffaa55,
     NEBULA_VIOLET: 0xa78bfa,
@@ -48,11 +48,11 @@ export const COLORS = {
 // Emotion labels for each color (for documentation and UI reference)
 export const COLOR_INFO: Record<keyof typeof COLORS, ColorWithEmotion | null> = {
   DEEP_SPACE: {
-    hex: '#0a0612',
+    hex: '#060308',
     emotion: 'Eternal Silence / 永恒的寂静',
   },
   VOID_BLACK: {
-    hex: '#050208',
+    hex: '#030105',
     emotion: 'Infinite Void / 无限虚空',
   },
   STELLAR_ORANGE: {

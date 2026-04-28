@@ -6,7 +6,6 @@ import { AccretionDisk_Shader } from '../../shaders/accretionDisk';
 interface MiraBProps {
   position: [number, number, number];
   radius: number;
-  hue: number;
   segments?: number;
 }
 
@@ -14,7 +13,7 @@ interface MiraBProps {
 const miraBShaderMaterial = {
   uniforms: {
     time: { value: 0 },
-    color: { value: new THREE.Color('#a8d5ff') },
+    color: { value: new THREE.Color('#e0e7ff') },
     intensity: { value: 2.5 },
   },
   vertexShader: `
@@ -58,18 +57,13 @@ const miraBShaderMaterial = {
   `,
 };
 
-export default function MiraB({ position, radius, hue, segments = 64 }: MiraBProps) {
+export default function MiraB({ position, radius, segments = 64 }: MiraBProps) {
   const meshRef = useRef<THREE.Mesh>(null);
   const materialRef = useRef<THREE.ShaderMaterial>(null);
   const diskMaterialRef = useRef<THREE.ShaderMaterial>(null);
 
-  // Convert hue to color - white dwarf is blue-white
-  const color = useMemo(() => {
-    const tempColor = new THREE.Color();
-    // White dwarfs are hot and blue-white
-    tempColor.setHSL(hue / 360, 0.4, 0.85);
-    return tempColor;
-  }, [hue]);
+  // White dwarf: hot blue-white (#e0e7ff per product direction)
+  const color = useMemo(() => new THREE.Color('#e0e7ff'), []);
 
   useFrame((state) => {
     const time = state.clock.elapsedTime;
