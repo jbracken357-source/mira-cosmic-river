@@ -2,21 +2,19 @@ import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { Line } from '@react-three/drei';
-import type { VisualMode } from '../../types';
-import { COLORS, PHYSICS } from '../../constants';
+import { COLORS } from '../../constants';
 
 interface OrbitRingProps {
   semiMajorAxis: number;
   eccentricity: number;
   inclination: number;
-  mode: VisualMode;
+  mode?: string;
 }
 
 export default function OrbitRing({
   semiMajorAxis,
   eccentricity,
   inclination,
-  mode,
 }: OrbitRingProps) {
   const materialRef = useRef<THREE.LineBasicMaterial>(null);
 
@@ -40,19 +38,10 @@ export default function OrbitRing({
     return pts;
   }, [semiMajorAxis, eccentricity, inclination]);
 
-  // Color based on mode
+  // Color: fixed for single experience
   const color = useMemo(() => {
-    switch (mode) {
-      case 'glow':
-        return new THREE.Color(COLORS.STELLAR_ORANGE);
-      case 'wave':
-        return new THREE.Color(COLORS.NEBULA_VIOLET);
-      case 'particles':
-        return new THREE.Color(COLORS.WHITE_DWARF_BLUE);
-      default:
-        return new THREE.Color(COLORS.NEBULA_VIOLET);
-    }
-  }, [mode]);
+    return new THREE.Color(COLORS.NEBULA_VIOLET);
+  }, []);
 
   useFrame((state) => {
     if (materialRef.current) {
@@ -60,19 +49,9 @@ export default function OrbitRing({
     }
   });
 
-  // Wave mode distortion
-  const wavePoints = useMemo(() => {
-    if (mode !== 'wave') return points;
-
-    return points.map((pt, i) => {
-      const wave = 0.1 * Math.sin(i * 0.1 + PHYSICS.GRAVITY.waveFrequency);
-      return new THREE.Vector3(pt.x, pt.y + wave, pt.z);
-    });
-  }, [mode, points]);
-
   return (
     <Line
-      points={mode === 'wave' ? wavePoints : points}
+      points={points}
       lineWidth={1}
     >
       <lineBasicMaterial

@@ -1,6 +1,7 @@
 import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { AccretionDisk_Shader } from '../../shaders/accretionDisk';
 
 interface MiraBProps {
   position: [number, number, number];
@@ -60,6 +61,7 @@ const miraBShaderMaterial = {
 export default function MiraB({ position, radius, hue, segments = 64 }: MiraBProps) {
   const meshRef = useRef<THREE.Mesh>(null);
   const materialRef = useRef<THREE.ShaderMaterial>(null);
+  const diskMaterialRef = useRef<THREE.ShaderMaterial>(null);
 
   // Convert hue to color - white dwarf is blue-white
   const color = useMemo(() => {
@@ -75,6 +77,11 @@ export default function MiraB({ position, radius, hue, segments = 64 }: MiraBPro
     if (materialRef.current) {
       materialRef.current.uniforms.time.value = time;
       materialRef.current.uniforms.color.value = color;
+    }
+
+    if (diskMaterialRef.current) {
+      diskMaterialRef.current.uniforms.uTime.value = time;
+      diskMaterialRef.current.uniforms.uColor.value = color;
     }
 
     // Subtle rotation
@@ -126,6 +133,19 @@ export default function MiraB({ position, radius, hue, segments = 64 }: MiraBPro
         distance={12}
         decay={2}
       />
+
+      {/* Accretion disk */}
+      <mesh rotation-x={Math.PI / 2.5} scale={2.5}>
+        <circleGeometry args={[radius, 64]} />
+        <shaderMaterial
+          ref={diskMaterialRef}
+          {...AccretionDisk_Shader}
+          transparent
+          side={THREE.DoubleSide}
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
+        />
+      </mesh>
     </group>
   );
 }

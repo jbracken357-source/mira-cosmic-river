@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { StarSystemState, StarParameters, VisualMode, Language } from '../types';
+import type { StarSystemState, StarParameters, VisualMode, Language, CinematicPhase } from '../types';
 
 interface BinaryStarStore extends StarSystemState {
   parameters: StarParameters;
@@ -7,50 +7,43 @@ interface BinaryStarStore extends StarSystemState {
   setLanguage: (language: Language) => void;
   setPlaying: (isPlaying: boolean) => void;
   setIntroComplete: (complete: boolean) => void;
+  setCinematicPhase: (phase: CinematicPhase) => void;
+  setCinematicTime: (time: number) => void;
   setParameter: (key: keyof StarParameters, value: number) => void;
-  resetParameters: () => void;
 }
 
-// Default parameters
 const defaultParameters: StarParameters = {
-  primaryColor: 30,      // Orange-ish hue
-  secondaryColor: 270,   // Violet-ish hue
-  turbulence: 0.3,
-  orbitSpeed: 1.0,
-  bloomIntensity: 1.5,
-  particleDensity: 3000,
+  timeSpeed: 1.0,
 };
 
 export const useBinaryStar = create<BinaryStarStore>((set) => ({
-  // Initial state
-  mode: 'glow',
+  mode: 'explore',
   language: 'en',
   isPlaying: true,
   introComplete: false,
+  cinematicPhase: 'dark',
+  cinematicTime: 0,
   parameters: defaultParameters,
 
-  // Actions
   setMode: (mode) => set({ mode }),
   setLanguage: (language) => set({ language }),
   setPlaying: (isPlaying) => set({ isPlaying }),
-  setIntroComplete: (complete) => set({ introComplete: complete }),
+  setIntroComplete: (_complete) => set({ introComplete: true, cinematicPhase: 'explore' }),
+  setCinematicPhase: (phase) => set({ cinematicPhase: phase }),
+  setCinematicTime: (time) => set({ cinematicTime: time }),
   setParameter: (key, value) => set((state) => ({
     parameters: { ...state.parameters, [key]: value },
   })),
-  resetParameters: () => set({ parameters: defaultParameters }),
 }));
 
-// Hook for accessing parameters only (optimized for components that don't need state)
-export function useParameters() {
-  return useBinaryStar((state) => state.parameters);
+export function useTimeSpeed() {
+  return useBinaryStar((state) => state.parameters.timeSpeed);
 }
 
-// Hook for accessing mode only
-export function useVisualMode() {
-  return useBinaryStar((state) => state.mode);
+export function useCinematicPhase() {
+  return useBinaryStar((state) => state.cinematicPhase);
 }
 
-// Hook for accessing language only
 export function useLanguage() {
   return useBinaryStar((state) => state.language);
 }

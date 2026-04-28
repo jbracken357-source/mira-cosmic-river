@@ -51,6 +51,15 @@ export const PHYSICS = {
     gravityConstant: 0.001,
     orbitalVelocity: 0.3,
   },
+
+  // The Tail - Mira's 13-light-year UV bow shock (scaled)
+  TAIL: {
+    particleCount: 10000,
+    particleCountMobile: 3000,
+    length: 25,           // Visual length (scaled)
+    width: 4,             // Max spread at far end
+    curvature: 1.5,       // Upward arc
+  },
 } as const;
 
 // Calculate orbital position at time t

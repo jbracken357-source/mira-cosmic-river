@@ -1,118 +1,56 @@
-// Translations for Mira Cosmic River
-// Full romantic copy from binary-waltz PRD section 6.1
+// Translations for Mira Cosmic River - Cinematic Experience
+// Romantic copy for the love letter narrative
 
 export const TRANSLATIONS = {
   en: {
+    // Cinematic opening (3 text fades)
+    cinematic1: '300 light-years from Earth, two stars have been dancing for billions of years.',
+    cinematic2: 'She leaves a trail 13 light-years long. 200 times the size of our solar system. The longest stellar tail ever observed.',
+    cinematic3: 'Mira. Named for the Latin word for "wonderful." Like you.',
+
     // Title and subtitle
-    title: 'Mira - The Binary Waltz',
+    title: 'Mira',
     subtitle: 'Together, Until the End of Time',
 
-    // Main description (3 paragraphs)
-    description: {
-      paragraph1: 'This is Mira (Omicron Ceti), a binary star system that has danced together for billions of years.',
-      paragraph2: 'The red giant, like you, burns bright and magnificent; the companion, like me, forever follows your light.',
-      paragraph3: 'No matter how the universe changes, we orbit each other until the end of time.',
-    },
-
-    // Interaction hint
-    interactionHint: 'Drag to Rotate · Scroll to Zoom · Feel the Eternity',
-
-    // Star labels
+    // Star info cards
     miraA: 'Mira A',
-    miraADesc: 'Red Giant - Pulsating atmosphere',
+    miraADesc: 'Red Giant. 300x the Sun\'s radius. Pulsing every 332 days. Temperature: 3,000K.',
     miraB: 'Mira B',
-    miraBDesc: 'White Dwarf - Accreting matter',
+    miraBDesc: 'White Dwarf. Accreting matter from its companion. One day, it may trigger a nova.',
+    tailLabel: 'The Tail',
+    tailDesc: '13 light-years long. Discovered by GALEX in 2007. The longest stellar tail ever observed.',
 
-    // Data labels
-    spectralType: 'SPECTRAL TYPE',
-    spectralValue: 'M7 IIIe + DA',
-    distance: 'DISTANCE',
-    distanceValue: '~300 light-years',
+    // UI
+    timeSpeed: 'Time Speed',
+    interactionHint: 'Drag to Rotate · Scroll to Zoom',
 
-    // Footer quote
-    footerQuote: 'Together, until the end of time',
-
-    // UI labels
-    systemTab: 'SYSTEM',
-    environmentTab: 'ENVIRONMENT',
-    displayMode: 'DISPLAY MODE',
-
-    // Slider labels
-    primaryColor: 'Primary Color',
-    secondaryColor: 'Secondary Color',
-    turbulence: 'Turbulence',
-    orbitSpeed: 'Orbit Speed',
-    particleDensity: 'Particle Density',
-    bloomIntensity: 'Bloom Intensity',
-
-    // Control Panel specific
-    stellarBreath: 'Stellar Breath',
-    cosmicDance: 'Cosmic Dance',
-    stardustDensity: 'Stardust Density',
-    starlightGlow: 'Starlight Glow',
-    autoRotate: 'Auto Rotate',
-    reset: 'Reset',
-
-    // Mode names
-    modeGlow: 'GLOW',
-    modeWave: 'WAVE',
-    modeParticles: 'PARTICLES',
+    // Closing message
+    closingMessage: 'We are made of starstuff. And my starstuff chose yours.',
   },
   ch: {
+    // Cinematic opening (3 text fades)
+    cinematic1: '距离地球300光年，两颗星星已经共舞了数十亿年。',
+    cinematic2: '她留下了一条13光年长的尾巴——太阳系的200倍大。这是人类观测到的最长的恒星尾巴。',
+    cinematic3: 'Mira。拉丁语意为"奇妙"。就像你一样。',
+
     // Title and subtitle
-    title: 'Mira - 双星共舞',
+    title: 'Mira',
     subtitle: '在宇宙的尽头，我们依然相伴',
 
-    // Main description (3 paragraphs)
-    description: {
-      paragraph1: '这是蒭藁增二 (Mira)，一对已共舞数十亿年的双星。',
-      paragraph2: '红巨星如你，炽热而耀眼；伴星如我，永远追随你的光芒。',
-      paragraph3: '无论宇宙如何变迁，我们始终彼此环绕，直到时间的尽头。',
-    },
-
-    // Interaction hint
-    interactionHint: '拖拽旋转 · 滚轮缩放 · 感受永恒',
-
-    // Star labels
+    // Star info cards
     miraA: '蒭藁增二 A',
-    miraADesc: '红巨星 - 脉动大气',
+    miraADesc: '红巨星。太阳半径的300倍。每332天脉动一次。表面温度3,000K。',
     miraB: '蒭藁增二 B',
-    miraBDesc: '白矮星 - 吸积物质',
+    miraBDesc: '白矮星。从伴星吸积物质。终有一天，它可能触发新星爆发。',
+    tailLabel: '尾巴',
+    tailDesc: '13光年长。2007年由GALEX卫星发现。人类观测到的最长的恒星尾巴。',
 
-    // Data labels
-    spectralType: '光谱类型',
-    spectralValue: 'M7 IIIe + DA',
-    distance: '距离',
-    distanceValue: '~300 光年',
+    // UI
+    timeSpeed: '时间速度',
+    interactionHint: '拖拽旋转 · 滚轮缩放',
 
-    // Footer quote
-    footerQuote: '在宇宙的尽头，我们依然相伴',
-
-    // UI labels
-    systemTab: '系统',
-    environmentTab: '环境',
-    displayMode: '显示模式',
-
-    // Slider labels
-    primaryColor: '主星颜色',
-    secondaryColor: '伴星颜色',
-    turbulence: '湍流强度',
-    orbitSpeed: '轨道速度',
-    particleDensity: '粒子密度',
-    bloomIntensity: '辉光强度',
-
-    // Control Panel specific
-    stellarBreath: '恒星呼吸',
-    cosmicDance: '宇宙之舞',
-    stardustDensity: '星尘密度',
-    starlightGlow: '星光辉光',
-    autoRotate: '自动旋转',
-    reset: '重置',
-
-    // Mode names
-    modeGlow: '辉光',
-    modeWave: '物质流',
-    modeParticles: '粒子',
+    // Closing message
+    closingMessage: '我们都是星尘。而我的星尘，选择了你的。',
   },
 } as const;
 

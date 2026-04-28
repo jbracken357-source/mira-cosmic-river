@@ -1,3 +1,3 @@
-export { useBinaryStar, useParameters, useVisualMode, useLanguage } from './useBinaryStar';
-export { useAnimation, getIntroDelay, useIntroVisibility } from './useAnimation';
+export { useBinaryStar, useTimeSpeed, useCinematicPhase, useLanguage } from './useBinaryStar';
+export { useAnimation } from './useAnimation';
 export { useMobile } from './useMobile';

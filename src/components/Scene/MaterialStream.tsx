@@ -40,7 +40,7 @@ export default function MaterialStream({
       colorsArr[i * 3] = color.r;
       colorsArr[i * 3 + 1] = color.g;
       colorsArr[i * 3 + 2] = color.b;
-      sizesArr[i] = 0.02 + 0.03 * seededRandom(i + 1000);
+      sizesArr[i] = 0.2 + 0.3 * seededRandom(i + 1000);
     }
 
     return { colors: colorsArr, sizes: sizesArr };
@@ -86,7 +86,7 @@ export default function MaterialStream({
   return (
     <points ref={pointsRef} geometry={geometry}>
       <pointsMaterial
-        size={0.05}
+        size={0.3}
         vertexColors
         transparent
         opacity={0.7}

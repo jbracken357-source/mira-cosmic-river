@@ -16,16 +16,16 @@ export default function MiraA({ position, radius, hue, turbulence, segments = 64
   const materialRef = useRef<THREE.ShaderMaterial>(null);
   const atmosphereRef = useRef<THREE.ShaderMaterial>(null);
 
-  // Convert hue to color
+  // Convert hue to color - deep red giant tones
   const colors = useMemo(() => {
     const baseColor = new THREE.Color();
-    baseColor.setHSL(hue / 360, 0.9, 0.5);
+    baseColor.setHSL(hue / 360, 0.85, 0.35); // Darker luminosity
 
-    // Core is hotter/brighter, surface is cooler/darker
-    const colorCore = baseColor.clone().offsetHSL(0.05, 0.1, 0.1);
-    const colorSurface = baseColor.clone().offsetHSL(-0.02, 0.05, -0.1);
+    // Core is slightly hotter/brighter, surface is cooler/darker
+    const colorCore = baseColor.clone().offsetHSL(0.03, 0.1, 0.05);
+    const colorSurface = baseColor.clone().offsetHSL(-0.02, 0.05, -0.08);
 
-    return { colorCore, colorSurface, atmosphere: baseColor.clone().offsetHSL(0.02, 0, 0.2) };
+    return { colorCore, colorSurface, atmosphere: baseColor.clone().offsetHSL(0.02, 0, 0.15) };
   }, [hue]);
 
   useFrame((state) => {
@@ -33,13 +33,7 @@ export default function MiraA({ position, radius, hue, turbulence, segments = 64
 
     if (materialRef.current) {
       materialRef.current.uniforms.uTime.value = time;
-      materialRef.current.uniforms.uColorCore.value = colors.colorCore;
-      materialRef.current.uniforms.uColorSurface.value = colors.colorSurface;
       materialRef.current.uniforms.uTurbulence.value = turbulence;
-    }
-
-    if (atmosphereRef.current) {
-      atmosphereRef.current.uniforms.uColor.value = colors.atmosphere;
     }
 
     // Subtle rotation for surface animation
@@ -56,7 +50,9 @@ export default function MiraA({ position, radius, hue, turbulence, segments = 64
         <sphereGeometry args={[radius, segments, segments]} />
         <shaderMaterial
           ref={materialRef}
-          {...MiraA_Shader}
+          vertexShader={MiraA_Shader.vertexShader}
+          fragmentShader={MiraA_Shader.fragmentShader}
+          uniforms={MiraA_Shader.uniforms}
         />
       </mesh>
 
@@ -70,6 +66,7 @@ export default function MiraA({ position, radius, hue, turbulence, segments = 64
           blending={THREE.AdditiveBlending}
           transparent={true}
           depthWrite={false}
+          opacity={0.5}
         />
       </mesh>
 
@@ -79,7 +76,7 @@ export default function MiraA({ position, radius, hue, turbulence, segments = 64
         <meshBasicMaterial
           color={colors.atmosphere}
           transparent
-          opacity={0.08 + turbulence * 0.05}
+          opacity={0.04 + turbulence * 0.03}
           side={THREE.BackSide}
           blending={THREE.AdditiveBlending}
         />
@@ -88,8 +85,8 @@ export default function MiraA({ position, radius, hue, turbulence, segments = 64
       {/* Point light for scene illumination */}
       <pointLight
         color={colors.colorCore}
-        intensity={80 + turbulence * 30}
-        distance={20}
+        intensity={10 + turbulence * 5}
+        distance={15}
         decay={2}
       />
     </group>

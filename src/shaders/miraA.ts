@@ -78,14 +78,14 @@ export const NOISE_GLSL = `
   }
 `;
 
-// Mira A Surface Shader with turbulence-based surface displacement
+// Mira A Surface Shader with pulsation (332-day period scaled to ~8s visual)
 export const MiraA_Shader = {
   uniforms: {
     uTime: { value: 0 },
-    uColorCore: { value: new THREE.Color('#ff4500') },
-    uColorSurface: { value: new THREE.Color('#ff8c00') },
-    uTurbulence: { value: 0.0 },
-    uNoiseAmp: { value: 0.15 },
+    uColorCore: { value: new THREE.Color('#881100') },
+    uColorSurface: { value: new THREE.Color('#550800') },
+    uTurbulence: { value: 0.3 },
+    uNoiseAmp: { value: 0.35 },
   },
   vertexShader: `
     varying vec2 vUv;
@@ -93,6 +93,7 @@ export const MiraA_Shader = {
     varying float vNoise;
     uniform float uTime;
     uniform float uTurbulence;
+    uniform float uNoiseAmp;
 
     ${NOISE_GLSL}
 
@@ -100,36 +101,48 @@ export const MiraA_Shader = {
       vUv = uv;
       vNormal = normal;
 
-      // Turbulence drastically affects frequency and time speed
+      // Pulsation: 332-day period scaled to ~8 second visual rhythm
+      float pulsePhase = sin(uTime * 0.785) * 0.5 + 0.5; // ~8s period
       float timeSpeed = uTime * (0.1 + uTurbulence * 1.5);
-      float noiseAmp = uNoiseAmp + uTurbulence * 0.5;
+      float noiseAmp = uNoiseAmp * (0.8 + pulsePhase * 0.4);
 
       float lowFreq = snoise(position * (0.5 + uTurbulence * 1.0) + timeSpeed);
       float highFreq = snoise(position * (2.0 + uTurbulence * 2.0) - timeSpeed * 2.0);
 
-      vNoise = lowFreq * 0.6 + highFreq * 0.4;
+      vNoise = lowFreq * 0.7 + highFreq * 0.3;
 
-      // Gentle displacement becomes jagged with turbulence
-      vec3 newPos = position + normal * (vNoise * noiseAmp);
+      // Radius pulsation
+      float radiusPulse = 1.0 + 0.05 * sin(uTime * 0.785);
+      vec3 newPos = position * radiusPulse + normal * (vNoise * noiseAmp);
 
       gl_Position = projectionMatrix * modelViewMatrix * vec4(newPos, 1.0);
     }
   `,
   fragmentShader: `
+    varying vec2 vUv;
     varying vec3 vNormal;
     varying float vNoise;
     uniform vec3 uColorCore;
     uniform vec3 uColorSurface;
+    uniform float uTime;
 
     void main() {
-      // Fresnel effect for limb darkening (sun-like edge)
+      // Fresnel effect for limb darkening
       float fresnel = pow(1.0 - abs(dot(vNormal, vec3(0.0, 0.0, 1.0))), 2.0);
 
-      // Mix colors based on noise (temperature variation) and fresnel
-      vec3 color = mix(uColorCore, uColorSurface, vNoise * 0.5 + 0.5);
+      // Pulsation: brighter (whiter) at peak, redder at dim
+      float pulsePhase = sin(uTime * 0.785) * 0.5 + 0.5;
+      vec3 pulseColor = mix(
+        uColorSurface * 0.8,  // dim = deeper red
+        uColorCore * 1.2,     // bright = hotter/whiter
+        pulsePhase
+      );
 
-      // Edge glow
-      color += vec3(1.0, 0.6, 0.2) * fresnel * 0.8;
+      // Mix colors based on noise and pulsation
+      vec3 color = mix(pulseColor, uColorCore, vNoise * 0.6 + 0.4);
+
+      // Edge glow (subtle, not bright)
+      color += vec3(0.6, 0.2, 0.05) * fresnel * 0.15;
 
       gl_FragColor = vec4(color, 1.0);
     }
@@ -139,7 +152,7 @@ export const MiraA_Shader = {
 // Atmosphere Halo Shader for the glow effect around Mira A
 export const Atmosphere_Shader = {
   uniforms: {
-    uColor: { value: new THREE.Color('#ffaa55') },
+    uColor: { value: new THREE.Color('#884400') },
   },
   vertexShader: `
     varying vec3 vNormal;
@@ -153,7 +166,7 @@ export const Atmosphere_Shader = {
     uniform vec3 uColor;
     void main() {
       float intensity = pow(0.6 - dot(vNormal, vec3(0, 0, 1.0)), 4.0);
-      gl_FragColor = vec4(uColor, intensity * 1.5);
+      gl_FragColor = vec4(uColor, intensity * 0.3);
     }
   `,
 };

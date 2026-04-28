@@ -1,8 +1,11 @@
-// Visual modes for the binary star system
-export type VisualMode = 'glow' | 'wave' | 'particles';
+// Visual modes replaced by single cinematic experience
+export type VisualMode = 'explore';
 
 // Language options
 export type Language = 'en' | 'ch';
+
+// Cinematic phases for the opening sequence
+export type CinematicPhase = 'dark' | 'stars-appear' | 'pull-back' | 'tail-reveal' | 'explore';
 
 // Main state interface for the star system
 export interface StarSystemState {
@@ -10,16 +13,13 @@ export interface StarSystemState {
   language: Language;
   isPlaying: boolean;
   introComplete: boolean;
+  cinematicPhase: CinematicPhase;
+  cinematicTime: number; // 0-15 seconds
 }
 
 // Adjustable parameters for the visualization
 export interface StarParameters {
-  primaryColor: number;      // Hue 0-360
-  secondaryColor: number;    // Hue 0-360
-  turbulence: number;        // 0-1
-  orbitSpeed: number;        // 0.1-3.0x
-  bloomIntensity: number;    // 0-2
-  particleDensity: number;   // 100-10000
+  timeSpeed: number;       // 0.1-5.0x (only control in new design)
 }
 
 // Star properties for rendering
@@ -39,37 +39,22 @@ export interface OrbitConfig {
   period: number;
 }
 
-// Parameter slider props
-export interface ParameterSliderProps {
-  label: string;
-  labelZh: string;
-  value: number;
-  min: number;
-  max: number;
-  step: number;
-  onChange: (value: number) => void;
-  language: Language;
-  formatValue?: (value: number) => string;
-}
-
-// Translation dictionary
+// Translation dictionary (simplified for new design)
 export interface TranslationDict {
   title: string;
   subtitle: string;
-  controls: string;
-  modeGlow: string;
-  modeWave: string;
-  modeParticles: string;
-  primaryColor: string;
-  secondaryColor: string;
-  turbulence: string;
-  orbitSpeed: string;
-  bloomIntensity: string;
-  particleDensity: string;
-  play: string;
-  pause: string;
-  reset: string;
-  languageSwitch: string;
+  cinematic1: string;
+  cinematic2: string;
+  cinematic3: string;
+  miraA: string;
+  miraADesc: string;
+  miraB: string;
+  miraBDesc: string;
+  tailLabel: string;
+  tailDesc: string;
+  timeSpeed: string;
+  interactionHint: string;
+  closingMessage: string;
 }
 
 // Shader uniforms

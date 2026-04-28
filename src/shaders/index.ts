@@ -12,3 +12,13 @@ export {
   StarTail_Shader,
   FlowStream_Shader,
 } from './starTail';
+
+export {
+  TailVertexShader,
+  TailFragmentShader,
+  createTailMaterial,
+} from './tail';
+
+export {
+  AccretionDisk_Shader,
+} from './accretionDisk';
