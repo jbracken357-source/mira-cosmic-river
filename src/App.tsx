@@ -1,19 +1,33 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Scene } from './components/Scene';
 import { CinematicOverlay, InfoCards, ClosingMessage } from './components/UI';
 import type { StarName } from './components/UI/InfoCards';
-import { useBinaryStar } from './hooks';
+import { hasFoundTail, persistFoundTail, useBinaryStar } from './hooks';
 import './App.css';
 
 export default function App() {
   const [selectedStar, setSelectedStar] = useState<StarName | null>(null);
+  const [showTailFound, setShowTailFound] = useState(false);
   const handleSelectStar = useCallback((star: StarName | null) => {
+    if (star === 'tail' && !hasFoundTail()) {
+      persistFoundTail();
+      setShowTailFound(true);
+    } else if (star !== 'tail') {
+      setShowTailFound(false);
+    }
     setSelectedStar(star);
   }, []);
+
+  useEffect(() => {
+    if (!showTailFound) return;
+    const id = window.setTimeout(() => setShowTailFound(false), 4500);
+    return () => window.clearTimeout(id);
+  }, [showTailFound]);
 
   const sky = useBinaryStar((state) => state.sky);
   const introComplete = useBinaryStar((state) => state.introComplete);
   if (!introComplete && selectedStar !== null) setSelectedStar(null);
+  if (!introComplete && showTailFound) setShowTailFound(false);
 
   return (
     <>
@@ -25,8 +39,12 @@ export default function App() {
         data-sky-orbital-phase={sky.orbitalPhase.toFixed(4)}
         className="relative w-full h-screen overflow-hidden pointer-events-none"
       >
-        <CinematicOverlay />
-        <InfoCards selectedStar={selectedStar} onSelectStar={handleSelectStar} />
+        <CinematicOverlay onSelectStar={handleSelectStar} />
+        <InfoCards
+          selectedStar={selectedStar}
+          onSelectStar={handleSelectStar}
+          showTailFound={showTailFound}
+        />
         <ClosingMessage />
       </div>
     </>

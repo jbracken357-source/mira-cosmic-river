@@ -2,9 +2,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useBinaryStar } from '../../hooks';
 import { TRANSLATIONS } from '../../constants/translations';
 import { CINEMATIC, TRANSITIONS } from '../../constants/animation';
+import type { StarName } from './InfoCards';
 
 // Cinematic overlay: 15-second opening text sequence
-export default function CinematicOverlay() {
+export default function CinematicOverlay({
+  onSelectStar,
+}: {
+  onSelectStar: (star: StarName | null) => void;
+}) {
   const language = useBinaryStar((state) => state.language);
   const cinematicTime = useBinaryStar((state) => state.cinematicTime);
   const introComplete = useBinaryStar((state) => state.introComplete);
@@ -16,7 +21,7 @@ export default function CinematicOverlay() {
   };
 
   if (introComplete) {
-    return <ExploreUI />;
+    return <ExploreUI onSelectStar={onSelectStar} />;
   }
 
   return (
@@ -124,7 +129,7 @@ export default function CinematicOverlay() {
 }
 
 // Minimal explore-mode UI
-function ExploreUI() {
+function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => void }) {
   const language = useBinaryStar((state) => state.language);
   const setLanguage = useBinaryStar((state) => state.setLanguage);
   const t = TRANSLATIONS[language];
@@ -165,13 +170,22 @@ function ExploreUI() {
       </header>
 
       {/* Bottom hint */}
-      <footer className="absolute bottom-4 md:bottom-8 left-0 right-0 px-8 flex justify-center">
-        <div className="backdrop-blur-sm bg-white/5 border border-white/10 px-4 py-2 rounded-full">
-          <div className="flex items-center gap-2">
-            <div className="w-1.5 h-1.5 rounded-full bg-orange-500/60 animate-pulse" />
-            <span className="text-[9px] tracking-[0.2em] uppercase text-white/40 font-extralight">
-              {t.interactionHint}
-            </span>
+      <footer className="absolute bottom-4 md:bottom-8 left-0 right-0 px-8">
+        <button
+          data-testid="tail-hint"
+          onClick={() => onSelectStar('tail')}
+          className="absolute left-8 bottom-0 pointer-events-auto text-[9px] tracking-[0.2em] uppercase text-white/30 font-extralight hover:text-white/55 transition-colors"
+        >
+          {t.tailHint}
+        </button>
+        <div className="flex justify-center">
+          <div className="backdrop-blur-sm bg-white/5 border border-white/10 px-4 py-2 rounded-full">
+            <div className="flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-orange-500/60 animate-pulse" />
+              <span className="text-[9px] tracking-[0.2em] uppercase text-white/40 font-extralight">
+                {t.interactionHint}
+              </span>
+            </div>
           </div>
         </div>
       </footer>

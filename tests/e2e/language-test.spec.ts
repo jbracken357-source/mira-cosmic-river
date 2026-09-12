@@ -6,7 +6,10 @@ const APP = '/?quality=low';
 
 test.describe('Language Toggle Test', () => {
   test('toggle between EN and CN', async ({ page }) => {
-    await page.addInitScript(() => localStorage.removeItem('mira:seen-opening'));
+    await page.addInitScript(() => {
+      localStorage.removeItem('mira:seen-opening');
+      localStorage.removeItem('mira:found-tail');
+    });
     await page.goto(APP);
     await page.waitForLoadState('networkidle');
 

@@ -9,6 +9,7 @@ const OPENING_LINE = /300 light-years from Earth/;
 async function gotoWithSeen(page: Page, seen: boolean) {
   await page.addInitScript(
     ({ key, seen: alreadySeen }) => {
+      localStorage.removeItem('mira:found-tail');
       if (alreadySeen) localStorage.setItem(key, '1');
       else localStorage.removeItem(key);
     },

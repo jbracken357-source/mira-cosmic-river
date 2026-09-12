@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useBinaryStar } from '../../hooks';
 import { TRANSLATIONS } from '../../constants/translations';
+import { TRANSITIONS } from '../../constants/animation';
 
 const IDLE_THRESHOLD = 60; // seconds before closing message appears
 
@@ -17,14 +18,21 @@ export default function ClosingMessage() {
   if (!introComplete && isVisible) setIsVisible(false);
 
   useEffect(() => {
-    if (!introComplete) return;
+    if (!introComplete) {
+      useBinaryStar.getState().setEpilogueVisible(false);
+      return;
+    }
 
     // Idle is measured from the moment exploration starts, not from module load
     lastActivityRef.current = Date.now();
 
     const checkIdle = () => {
       const elapsed = (Date.now() - lastActivityRef.current) / 1000;
-      setIsVisible(elapsed >= IDLE_THRESHOLD);
+      const camera = elapsed >= IDLE_THRESHOLD - TRANSITIONS.CLOSING_CAMERA;
+      const text = elapsed >= IDLE_THRESHOLD;
+      const { epilogueVisible, setEpilogueVisible } = useBinaryStar.getState();
+      if (epilogueVisible !== camera) setEpilogueVisible(camera);
+      setIsVisible(text);
     };
 
     intervalRef.current = setInterval(checkIdle, 1000);
@@ -48,6 +56,7 @@ export default function ClosingMessage() {
       window.removeEventListener('click', markActivity);
       window.removeEventListener('touchstart', markActivity);
       window.removeEventListener('keydown', markActivity);
+      useBinaryStar.getState().setEpilogueVisible(false);
     };
   }, [introComplete]);
 

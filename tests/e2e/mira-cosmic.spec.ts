@@ -8,7 +8,10 @@ const APP = '/?quality=low';
 test.describe('Mira Cosmic River - E2E Tests', () => {
   test.beforeEach(async ({ page }) => {
     // These specs describe a first visit; returning visitors no longer see Skip.
-    await page.addInitScript(() => localStorage.removeItem('mira:seen-opening'));
+    await page.addInitScript(() => {
+      localStorage.removeItem('mira:seen-opening');
+      localStorage.removeItem('mira:found-tail');
+    });
     await page.goto(APP);
     await page.waitForLoadState('networkidle');
   });

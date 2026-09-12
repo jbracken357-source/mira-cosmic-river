@@ -39,6 +39,12 @@ export const CAMERA = {
     lookAt: [-2, 1, 2] as [number, number, number],
     fov: 45,
   },
+  // Idle epilogue: a gentle pull-in toward the pair so the ending holds
+  CLOSING: {
+    position: [7.5, 3.2, 12] as [number, number, number],
+    lookAt: [0, 0.3, 0] as [number, number, number],
+    fov: 38,
+  },
   // FOV range during pull-back
   FOV_START: 35,
   FOV_END: 55,
@@ -52,6 +58,7 @@ export const TRANSITIONS = {
   TAIL_FADE_IN: 3.0,     // Tail opacity 0 → 1
   FINAL_TEXT_FADE: 1.5,  // Final title fade in
   EXPLORE_TRANSITION: 0.5,
+  CLOSING_CAMERA: 8,     // idle pull-in; matches the lead before the epilogue line
 } as const;
 
 // Spring physics for Framer Motion
