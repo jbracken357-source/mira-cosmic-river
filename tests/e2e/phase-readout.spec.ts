@@ -10,16 +10,34 @@ const DAY_MS = 86_400_000;
 const MINIMUM_EPOCH_MS =
   MIRA_MAXIMUM_EPOCH_MS + (MIRA_PERIOD_DAYS - MIRA_RISE_DAYS) * DAY_MS;
 
+async function clearMiraStorage(page: Page) {
+  await page.addInitScript(() => {
+    localStorage.removeItem('mira:seen-opening');
+    localStorage.removeItem('mira:found-tail');
+    for (const key of Object.keys(localStorage)) {
+      if (key.startsWith('mira:milestone:')) localStorage.removeItem(key);
+    }
+  });
+}
+
+async function reachExplore(page: Page) {
+  const skip = page.getByTestId('skip-cinematic');
+  const explore = page.getByTestId('explore-ui');
+  await expect(skip.or(explore).first()).toBeVisible({ timeout: 15000 });
+  if (await skip.isVisible()) await skip.click();
+  await expect(explore).toBeVisible();
+}
+
 async function openMiraACard(page: Page, epochMs: number) {
+  await clearMiraStorage(page);
   await page.goto(`/?quality=low&epoch=${Math.round(epochMs / 1000)}`);
-  await page.getByTestId('skip-cinematic').click();
-  await expect(page.getByTestId('explore-ui')).toBeVisible();
+  await reachExplore(page);
 
   const canvas = page.locator('canvas');
   const box = await canvas.boundingBox();
   expect(box).toBeTruthy();
   await canvas.click({
-    position: { x: box!.width / 2, y: box!.height / 2 },
+    position: { x: box!.width * 0.6, y: box!.height * 0.5 },
   });
 
   const card = page.getByTestId('info-card');
@@ -52,8 +70,7 @@ test.describe('Phase readout', () => {
 
   test('maximum milestone hint fires once per cycle', async ({ page }) => {
     await page.goto(`/?quality=low&epoch=${Math.round(MIRA_MAXIMUM_EPOCH_MS / 1000)}`);
-    await page.getByTestId('skip-cinematic').click();
-    await expect(page.getByTestId('explore-ui')).toBeVisible();
+    await reachExplore(page);
     await expect(page.getByTestId('milestone-hint')).toBeVisible();
     await expect(page.getByTestId('milestone-hint')).toHaveAttribute(
       'data-milestone-kind',
@@ -61,8 +78,7 @@ test.describe('Phase readout', () => {
     );
 
     await page.reload();
-    await page.getByTestId('skip-cinematic').click();
-    await expect(page.getByTestId('explore-ui')).toBeVisible();
+    await reachExplore(page);
     await expect(page.getByTestId('milestone-hint')).toHaveCount(0);
   });
 });

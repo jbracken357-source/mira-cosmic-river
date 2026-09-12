@@ -4,7 +4,7 @@ import type { Page } from '@playwright/test';
 // `?quality=low` keeps the scene light enough for software rendering (headless CI has no GPU).
 const APP = '/?quality=low';
 const SEEN_KEY = 'mira:seen-opening';
-const OPENING_LINE = /300 light-years from Earth/;
+const OPENING_LINE = /距离地球300光年|300 light-years from Earth/;
 
 async function gotoWithSeen(page: Page, seen: boolean) {
   await page.addInitScript(
