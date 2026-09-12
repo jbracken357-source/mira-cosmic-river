@@ -64,7 +64,7 @@ const seenOpening = hasSeenOpening();
 
 export const useBinaryStar = create<BinaryStarStore>((set) => ({
   mode: 'explore',
-  language: 'en',
+  language: 'ch',
   isPlaying: true,
   introComplete: seenOpening,
   cinematicPhase: seenOpening ? 'explore' : 'dark',

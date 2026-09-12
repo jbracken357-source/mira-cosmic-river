@@ -415,7 +415,10 @@ function SceneContent({
 
 function PostProcessing() {
   const tier = resolveQualityTier();
+  const brightness = useBinaryStar((state) => state.sky.brightness);
+  const colorShift = useBinaryStar((state) => state.sky.colorShift);
   // Bloom is a stack of full-screen passes: keep it off the light tier.
+  // Low quality has no bloom — StarField carries the same envelope there.
   if (tier === 'low') return null;
   const levels = tier === 'mid' ? LOD.mobile.bloomLevels : LOD.desktop.bloomLevels;
 
@@ -424,8 +427,8 @@ function PostProcessing() {
       <Bloom
         luminanceThreshold={0.9}
         mipmapBlur
-        intensity={0.5}
-        radius={0.5}
+        intensity={0.18 + 0.62 * brightness}
+        radius={0.28 + 0.44 * colorShift}
         levels={levels}
       />
     </EffectComposer>

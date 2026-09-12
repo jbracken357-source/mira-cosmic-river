@@ -2,6 +2,7 @@ import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { SKY_SPECTRAL } from '../../constants/colors';
+import { useBinaryStar } from '../../hooks';
 
 interface StarFieldProps {
   count?: number;
@@ -55,6 +56,7 @@ const LAYER_LIST = (Object.keys(LAYERS) as LayerName[]).map((name) => ({
 // Each star has its own colour temperature, depth, brightness and twinkle rhythm.
 export default function StarField({ count = 5000 }: StarFieldProps) {
   const materialRef = useRef<THREE.ShaderMaterial>(null);
+  const brightness = useBinaryStar((state) => state.sky.brightness);
 
   const { geometry } = useMemo(() => {
     const rand = mulberry32(STARFIELD_SEED);
@@ -121,6 +123,8 @@ export default function StarField({ count = 5000 }: StarFieldProps) {
   useFrame((state) => {
     if (materialRef.current) {
       materialRef.current.uniforms.uTime.value = state.clock.elapsedTime;
+      // Low quality has no bloom, so the field carries the sky envelope.
+      materialRef.current.uniforms.uSky.value = 0.35 + 0.65 * brightness;
     }
   });
 
@@ -131,6 +135,7 @@ export default function StarField({ count = 5000 }: StarFieldProps) {
         attach="material"
         uniforms={{
           uTime: { value: 0 },
+          uSky: { value: 1 },
         }}
         vertexShader={vertexShader}
         fragmentShader={fragmentShader}
@@ -150,6 +155,7 @@ const vertexShader = `
   attribute float aTwinkleSpeed;
 
   uniform float uTime;
+  uniform float uSky;
 
   varying vec3 vColor;
   varying float vBright;
@@ -169,7 +175,7 @@ const vertexShader = `
     float attenuation = 150.0 / -mvPosition.z;
     gl_PointSize = min(aSize * twinkle * attenuation, 7.0);
 
-    vBright = aBright * twinkle * (0.72 + 0.3 * attenuation);
+    vBright = aBright * twinkle * (0.72 + 0.3 * attenuation) * uSky;
   }
 `;
 
