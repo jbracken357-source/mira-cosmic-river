@@ -20,6 +20,9 @@ export default defineConfig({
   },
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    // The star clock is pure, so it runs in Node with no browser and no unit runner of its
+    // own. (The shared dev server below still boots for the run as a whole.)
+    { name: 'unit', testDir: './tests/unit' },
   ],
   webServer: {
     command: `npm run dev -- --port ${PORT} --strictPort --host 127.0.0.1`,
