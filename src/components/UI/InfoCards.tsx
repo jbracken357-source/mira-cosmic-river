@@ -40,7 +40,7 @@ export default function InfoCards({ selectedStar, onSelectStar, showTailFound }:
 
   return (
     <>
-      <AnimatePresence>
+      <AnimatePresence mode="wait">
         {selectedStar && (
           <motion.div
             key={selectedStar}

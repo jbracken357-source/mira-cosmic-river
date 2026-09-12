@@ -169,23 +169,21 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
         </div>
       </header>
 
-      {/* Bottom hint */}
-      <footer className="absolute bottom-4 md:bottom-8 left-0 right-0 px-8">
+      {/* Bottom hint — tail line on its own row so it does not collide with the pill on narrow viewports */}
+      <footer className="absolute bottom-4 md:bottom-8 left-0 right-0 px-8 flex flex-col items-center gap-3">
         <button
           data-testid="tail-hint"
           onClick={() => onSelectStar('tail')}
-          className="absolute left-8 bottom-0 pointer-events-auto text-[9px] tracking-[0.2em] uppercase text-white/30 font-extralight hover:text-white/55 transition-colors"
+          className="pointer-events-auto text-[9px] tracking-[0.2em] uppercase text-white/30 font-extralight hover:text-white/55 transition-colors"
         >
           {t.tailHint}
         </button>
-        <div className="flex justify-center">
-          <div className="backdrop-blur-sm bg-white/5 border border-white/10 px-4 py-2 rounded-full">
-            <div className="flex items-center gap-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-orange-500/60 animate-pulse" />
-              <span className="text-[9px] tracking-[0.2em] uppercase text-white/40 font-extralight">
-                {t.interactionHint}
-              </span>
-            </div>
+        <div className="backdrop-blur-sm bg-white/5 border border-white/10 px-4 py-2 rounded-full">
+          <div className="flex items-center gap-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-orange-500/60 animate-pulse" />
+            <span className="text-[9px] tracking-[0.2em] uppercase text-white/40 font-extralight">
+              {t.interactionHint}
+            </span>
           </div>
         </div>
       </footer>

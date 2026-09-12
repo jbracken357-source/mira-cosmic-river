@@ -39,7 +39,7 @@ export const CAMERA = {
     lookAt: [-2, 1, 2] as [number, number, number],
     fov: 45,
   },
-  // Idle epilogue: a gentle pull-in toward the pair so the ending holds
+  // Idle hold, not explore framing
   CLOSING: {
     position: [7.5, 3.2, 12] as [number, number, number],
     lookAt: [0, 0.3, 0] as [number, number, number],

@@ -47,6 +47,8 @@ export default function ClosingMessage() {
 
     window.addEventListener('mousemove', markActivity);
     window.addEventListener('click', markActivity);
+    window.addEventListener('pointerdown', markActivity);
+    window.addEventListener('wheel', markActivity, { passive: true });
     window.addEventListener('touchstart', markActivity);
     window.addEventListener('keydown', markActivity);
 
@@ -54,6 +56,8 @@ export default function ClosingMessage() {
       if (intervalRef.current) clearInterval(intervalRef.current);
       window.removeEventListener('mousemove', markActivity);
       window.removeEventListener('click', markActivity);
+      window.removeEventListener('pointerdown', markActivity);
+      window.removeEventListener('wheel', markActivity);
       window.removeEventListener('touchstart', markActivity);
       window.removeEventListener('keydown', markActivity);
       useBinaryStar.getState().setEpilogueVisible(false);
