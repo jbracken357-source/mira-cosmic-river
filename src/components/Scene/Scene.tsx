@@ -195,7 +195,6 @@ function SceneContent({
         }
 
         if (reduceMotion) {
-          // Skip the 15s pull-back so a motion-sensitive viewer is not trapped in it.
           camera.position.set(
             CAMERA.EXPLORE.position[0],
             CAMERA.EXPLORE.position[1],

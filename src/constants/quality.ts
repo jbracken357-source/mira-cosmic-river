@@ -15,6 +15,7 @@ const MOBILE_WIDTH = 640;
 export function detectQualityTier(env: {
   qualityQuery: string | null;
   innerWidth: number;
+  innerHeight: number;
   deviceMemory?: number;
   hardwareConcurrency?: number;
 }): QualityTier {
@@ -22,7 +23,8 @@ export function detectQualityTier(env: {
   // deviceMemory is Chrome-only; treat "very constrained" as the light tier.
   if (env.deviceMemory !== undefined && env.deviceMemory <= 2) return 'low';
 
-  const midWidth = env.innerWidth < MOBILE_WIDTH;
+  // Short side, so a landscape phone still lands on mid even when innerWidth is large.
+  const midWidth = Math.min(env.innerWidth, env.innerHeight) < MOBILE_WIDTH;
   const midMem = env.deviceMemory !== undefined && env.deviceMemory <= 4;
   const midCpu = env.hardwareConcurrency !== undefined && env.hardwareConcurrency <= 4;
   if (midWidth || midMem || midCpu) return 'mid';
@@ -41,6 +43,7 @@ export function resolveQualityTier(): QualityTier {
       cachedTier = detectQualityTier({
         qualityQuery: new URLSearchParams(window.location.search).get('quality'),
         innerWidth: window.innerWidth,
+        innerHeight: window.innerHeight,
         deviceMemory: nav.deviceMemory,
         hardwareConcurrency: nav.hardwareConcurrency,
       });

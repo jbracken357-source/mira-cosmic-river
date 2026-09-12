@@ -51,7 +51,7 @@ test.describe('Mobile first-class', () => {
     await expect(page.getByTestId('info-card')).toBeHidden();
   });
 
-  test('canvas fills the viewport and a swipe does not crash', async ({ page }) => {
+  test('canvas fills the viewport and swipe/wheel do not crash', async ({ page }) => {
     await gotoWithFlags(page, { seenOpening: true });
 
     await expect(page.getByTestId('explore-ui')).toBeVisible({ timeout: 10000 });
@@ -70,6 +70,11 @@ test.describe('Mobile first-class', () => {
       sourcePosition: { x: box!.width * 0.4, y: box!.height * 0.5 },
       targetPosition: { x: box!.width * 0.65, y: box!.height * 0.55 },
     });
+
+    // Pinch against R3F OrbitControls is not observable here without a camera-distance
+    // seam; a wheel dolly is the same control path (enableZoom) and must not throw.
+    await page.mouse.move(box!.x + box!.width * 0.5, box!.y + box!.height * 0.5);
+    await page.mouse.wheel(0, 300);
 
     await expect(page.getByTestId('explore-ui')).toBeVisible();
     await expect(canvas).toBeVisible();

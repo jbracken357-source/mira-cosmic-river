@@ -4,6 +4,7 @@ import { detectQualityTier } from '../../src/constants/quality';
 const desktop = {
   qualityQuery: null,
   innerWidth: 1440,
+  innerHeight: 900,
   deviceMemory: 8,
   hardwareConcurrency: 8,
 };
@@ -15,6 +16,7 @@ test.describe('detectQualityTier', () => {
       detectQualityTier({
         qualityQuery: 'low',
         innerWidth: 375,
+        innerHeight: 812,
         deviceMemory: 8,
         hardwareConcurrency: 8,
       }),
@@ -31,8 +33,20 @@ test.describe('detectQualityTier', () => {
       detectQualityTier({
         qualityQuery: null,
         innerWidth: 375,
+        innerHeight: 812,
         deviceMemory: 8,
         hardwareConcurrency: 8,
+      }),
+    ).toBe('mid');
+  });
+
+  test('landscape phone (wide, short side under 640) uses the mid tier', () => {
+    expect(
+      detectQualityTier({
+        qualityQuery: null,
+        innerWidth: 844,
+        innerHeight: 390,
+        hardwareConcurrency: 6,
       }),
     ).toBe('mid');
   });
@@ -46,11 +60,12 @@ test.describe('detectQualityTier', () => {
     expect(detectQualityTier(desktop)).toBe('high');
   });
 
-  test('missing capability hints do not force a downgrade', () => {
+  test('missing capability hints do not force a downgrade when both sides are large', () => {
     expect(
       detectQualityTier({
         qualityQuery: null,
         innerWidth: 1440,
+        innerHeight: 900,
       }),
     ).toBe('high');
   });
