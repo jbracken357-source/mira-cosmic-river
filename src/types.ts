@@ -57,6 +57,13 @@ export interface TranslationDict {
   closingMessage: string;
 }
 
+// Where the two stars are right now, in world space. Scene.tsx updates it every frame and the
+// components that need to point at a star (the stream, the disk's hot spot) read it.
+export interface OrbitPositions {
+  primary: [number, number, number];
+  secondary: [number, number, number];
+}
+
 // Shader uniforms
 export interface ShaderUniforms {
   time: number;

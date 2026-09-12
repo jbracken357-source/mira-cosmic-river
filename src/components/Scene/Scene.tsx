@@ -12,6 +12,7 @@ import MiraTail from './MiraTail';
 import OrbitRing from './OrbitRing';
 import MaterialStream from './MaterialStream';
 import StarField from './StarField';
+import GlowShell from './GlowShell';
 
 interface SceneProps {
   onSelectStar: (star: StarName | null) => void;
@@ -197,7 +198,7 @@ function SceneContent({ onSelectStar }: { onSelectStar: (star: StarName | null) 
           turbulence={0.3}
           segments={lod.sphereSegments}
         />
-        {/* Invisible click target */}
+        {/* Invisible click target — inner atmosphere, so a click on the halo selects the star. */}
         <mesh
           userData={{ starName: 'miraA' }}
           onClick={(e) => {
@@ -205,7 +206,7 @@ function SceneContent({ onSelectStar }: { onSelectStar: (star: StarName | null) 
             if (cinematicPhase === 'explore') onSelectStar('miraA');
           }}
         >
-          <sphereGeometry args={[PHYSICS.MIRA_A.radius * 1.2, 16, 16]} />
+          <sphereGeometry args={[PHYSICS.MIRA_A.radius * 1.4, 16, 16]} />
           <meshBasicMaterial visible={false} side={THREE.DoubleSide} />
         </mesh>
       </group>
@@ -216,6 +217,7 @@ function SceneContent({ onSelectStar }: { onSelectStar: (star: StarName | null) 
           position={[0, 0, 0]}
           radius={PHYSICS.MIRA_B.radius}
           segments={lod.sphereSegments}
+          positionsRef={positionsRef}
         />
       </group>
       {/* Invisible click target for Mira B */}
@@ -266,19 +268,16 @@ function SceneContent({ onSelectStar }: { onSelectStar: (star: StarName | null) 
         <meshBasicMaterial visible={false} side={THREE.DoubleSide} />
       </mesh>
 
-      {/* Subtle ambient glow halo around tail area — helps anchor visibility in explore mode */}
+      {/* Ambient haze around the tail — anchors it against the star field in explore mode. */}
       {cinematicPhase === 'explore' && (
-        <mesh position={[-6, 1, 4]}>
-          <sphereGeometry args={[5, 16, 16]} />
-          <meshBasicMaterial
-            color="#ff6b35"
-            transparent
-            opacity={0.03}
-            side={THREE.BackSide}
-            blending={THREE.AdditiveBlending}
-            depthWrite={false}
+        <group position={[-6, 1, 4]}>
+          <GlowShell
+            shellRadius={5}
+            color={COLORS.STELLAR_ORANGE}
+            opacity={0.042}
+            falloff={2.4}
           />
-        </mesh>
+        </group>
       )}
 
       {/* Background click to deselect */}

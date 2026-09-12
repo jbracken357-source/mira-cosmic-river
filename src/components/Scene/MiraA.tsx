@@ -1,8 +1,14 @@
 import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { MiraA_Shader, Atmosphere_Shader } from '../../shaders/miraA';
+import {
+  MiraA_Shader,
+  MIRA_A_ATMOSPHERE,
+  MIRA_A_PULSE_AMPLITUDE,
+} from '../../shaders/miraA';
+import { COLORS } from '../../constants';
 import { useBinaryStar } from '../../hooks';
+import GlowShell from './GlowShell';
 
 interface MiraAProps {
   position: [number, number, number];
@@ -14,21 +20,20 @@ interface MiraAProps {
 export default function MiraA({ position, radius, turbulence, segments = 64 }: MiraAProps) {
   const meshRef = useRef<THREE.Mesh>(null);
   const materialRef = useRef<THREE.ShaderMaterial>(null);
-  const atmosphereRef = useRef<THREE.ShaderMaterial>(null);
+  const innerAtmosphereRef = useRef<THREE.ShaderMaterial>(null);
+  const outerAtmosphereRef = useRef<THREE.ShaderMaterial>(null);
 
   // Where the real clock has Mira A in its ~332 day pulsation cycle: how bright it is, and
   // how far its colour has already shifted toward its hottest.
   const brightness = useBinaryStar((state) => state.sky.brightness);
   const colorShift = useBinaryStar((state) => state.sky.colorShift);
 
-  // Convert hue to color — deep red giant tones
-  // Product direction: core #ff3d00, surface #ff8a50
+  // Deep red giant tones, per the palette: core #ff3d00, surface #ff8a50.
   const colors = useMemo(() => {
-    const colorCore = new THREE.Color('#ff3d00');
-    const colorSurface = new THREE.Color('#ff8a50');
-    const atmosphere = new THREE.Color('#331100');
+    const colorCore = new THREE.Color(COLORS.MIRA_A_CORE);
+    const colorSurface = new THREE.Color(COLORS.MIRA_A_SURFACE);
 
-    return { colorCore, colorSurface, atmosphere };
+    return { colorCore, colorSurface };
   }, []);
 
   useFrame((state) => {
@@ -44,8 +49,11 @@ export default function MiraA({ position, radius, turbulence, segments = 64 }: M
       materialRef.current.uniforms.uColorShift.value = colorShift;
     }
 
-    if (atmosphereRef.current) {
-      atmosphereRef.current.uniforms.uBrightness.value = brightness;
+    for (const ref of [innerAtmosphereRef, outerAtmosphereRef]) {
+      if (ref.current) {
+        ref.current.uniforms.uTime.value = time;
+        ref.current.uniforms.uBrightness.value = brightness;
+      }
     }
 
     // Subtle rotation for surface animation
@@ -68,31 +76,27 @@ export default function MiraA({ position, radius, turbulence, segments = 64 }: M
         />
       </mesh>
 
-      {/* Atmospheric halo */}
-      <mesh scale={1.15}>
-        <sphereGeometry args={[radius, Math.max(32, Math.floor(segments * 0.75)), Math.max(32, Math.floor(segments * 0.75))]} />
-        <shaderMaterial
-          ref={atmosphereRef}
-          {...Atmosphere_Shader}
-          side={THREE.BackSide}
-          blending={THREE.AdditiveBlending}
-          transparent={true}
-          depthWrite={false}
-          opacity={0.5}
-        />
-      </mesh>
-
-      {/* Outer glow sphere */}
-      <mesh scale={1.3}>
-        <sphereGeometry args={[radius, 32, 32]} />
-        <meshBasicMaterial
-          color={colors.atmosphere}
-          transparent
-          opacity={(0.04 + turbulence * 0.03) * (0.5 + brightness)}
-          side={THREE.BackSide}
-          blending={THREE.AdditiveBlending}
-        />
-      </mesh>
+      {/* Atmosphere, as two shells a viewer reads as one volume: a dense layer hugging the
+          photosphere and a wide thin haze that gives the star its reach on screen. Both breathe
+          with the star's own radius pulse, so the halo never detaches from the limb. */}
+      <GlowShell
+        materialRef={innerAtmosphereRef}
+        shellRadius={radius * MIRA_A_ATMOSPHERE.mid.scale}
+        coreRadius={radius}
+        color={MIRA_A_ATMOSPHERE.mid.color}
+        opacity={MIRA_A_ATMOSPHERE.mid.opacity}
+        falloff={MIRA_A_ATMOSPHERE.mid.falloff}
+        pulseAmp={MIRA_A_PULSE_AMPLITUDE}
+      />
+      <GlowShell
+        materialRef={outerAtmosphereRef}
+        shellRadius={radius * MIRA_A_ATMOSPHERE.outer.scale}
+        coreRadius={radius}
+        color={MIRA_A_ATMOSPHERE.outer.color}
+        opacity={MIRA_A_ATMOSPHERE.outer.opacity}
+        falloff={MIRA_A_ATMOSPHERE.outer.falloff}
+        pulseAmp={MIRA_A_PULSE_AMPLITUDE}
+      />
 
       {/* Point light for scene illumination */}
       <pointLight
