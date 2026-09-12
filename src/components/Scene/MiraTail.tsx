@@ -1,4 +1,4 @@
-import { useRef, useMemo } from 'react';
+import { useEffect, useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { createTailMaterial } from '../../shaders/tail';
@@ -71,7 +71,7 @@ export default function MiraTail({
   // Track mouse position for ripple effect
   const mouseRef = useRef(new THREE.Vector2(0, 0));
 
-  useMemo(() => {
+  useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       // Normalize to [-1, 1]
       mouseRef.current.x = (e.clientX / window.innerWidth) * 2 - 1;

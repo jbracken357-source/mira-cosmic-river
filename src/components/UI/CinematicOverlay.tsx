@@ -23,10 +23,14 @@ export default function CinematicOverlay() {
   }
 
   return (
-    <div className="relative z-10 flex h-screen w-full pointer-events-none select-none overflow-hidden">
+    <div
+      data-testid="cinematic-overlay"
+      className="relative z-10 flex h-screen w-full pointer-events-none select-none overflow-hidden"
+    >
       {/* Skip button */}
       <div className="absolute top-4 right-4 pointer-events-auto z-50">
         <button
+          data-testid="skip-cinematic"
           onClick={handleSkip}
           className="text-white/30 text-xs font-extralight tracking-widest uppercase hover:text-white/60 transition-colors"
         >
@@ -129,7 +133,10 @@ function ExploreUI() {
   const t = TRANSLATIONS[language];
 
   return (
-    <div className="relative z-10 flex h-screen w-full pointer-events-none select-none overflow-hidden">
+    <div
+      data-testid="explore-ui"
+      className="relative z-10 flex h-screen w-full pointer-events-none select-none overflow-hidden"
+    >
       {/* Top bar */}
       <header className="absolute top-0 left-0 right-0 px-4 md:px-14 py-4 md:py-8 flex items-center justify-between">
         <div className="flex items-center gap-3 md:gap-6">

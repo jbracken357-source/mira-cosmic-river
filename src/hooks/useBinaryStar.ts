@@ -28,7 +28,7 @@ export const useBinaryStar = create<BinaryStarStore>((set) => ({
   setMode: (mode) => set({ mode }),
   setLanguage: (language) => set({ language }),
   setPlaying: (isPlaying) => set({ isPlaying }),
-  setIntroComplete: (_complete) => set({ introComplete: true, cinematicPhase: 'explore' }),
+  setIntroComplete: () => set({ introComplete: true, cinematicPhase: 'explore' }),
   setCinematicPhase: (phase) => set({ cinematicPhase: phase }),
   setCinematicTime: (time) => set({ cinematicTime: time }),
   setParameter: (key, value) => set((state) => ({

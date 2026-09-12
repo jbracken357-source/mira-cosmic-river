@@ -11,11 +11,14 @@ export default function ClosingMessage() {
   const t = TRANSLATIONS[language];
 
   const [isVisible, setIsVisible] = useState(false);
-  const lastActivityRef = useRef(Date.now());
+  const lastActivityRef = useRef(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     if (!introComplete) return;
+
+    // Idle is measured from the moment exploration starts, not from module load
+    lastActivityRef.current = Date.now();
 
     const checkIdle = () => {
       const elapsed = (Date.now() - lastActivityRef.current) / 1000;
@@ -24,22 +27,25 @@ export default function ClosingMessage() {
 
     intervalRef.current = setInterval(checkIdle, 1000);
 
-    const resetIdle = () => {
+    // Activity only records a timestamp. Setting state here re-rendered the whole tree
+    // on every pointer move, which stalled input delivery (clicks went unacknowledged).
+    // The 1s tick above is what decides visibility, so the message still clears within
+    // a second of the viewer coming back.
+    const markActivity = () => {
       lastActivityRef.current = Date.now();
-      setIsVisible(false);
     };
 
-    window.addEventListener('mousemove', resetIdle);
-    window.addEventListener('click', resetIdle);
-    window.addEventListener('touchstart', resetIdle);
-    window.addEventListener('keydown', resetIdle);
+    window.addEventListener('mousemove', markActivity);
+    window.addEventListener('click', markActivity);
+    window.addEventListener('touchstart', markActivity);
+    window.addEventListener('keydown', markActivity);
 
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
-      window.removeEventListener('mousemove', resetIdle);
-      window.removeEventListener('click', resetIdle);
-      window.removeEventListener('touchstart', resetIdle);
-      window.removeEventListener('keydown', resetIdle);
+      window.removeEventListener('mousemove', markActivity);
+      window.removeEventListener('click', markActivity);
+      window.removeEventListener('touchstart', markActivity);
+      window.removeEventListener('keydown', markActivity);
     };
   }, [introComplete]);
 

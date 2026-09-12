@@ -40,6 +40,7 @@ export default function InfoCards({ selectedStar, onSelectStar }: InfoCardsProps
     <AnimatePresence>
       {selectedStar && (
         <motion.div
+          data-testid="info-card"
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -20 }}
