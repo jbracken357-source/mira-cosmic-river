@@ -64,6 +64,7 @@ function SceneContent({ onSelectStar }: { onSelectStar: (star: StarName | null) 
 
   const timeRef = useRef(0);
   const cinematicStartRef = useRef(0);
+  const exploreAppliedRef = useRef(false);
   const orbitControlsRef = useRef<React.ElementRef<typeof DreiOrbitControls>>(null);
   const tailOpacityRef = useRef(0);
   const miraBGroupRef = useRef<THREE.Group>(null);
@@ -79,77 +80,120 @@ function SceneContent({ onSelectStar }: { onSelectStar: (star: StarName | null) 
   // Main loop: cinematic + orbital animation
   useFrame((state, delta) => {
     const camera = state.camera as THREE.PerspectiveCamera;
-    // Anchor the clock on the first frame we actually render, not during render.
-    if (cinematicStartRef.current === 0) cinematicStartRef.current = Date.now();
-    const elapsed = (Date.now() - cinematicStartRef.current) / 1000;
-    const t = elapsed / timeSpeed;
+    const { introComplete, cinematicPhase } = useBinaryStar.getState();
 
-    // Track cinematic time
-    if (t < CINEMATIC.EXPLORE_MODE) {
-      setCinematicTime(t);
-      if (t >= CINEMATIC.STARS_APPEAR && cinematicPhase === 'dark') {
-        setCinematicPhase('stars-appear');
+    if (introComplete) {
+      if (!exploreAppliedRef.current) {
+        // A start time of 0 means this session never ran the opening: land at explore.
+        // After a real opening the clock is already running, so leave the camera where it is.
+        const isDirectEntry = cinematicStartRef.current === 0;
+        if (isDirectEntry) {
+          camera.position.set(
+            CAMERA.EXPLORE.position[0],
+            CAMERA.EXPLORE.position[1],
+            CAMERA.EXPLORE.position[2],
+          );
+          camera.fov = CAMERA.EXPLORE.fov;
+          camera.updateProjectionMatrix();
+          camera.lookAt(
+            CAMERA.EXPLORE.lookAt[0],
+            CAMERA.EXPLORE.lookAt[1],
+            CAMERA.EXPLORE.lookAt[2],
+          );
+        }
+        if (orbitControlsRef.current) {
+          if (isDirectEntry) {
+            orbitControlsRef.current.target.set(
+              CAMERA.EXPLORE.lookAt[0],
+              CAMERA.EXPLORE.lookAt[1],
+              CAMERA.EXPLORE.lookAt[2],
+            );
+          }
+          orbitControlsRef.current.enabled = true;
+          cinematicStartRef.current = 0;
+          exploreAppliedRef.current = true;
+        }
       }
-      if (t >= CINEMATIC.PULL_BACK_START && cinematicPhase !== 'pull-back' && cinematicPhase !== 'tail-reveal') {
-        setCinematicPhase('pull-back');
-      }
-      if (t >= CINEMATIC.TAIL_REVEAL_START && cinematicPhase === 'pull-back') {
-        setCinematicPhase('tail-reveal');
-      }
-    } else if (cinematicPhase !== 'explore') {
-      // The opening finished: hand over to free exploration. This has to live outside
-      // the `t < EXPLORE_MODE` branch above, or the sequence never ends on its own and
-      // the viewer is stranded on the last cinematic frame until they press Skip.
-      setCinematicPhase('explore');
-      setIntroComplete(true);
-    }
-
-    // Camera animation during cinematic
-    if (t < CINEMATIC.EXPLORE_MODE) {
+      tailOpacityRef.current = 0.85;
+    } else {
+      exploreAppliedRef.current = false;
       if (orbitControlsRef.current) {
         orbitControlsRef.current.enabled = false;
       }
+      // Replay has to re-anchor here; keeping the old start time would skip the opening.
+      if (cinematicStartRef.current === 0) cinematicStartRef.current = Date.now();
+      const elapsed = (Date.now() - cinematicStartRef.current) / 1000;
+      const t = elapsed / timeSpeed;
 
-      let camPos: [number, number, number];
-      let camFov: number;
+      if (t < CINEMATIC.EXPLORE_MODE) {
+        setCinematicTime(t);
+        if (t >= CINEMATIC.STARS_APPEAR && cinematicPhase === 'dark') {
+          setCinematicPhase('stars-appear');
+        }
+        if (t >= CINEMATIC.PULL_BACK_START && cinematicPhase !== 'pull-back' && cinematicPhase !== 'tail-reveal') {
+          setCinematicPhase('pull-back');
+        }
+        if (t >= CINEMATIC.TAIL_REVEAL_START && cinematicPhase === 'pull-back') {
+          setCinematicPhase('tail-reveal');
+        }
 
-      if (t < CINEMATIC.STARS_APPEAR) {
-        camPos = CAMERA.CLOSE.position;
-        camFov = CAMERA.CLOSE.fov;
-      } else if (t < CINEMATIC.PULL_BACK_START) {
-        camPos = CAMERA.CLOSE.position;
-        camFov = CAMERA.CLOSE.fov;
-      } else if (t < CINEMATIC.PULL_BACK_END) {
-        const pullT = clamp01((t - CINEMATIC.PULL_BACK_START) / (CINEMATIC.PULL_BACK_END - CINEMATIC.PULL_BACK_START));
-        const eased = easeInOutCubic(pullT);
-        camPos = [
-          THREE.MathUtils.lerp(CAMERA.CLOSE.position[0], CAMERA.FAR.position[0], eased),
-          THREE.MathUtils.lerp(CAMERA.CLOSE.position[1], CAMERA.FAR.position[1], eased),
-          THREE.MathUtils.lerp(CAMERA.CLOSE.position[2], CAMERA.FAR.position[2], eased),
-        ];
-        camFov = THREE.MathUtils.lerp(CAMERA.FOV_START, CAMERA.FOV_END, eased);
-      } else {
-        camPos = CAMERA.FAR.position;
-        camFov = CAMERA.FOV_END;
+        let camPos: [number, number, number];
+        let camFov: number;
+
+        if (t < CINEMATIC.STARS_APPEAR) {
+          camPos = CAMERA.CLOSE.position;
+          camFov = CAMERA.CLOSE.fov;
+        } else if (t < CINEMATIC.PULL_BACK_START) {
+          camPos = CAMERA.CLOSE.position;
+          camFov = CAMERA.CLOSE.fov;
+        } else if (t < CINEMATIC.PULL_BACK_END) {
+          const pullT = clamp01((t - CINEMATIC.PULL_BACK_START) / (CINEMATIC.PULL_BACK_END - CINEMATIC.PULL_BACK_START));
+          const eased = easeInOutCubic(pullT);
+          camPos = [
+            THREE.MathUtils.lerp(CAMERA.CLOSE.position[0], CAMERA.FAR.position[0], eased),
+            THREE.MathUtils.lerp(CAMERA.CLOSE.position[1], CAMERA.FAR.position[1], eased),
+            THREE.MathUtils.lerp(CAMERA.CLOSE.position[2], CAMERA.FAR.position[2], eased),
+          ];
+          camFov = THREE.MathUtils.lerp(CAMERA.FOV_START, CAMERA.FOV_END, eased);
+        } else {
+          camPos = CAMERA.FAR.position;
+          camFov = CAMERA.FOV_END;
+        }
+
+        camera.position.set(camPos[0], camPos[1], camPos[2]);
+        camera.fov = camFov;
+        camera.updateProjectionMatrix();
+
+        if (t >= CINEMATIC.TAIL_REVEAL_START) {
+          const lookT = clamp01((t - CINEMATIC.TAIL_REVEAL_START) / (CINEMATIC.TAIL_FULL - CINEMATIC.TAIL_REVEAL_START));
+          camera.lookAt(
+            THREE.MathUtils.lerp(0, CAMERA.FAR.lookAt[0], easeInOutCubic(lookT)),
+            THREE.MathUtils.lerp(0, CAMERA.FAR.lookAt[1], easeInOutCubic(lookT)),
+            THREE.MathUtils.lerp(0, CAMERA.FAR.lookAt[2], easeInOutCubic(lookT)),
+          );
+        } else {
+          camera.lookAt(0, 0, 0);
+        }
+      } else if (cinematicPhase !== 'explore') {
+        // The opening finished: hand over to free exploration. This has to live outside
+        // the `t < EXPLORE_MODE` branch above, or the sequence never ends on its own and
+        // the viewer is stranded on the last cinematic frame until they press Skip.
+        setCinematicPhase('explore');
+        setIntroComplete(true);
       }
 
-      camera.position.set(camPos[0], camPos[1], camPos[2]);
-      camera.fov = camFov;
-      camera.updateProjectionMatrix();
-
-      if (t >= CINEMATIC.TAIL_REVEAL_START) {
-        const lookT = clamp01((t - CINEMATIC.TAIL_REVEAL_START) / (CINEMATIC.TAIL_FULL - CINEMATIC.TAIL_REVEAL_START));
-        camera.lookAt(
-          THREE.MathUtils.lerp(0, CAMERA.FAR.lookAt[0], easeInOutCubic(lookT)),
-          THREE.MathUtils.lerp(0, CAMERA.FAR.lookAt[1], easeInOutCubic(lookT)),
-          THREE.MathUtils.lerp(0, CAMERA.FAR.lookAt[2], easeInOutCubic(lookT)),
-        );
+      const cp = cinematicPhase;
+      const ct = t;
+      if (cp === 'dark' || cp === 'stars-appear') {
+        tailOpacityRef.current = 0;
+      } else if (cp === 'pull-back' && ct < CINEMATIC.TAIL_REVEAL_START) {
+        const ot = clamp01((ct - CINEMATIC.PULL_BACK_START) / (CINEMATIC.TAIL_REVEAL_START - CINEMATIC.PULL_BACK_START));
+        tailOpacityRef.current = ot * 0.15;
+      } else if (cp === 'pull-back' || cp === 'tail-reveal') {
+        const ot = clamp01((ct - CINEMATIC.TAIL_REVEAL_START) / (CINEMATIC.TAIL_FULL - CINEMATIC.TAIL_REVEAL_START));
+        tailOpacityRef.current = easeInOutCubic(ot) * 0.85;
       } else {
-        camera.lookAt(0, 0, 0);
-      }
-    } else {
-      if (orbitControlsRef.current && !orbitControlsRef.current.enabled) {
-        orbitControlsRef.current.enabled = true;
+        tailOpacityRef.current = 0.85;
       }
     }
 
@@ -167,21 +211,6 @@ function SceneContent({ onSelectStar }: { onSelectStar: (star: StarName | null) 
     const secondary = newPositions.secondary;
     miraBGroupRef.current?.position.set(secondary[0], secondary[1], secondary[2]);
     miraBTargetRef.current?.position.set(secondary[0], secondary[1], secondary[2]);
-
-    // Compute tail opacity in the animation loop (Zustand updates don't trigger re-renders)
-    const cp = cinematicPhase;
-    const ct = t;
-    if (cp === 'dark' || cp === 'stars-appear') {
-      tailOpacityRef.current = 0;
-    } else if (cp === 'pull-back' && ct < CINEMATIC.TAIL_REVEAL_START) {
-      const ot = clamp01((ct - CINEMATIC.PULL_BACK_START) / (CINEMATIC.TAIL_REVEAL_START - CINEMATIC.PULL_BACK_START));
-      tailOpacityRef.current = ot * 0.15;
-    } else if (cp === 'pull-back' || cp === 'tail-reveal') {
-      const ot = clamp01((ct - CINEMATIC.TAIL_REVEAL_START) / (CINEMATIC.TAIL_FULL - CINEMATIC.TAIL_REVEAL_START));
-      tailOpacityRef.current = easeInOutCubic(ot) * 0.85;
-    } else {
-      tailOpacityRef.current = 0.85;
-    }
   });
 
   // Tail opacity is computed in useFrame and stored in tailOpacityRef
@@ -328,12 +357,13 @@ function PostProcessing() {
 
 export default function Scene({ onSelectStar }: SceneProps) {
   const lowQuality = resolveQualityTier() === 'low';
+  const startInExplore = useBinaryStar.getState().introComplete;
 
   return (
     <Canvas
       camera={{
-        position: CAMERA.CLOSE.position,
-        fov: CAMERA.CLOSE.fov,
+        position: startInExplore ? CAMERA.EXPLORE.position : CAMERA.CLOSE.position,
+        fov: startInExplore ? CAMERA.EXPLORE.fov : CAMERA.CLOSE.fov,
       }}
       gl={{
         antialias: !lowQuality,

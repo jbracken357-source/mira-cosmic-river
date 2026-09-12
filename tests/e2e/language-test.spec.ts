@@ -6,6 +6,7 @@ const APP = '/?quality=low';
 
 test.describe('Language Toggle Test', () => {
   test('toggle between EN and CN', async ({ page }) => {
+    await page.addInitScript(() => localStorage.removeItem('mira:seen-opening'));
     await page.goto(APP);
     await page.waitForLoadState('networkidle');
 
@@ -14,9 +15,7 @@ test.describe('Language Toggle Test', () => {
     await expect(page.getByTestId('explore-ui')).toBeVisible();
 
     // The toggle shows the language you would switch *to*
-    const langButton = page
-      .locator('button:has-text("中文"), button:has-text("EN")')
-      .first();
+    const langButton = page.getByRole('button', { name: /^(中文|EN)$/ });
     await expect(langButton).toBeVisible();
 
     // Default language is English, so the button offers Chinese

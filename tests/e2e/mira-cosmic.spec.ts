@@ -7,6 +7,8 @@ const APP = '/?quality=low';
 
 test.describe('Mira Cosmic River - E2E Tests', () => {
   test.beforeEach(async ({ page }) => {
+    // These specs describe a first visit; returning visitors no longer see Skip.
+    await page.addInitScript(() => localStorage.removeItem('mira:seen-opening'));
     await page.goto(APP);
     await page.waitForLoadState('networkidle');
   });
@@ -40,9 +42,7 @@ test.describe('Mira Cosmic River - E2E Tests', () => {
     await page.getByTestId('skip-cinematic').click();
     await expect(page.getByTestId('explore-ui')).toBeVisible();
 
-    const langToggle = page
-      .locator('button:has-text("中文"), button:has-text("EN")')
-      .first();
+    const langToggle = page.getByRole('button', { name: /^(中文|EN)$/ });
     await expect(langToggle).toBeVisible({ timeout: 15000 });
 
     const initialText = await langToggle.textContent();
