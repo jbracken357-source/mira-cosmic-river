@@ -54,6 +54,7 @@ test.describe('Direct entry + full-opening replay', () => {
 
     await expect(page.getByTestId('cinematic-overlay')).toBeVisible();
     await expect(page.getByTestId('skip-cinematic')).toBeVisible();
+    expect(await page.evaluate((key) => localStorage.getItem(key), SEEN_KEY)).toBe('1');
     // If the cinematic clock was not reset, explore would snap back immediately.
     await expect(page.getByText(OPENING_LINE)).toBeVisible({ timeout: 10000 });
     await expect(page.getByTestId('explore-ui')).toHaveCount(0);

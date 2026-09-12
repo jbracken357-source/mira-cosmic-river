@@ -64,6 +64,7 @@ function SceneContent({ onSelectStar }: { onSelectStar: (star: StarName | null) 
 
   const timeRef = useRef(0);
   const cinematicStartRef = useRef(0);
+  const cinematicElapsedRef = useRef(0);
   const exploreAppliedRef = useRef(false);
   const orbitControlsRef = useRef<React.ElementRef<typeof DreiOrbitControls>>(null);
   const tailOpacityRef = useRef(0);
@@ -84,10 +85,12 @@ function SceneContent({ onSelectStar }: { onSelectStar: (star: StarName | null) 
 
     if (introComplete) {
       if (!exploreAppliedRef.current) {
-        // A start time of 0 means this session never ran the opening: land at explore.
-        // After a real opening the clock is already running, so leave the camera where it is.
-        const isDirectEntry = cinematicStartRef.current === 0;
-        if (isDirectEntry) {
+        // Return visits and early skip share the explore framing. A finished opening
+        // keeps the sequence-end camera.
+        const landExplore =
+          cinematicStartRef.current === 0 ||
+          cinematicElapsedRef.current < CINEMATIC.EXPLORE_MODE;
+        if (landExplore) {
           camera.position.set(
             CAMERA.EXPLORE.position[0],
             CAMERA.EXPLORE.position[1],
@@ -102,7 +105,7 @@ function SceneContent({ onSelectStar }: { onSelectStar: (star: StarName | null) 
           );
         }
         if (orbitControlsRef.current) {
-          if (isDirectEntry) {
+          if (landExplore) {
             orbitControlsRef.current.target.set(
               CAMERA.EXPLORE.lookAt[0],
               CAMERA.EXPLORE.lookAt[1],
@@ -124,6 +127,7 @@ function SceneContent({ onSelectStar }: { onSelectStar: (star: StarName | null) 
       if (cinematicStartRef.current === 0) cinematicStartRef.current = Date.now();
       const elapsed = (Date.now() - cinematicStartRef.current) / 1000;
       const t = elapsed / timeSpeed;
+      cinematicElapsedRef.current = t;
 
       if (t < CINEMATIC.EXPLORE_MODE) {
         setCinematicTime(t);

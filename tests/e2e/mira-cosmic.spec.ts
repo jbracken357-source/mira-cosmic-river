@@ -59,9 +59,9 @@ test.describe('Mira Cosmic River - E2E Tests', () => {
     const box = await canvas.boundingBox();
     expect(box).toBeTruthy();
 
-    // Mira A sits near the middle of the framed scene; clicking it opens its card
+    // Skip lands at CAMERA.EXPLORE, which looks left of origin, so Mira A sits right of centre.
     await canvas.click({
-      position: { x: box!.width / 2, y: box!.height / 2 },
+      position: { x: box!.width * 0.6, y: box!.height * 0.5 },
     });
 
     await expect(page.getByTestId('info-card')).toBeVisible({ timeout: 15000 });

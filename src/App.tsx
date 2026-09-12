@@ -12,6 +12,8 @@ export default function App() {
   }, []);
 
   const sky = useBinaryStar((state) => state.sky);
+  const introComplete = useBinaryStar((state) => state.introComplete);
+  if (!introComplete && selectedStar !== null) setSelectedStar(null);
 
   return (
     <>
