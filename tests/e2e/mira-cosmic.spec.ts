@@ -7,6 +7,8 @@ const APP = '/?quality=low';
 
 test.describe('Mira Cosmic River - E2E Tests', () => {
   test.beforeEach(async ({ page }) => {
+    // These specs describe a first visit; returning visitors no longer see Skip.
+    await page.addInitScript(() => localStorage.removeItem('mira:seen-opening'));
     await page.goto(APP);
     await page.waitForLoadState('networkidle');
   });
@@ -40,9 +42,7 @@ test.describe('Mira Cosmic River - E2E Tests', () => {
     await page.getByTestId('skip-cinematic').click();
     await expect(page.getByTestId('explore-ui')).toBeVisible();
 
-    const langToggle = page
-      .locator('button:has-text("中文"), button:has-text("EN")')
-      .first();
+    const langToggle = page.getByRole('button', { name: /^(中文|EN)$/ });
     await expect(langToggle).toBeVisible({ timeout: 15000 });
 
     const initialText = await langToggle.textContent();
@@ -59,9 +59,9 @@ test.describe('Mira Cosmic River - E2E Tests', () => {
     const box = await canvas.boundingBox();
     expect(box).toBeTruthy();
 
-    // Mira A sits near the middle of the framed scene; clicking it opens its card
+    // Skip lands at CAMERA.EXPLORE, which looks left of origin, so Mira A sits right of centre.
     await canvas.click({
-      position: { x: box!.width / 2, y: box!.height / 2 },
+      position: { x: box!.width * 0.6, y: box!.height * 0.5 },
     });
 
     await expect(page.getByTestId('info-card')).toBeVisible({ timeout: 15000 });

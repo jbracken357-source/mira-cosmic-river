@@ -14,6 +14,8 @@ export default function ClosingMessage() {
   const lastActivityRef = useRef(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  if (!introComplete && isVisible) setIsVisible(false);
+
   useEffect(() => {
     if (!introComplete) return;
 
@@ -48,6 +50,9 @@ export default function ClosingMessage() {
       window.removeEventListener('keydown', markActivity);
     };
   }, [introComplete]);
+
+  // Unmount rather than playing the 2s exit fade — replay must not leave the epilogue over the opening.
+  if (!introComplete) return null;
 
   return (
     <AnimatePresence>

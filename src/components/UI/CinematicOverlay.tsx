@@ -11,11 +11,8 @@ export default function CinematicOverlay() {
   const setLanguage = useBinaryStar((state) => state.setLanguage);
   const t = TRANSLATIONS[language];
 
-  // Skip button — fast-forward to explore
   const handleSkip = () => {
-    const { setIntroComplete, setCinematicPhase } = useBinaryStar.getState();
-    setCinematicPhase('explore');
-    setIntroComplete(true);
+    useBinaryStar.getState().setIntroComplete(true);
   };
 
   if (introComplete) {
@@ -140,17 +137,31 @@ function ExploreUI() {
       {/* Top bar */}
       <header className="absolute top-0 left-0 right-0 px-4 md:px-14 py-4 md:py-8 flex items-center justify-between">
         <div className="flex items-center gap-3 md:gap-6">
-          <span className="font-display text-2xl md:text-4xl text-orange-400/80 italic tracking-widest">
+          <motion.span
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: TRANSITIONS.EXPLORE_TRANSITION }}
+            className="font-display text-2xl md:text-4xl text-orange-400/80 italic tracking-widest"
+          >
             Mira
-          </span>
+          </motion.span>
         </div>
 
-        <button
-          onClick={() => setLanguage(language === 'en' ? 'ch' : 'en')}
-          className="pointer-events-auto text-white/30 text-xs font-extralight tracking-widest hover:text-white/60 transition-colors"
-        >
-          {language === 'en' ? '中文' : 'EN'}
-        </button>
+        <div className="flex items-center gap-4 md:gap-6">
+          <button
+            data-testid="replay-opening"
+            onClick={() => useBinaryStar.getState().setIntroComplete(false)}
+            className="pointer-events-auto text-white/30 text-xs font-extralight tracking-widest uppercase hover:text-white/60 transition-colors"
+          >
+            {t.replayOpening}
+          </button>
+          <button
+            onClick={() => setLanguage(language === 'en' ? 'ch' : 'en')}
+            className="pointer-events-auto text-white/30 text-xs font-extralight tracking-widest hover:text-white/60 transition-colors"
+          >
+            {language === 'en' ? '中文' : 'EN'}
+          </button>
+        </div>
       </header>
 
       {/* Bottom hint */}

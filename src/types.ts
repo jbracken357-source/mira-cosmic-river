@@ -54,6 +54,7 @@ export interface TranslationDict {
   tailDesc: string;
   timeSpeed: string;
   interactionHint: string;
+  replayOpening: string;
   closingMessage: string;
 }
 
