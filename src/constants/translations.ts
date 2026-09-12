@@ -24,6 +24,9 @@ export const TRANSLATIONS = {
     timeSpeed: 'Time Speed',
     interactionHint: 'Drag to Rotate · Scroll to Zoom',
     replayOpening: 'Full cinematic',
+    tailHint: 'Find her tail',
+    tailFound: 'You found her tail.',
+    loading: 'Loading Mira...',
 
     // Closing message
     closingMessage: 'We are made of starstuff. And my starstuff chose yours.',
@@ -50,6 +53,9 @@ export const TRANSLATIONS = {
     timeSpeed: '时间速度',
     interactionHint: '拖拽旋转 · 滚轮缩放',
     replayOpening: '完整开场',
+    tailHint: '去找她的尾巴',
+    tailFound: '你找到了她的尾巴。',
+    loading: '正在点亮 Mira...',
 
     // Closing message
     closingMessage: '我们都是星尘。而我的星尘，选择了你的。',

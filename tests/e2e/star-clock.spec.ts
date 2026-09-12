@@ -14,7 +14,10 @@ const MINIMUM_EPOCH_MS =
 // GPU) so Playwright's actionability checks pass. `?epoch` pins the clock to a moment of our
 // choosing — the pinning entry point is dev/test only.
 async function skyAt(page: Page, epochMs: number) {
-  await page.addInitScript(() => localStorage.removeItem('mira:seen-opening'));
+  await page.addInitScript(() => {
+    localStorage.removeItem('mira:seen-opening');
+    localStorage.removeItem('mira:found-tail');
+  });
   await page.goto(`/?quality=low&epoch=${Math.round(epochMs / 1000)}`);
 
   const root = page.locator('[data-sky-brightness]');

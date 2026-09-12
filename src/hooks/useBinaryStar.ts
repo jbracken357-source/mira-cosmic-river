@@ -4,6 +4,7 @@ import type { SkyState } from '../lib/starClock';
 import { currentSkyState } from '../lib/starClock';
 
 export const SEEN_OPENING_KEY = 'mira:seen-opening';
+export const FOUND_TAIL_KEY = 'mira:found-tail';
 
 interface BinaryStarStore extends StarSystemState {
   parameters: StarParameters;
@@ -16,6 +17,8 @@ interface BinaryStarStore extends StarSystemState {
   setCinematicTime: (time: number) => void;
   setParameter: (key: keyof StarParameters, value: number) => void;
   setSky: (sky: SkyState) => void;
+  epilogueVisible: boolean;
+  setEpilogueVisible: (visible: boolean) => void;
 }
 
 const defaultParameters: StarParameters = {
@@ -38,6 +41,22 @@ function persistOpeningSeen() {
   }
 }
 
+export function hasFoundTail(): boolean {
+  try {
+    return globalThis.localStorage?.getItem(FOUND_TAIL_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+export function persistFoundTail() {
+  try {
+    globalThis.localStorage?.setItem(FOUND_TAIL_KEY, '1');
+  } catch {
+    // Private mode / blocked storage: the session still works, it just won't remember.
+  }
+}
+
 // The clock is read at load and only carried forward from there, so nothing has to read it
 // during a render.
 const initialSky = currentSkyState();
@@ -50,6 +69,7 @@ export const useBinaryStar = create<BinaryStarStore>((set) => ({
   introComplete: seenOpening,
   cinematicPhase: seenOpening ? 'explore' : 'dark',
   cinematicTime: 0,
+  epilogueVisible: false,
   parameters: defaultParameters,
   sky: initialSky,
 
@@ -63,10 +83,11 @@ export const useBinaryStar = create<BinaryStarStore>((set) => ({
       return;
     }
     // Replay: the seen flag stays. Clearing storage is how a first visit is restored.
-    set({ introComplete: false, cinematicPhase: 'dark', cinematicTime: 0 });
+    set({ introComplete: false, cinematicPhase: 'dark', cinematicTime: 0, epilogueVisible: false });
   },
   setCinematicPhase: (phase) => set({ cinematicPhase: phase }),
   setCinematicTime: (time) => set({ cinematicTime: time }),
+  setEpilogueVisible: (epilogueVisible) => set({ epilogueVisible }),
   setParameter: (key, value) => set((state) => ({
     parameters: { ...state.parameters, [key]: value },
   })),

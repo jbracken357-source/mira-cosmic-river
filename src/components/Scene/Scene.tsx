@@ -1,9 +1,9 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls as DreiOrbitControls } from '@react-three/drei';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import { useBinaryStar, useMobile } from '../../hooks';
-import { COLORS, PHYSICS, calculateOrbitalPosition, CINEMATIC, CAMERA, resolveQualityTier } from '../../constants';
+import { COLORS, PHYSICS, calculateOrbitalPosition, CINEMATIC, CAMERA, TRANSITIONS, TRANSLATIONS, resolveQualityTier } from '../../constants';
 import * as THREE from 'three';
 import type { StarName } from '../UI/InfoCards';
 import MiraA from './MiraA';
@@ -55,6 +55,7 @@ function clamp01(v: number): number {
 function SceneContent({ onSelectStar }: { onSelectStar: (star: StarName | null) => void }) {
   const timeSpeed = useBinaryStar((state) => state.parameters.timeSpeed);
   const cinematicPhase = useBinaryStar((state) => state.cinematicPhase);
+  const epilogueVisible = useBinaryStar((state) => state.epilogueVisible);
   const setCinematicPhase = useBinaryStar((state) => state.setCinematicPhase);
   const setCinematicTime = useBinaryStar((state) => state.setCinematicTime);
   const setIntroComplete = useBinaryStar((state) => state.setIntroComplete);
@@ -70,6 +71,12 @@ function SceneContent({ onSelectStar }: { onSelectStar: (star: StarName | null) 
   const tailOpacityRef = useRef(0);
   const miraBGroupRef = useRef<THREE.Group>(null);
   const miraBTargetRef = useRef<THREE.Mesh>(null);
+  const closingFromPos = useRef(new THREE.Vector3());
+  const closingFromLook = useRef(new THREE.Vector3());
+  const closingFromFov = useRef<number>(CAMERA.EXPLORE.fov);
+  const closingBlend = useRef(0);
+  const closingArmed = useRef(false);
+  const closingLook = useRef(new THREE.Vector3());
 
   const positionsRef = useRef({
     primary: [0, 0, 0] as [number, number, number],
@@ -84,6 +91,7 @@ function SceneContent({ onSelectStar }: { onSelectStar: (star: StarName | null) 
     const { introComplete, cinematicPhase } = useBinaryStar.getState();
 
     if (introComplete) {
+      const { epilogueVisible } = useBinaryStar.getState();
       if (!exploreAppliedRef.current) {
         // Return visits and early skip share the explore framing. A finished opening
         // keeps the sequence-end camera.
@@ -117,9 +125,48 @@ function SceneContent({ onSelectStar }: { onSelectStar: (star: StarName | null) 
           exploreAppliedRef.current = true;
         }
       }
+      if (epilogueVisible) {
+        const controls = orbitControlsRef.current;
+        if (!closingArmed.current) {
+          closingFromPos.current.copy(camera.position);
+          if (controls) closingFromLook.current.copy(controls.target);
+          else {
+            closingFromLook.current.set(
+              CAMERA.EXPLORE.lookAt[0],
+              CAMERA.EXPLORE.lookAt[1],
+              CAMERA.EXPLORE.lookAt[2],
+            );
+          }
+          closingFromFov.current = camera.fov;
+          closingBlend.current = 0;
+          closingArmed.current = true;
+        }
+        if (controls) controls.enabled = false;
+        closingBlend.current = Math.min(1, closingBlend.current + delta / TRANSITIONS.CLOSING_CAMERA);
+        const k = easeInOutCubic(closingBlend.current);
+        camera.position.set(
+          THREE.MathUtils.lerp(closingFromPos.current.x, CAMERA.CLOSING.position[0], k),
+          THREE.MathUtils.lerp(closingFromPos.current.y, CAMERA.CLOSING.position[1], k),
+          THREE.MathUtils.lerp(closingFromPos.current.z, CAMERA.CLOSING.position[2], k),
+        );
+        camera.fov = THREE.MathUtils.lerp(closingFromFov.current, CAMERA.CLOSING.fov, k);
+        camera.updateProjectionMatrix();
+        closingLook.current.set(
+          THREE.MathUtils.lerp(closingFromLook.current.x, CAMERA.CLOSING.lookAt[0], k),
+          THREE.MathUtils.lerp(closingFromLook.current.y, CAMERA.CLOSING.lookAt[1], k),
+          THREE.MathUtils.lerp(closingFromLook.current.z, CAMERA.CLOSING.lookAt[2], k),
+        );
+        camera.lookAt(closingLook.current);
+        if (controls) controls.target.copy(closingLook.current);
+      } else if (closingArmed.current) {
+        closingArmed.current = false;
+        closingBlend.current = 0;
+        if (orbitControlsRef.current) orbitControlsRef.current.enabled = true;
+      }
       tailOpacityRef.current = 0.85;
     } else {
       exploreAppliedRef.current = false;
+      closingArmed.current = false;
       if (orbitControlsRef.current) {
         orbitControlsRef.current.enabled = false;
       }
@@ -330,7 +377,7 @@ function SceneContent({ onSelectStar }: { onSelectStar: (star: StarName | null) 
         enablePan={false}
         minDistance={5}
         maxDistance={40}
-        autoRotate
+        autoRotate={!epilogueVisible}
         autoRotateSpeed={0.3}
         enableDamping
         dampingFactor={0.05}
@@ -362,9 +409,24 @@ function PostProcessing() {
 export default function Scene({ onSelectStar }: SceneProps) {
   const lowQuality = resolveQualityTier() === 'low';
   const startInExplore = useBinaryStar.getState().introComplete;
+  const [canvasReady, setCanvasReady] = useState(false);
+  const language = useBinaryStar((state) => state.language);
 
   return (
+    <>
+      {!canvasReady && (
+        <div
+          data-testid="loading"
+          className="fixed inset-0 z-[5] flex items-center justify-center pointer-events-none select-none"
+          style={{ background: COLORS.DEEP_SPACE }}
+        >
+          <p className="text-white/35 text-sm font-extralight italic tracking-[0.25em]">
+            {TRANSLATIONS[language].loading}
+          </p>
+        </div>
+      )}
     <Canvas
+      onCreated={() => setCanvasReady(true)}
       camera={{
         position: startInExplore ? CAMERA.EXPLORE.position : CAMERA.CLOSE.position,
         fov: startInExplore ? CAMERA.EXPLORE.fov : CAMERA.CLOSE.fov,
@@ -393,5 +455,6 @@ export default function Scene({ onSelectStar }: SceneProps) {
       <SceneContent onSelectStar={onSelectStar} />
       <PostProcessing />
     </Canvas>
+    </>
   );
 }
