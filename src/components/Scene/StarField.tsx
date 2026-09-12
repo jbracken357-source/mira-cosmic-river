@@ -6,12 +6,30 @@ interface StarFieldProps {
   count?: number;
 }
 
+// Fixed seed: the sky must look the same on every render and every machine.
+// Components render purely (no Math.random during render) and stable stars keep
+// visual checks comparable between runs.
+const STARFIELD_SEED = 0x5eed1a;
+
+// mulberry32 - tiny deterministic PRNG, plenty for placing stars
+function mulberry32(seed: number) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 // Custom twinkling star field - replaces DreiStars
 // Each star has unique color temperature, brightness, and twinkle rhythm
 export default function StarField({ count = 5000 }: StarFieldProps) {
   const materialRef = useRef<THREE.ShaderMaterial>(null);
 
   const { geometry } = useMemo(() => {
+    const rand = mulberry32(STARFIELD_SEED);
     const positions = new Float32Array(count * 3);
     const colorsArr = new Float32Array(count * 3);
     const sizesArr = new Float32Array(count);
@@ -30,16 +48,16 @@ export default function StarField({ count = 5000 }: StarFieldProps) {
 
     for (let i = 0; i < count; i++) {
       // Spherical distribution
-      const theta = Math.random() * Math.PI * 2;
-      const phi = Math.acos(2 * Math.random() - 1);
-      const r = 50 + Math.random() * 80;
+      const theta = rand() * Math.PI * 2;
+      const phi = Math.acos(2 * rand() - 1);
+      const r = 50 + rand() * 80;
 
       positions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
       positions[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
       positions[i * 3 + 2] = r * Math.cos(phi);
 
       // Random color from realistic distribution
-      const roll = Math.random();
+      const roll = rand();
       let cumulative = 0;
       let color = starColors[0];
       for (const c of starColors) {
@@ -51,17 +69,17 @@ export default function StarField({ count = 5000 }: StarFieldProps) {
       }
       // Add variation
       const variation = 0.08;
-      colorsArr[i * 3] = Math.min(1, Math.max(0, color[0] + (Math.random() - 0.5) * variation));
-      colorsArr[i * 3 + 1] = Math.min(1, Math.max(0, color[1] + (Math.random() - 0.5) * variation));
-      colorsArr[i * 3 + 2] = Math.min(1, Math.max(0, color[2] + (Math.random() - 0.5) * variation));
+      colorsArr[i * 3] = Math.min(1, Math.max(0, color[0] + (rand() - 0.5) * variation));
+      colorsArr[i * 3 + 1] = Math.min(1, Math.max(0, color[1] + (rand() - 0.5) * variation));
+      colorsArr[i * 3 + 2] = Math.min(1, Math.max(0, color[2] + (rand() - 0.5) * variation));
 
       // Size distribution (most small, few bright)
-      const size = 0.3 + Math.pow(Math.random(), 2) * 2.0;
+      const size = 0.3 + Math.pow(rand(), 2) * 2.0;
       sizesArr[i] = size;
 
       // Twinkle data: random phase and speed
-      twinkleArr[i * 2] = Math.random() * Math.PI * 2;     // phase offset
-      twinkleArr[i * 2 + 1] = 0.5 + Math.random() * 3.0;   // twinkle speed
+      twinkleArr[i * 2] = rand() * Math.PI * 2;     // phase offset
+      twinkleArr[i * 2 + 1] = 0.5 + rand() * 3.0;   // twinkle speed
     }
 
     const geo = new THREE.BufferGeometry();

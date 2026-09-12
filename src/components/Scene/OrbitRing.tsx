@@ -55,7 +55,7 @@ export default function OrbitRing({
       lineWidth={1}
     >
       <lineBasicMaterial
-        ref={materialRef as any}
+        ref={materialRef}
         color={color}
         transparent
         opacity={0.4}

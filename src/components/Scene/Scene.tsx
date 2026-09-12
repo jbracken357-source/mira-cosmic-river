@@ -1,9 +1,9 @@
 import { useRef } from 'react';
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls as DreiOrbitControls } from '@react-three/drei';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import { useBinaryStar, useMobile } from '../../hooks';
-import { COLORS, PHYSICS, calculateOrbitalPosition, CINEMATIC, CAMERA } from '../../constants';
+import { COLORS, PHYSICS, calculateOrbitalPosition, CINEMATIC, CAMERA, resolveQualityTier } from '../../constants';
 import * as THREE from 'three';
 import type { StarName } from '../UI/InfoCards';
 import MiraA from './MiraA';
@@ -24,14 +24,24 @@ const LOD = {
     sphereSegments: 32,
     bloomLevels: 2,
     tailParticles: 3000,
+    streamParticles: PHYSICS.STREAM.particleCount,
   },
   desktop: {
     starCount: 5000,
     sphereSegments: 64,
     bloomLevels: 4,
     tailParticles: 10000,
+    streamParticles: PHYSICS.STREAM.particleCount,
   },
-};
+  // Software-rendered environments (headless CI, very weak devices)
+  low: {
+    starCount: 300,
+    sphereSegments: 16,
+    bloomLevels: 1,
+    tailParticles: 300,
+    streamParticles: 300,
+  },
+} as const;
 
 function easeInOutCubic(t: number): number {
   return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
@@ -48,13 +58,15 @@ function SceneContent({ onSelectStar }: { onSelectStar: (star: StarName | null) 
   const setCinematicTime = useBinaryStar((state) => state.setCinematicTime);
   const setIntroComplete = useBinaryStar((state) => state.setIntroComplete);
   const isMobile = useMobile();
-  const lod = isMobile ? LOD.mobile : LOD.desktop;
+  const tier = resolveQualityTier();
+  const lod = tier === 'low' ? LOD.low : isMobile ? LOD.mobile : LOD.desktop;
 
   const timeRef = useRef(0);
-  const cinematicStartRef = useRef(Date.now());
+  const cinematicStartRef = useRef(0);
   const orbitControlsRef = useRef<React.ElementRef<typeof DreiOrbitControls>>(null);
   const tailOpacityRef = useRef(0);
-  const { camera } = useThree() as { camera: THREE.PerspectiveCamera };
+  const miraBGroupRef = useRef<THREE.Group>(null);
+  const miraBTargetRef = useRef<THREE.Mesh>(null);
 
   const positionsRef = useRef({
     primary: [0, 0, 0] as [number, number, number],
@@ -64,7 +76,10 @@ function SceneContent({ onSelectStar }: { onSelectStar: (star: StarName | null) 
   // Background click to deselect
 
   // Main loop: cinematic + orbital animation
-  useFrame((_, delta) => {
+  useFrame((state, delta) => {
+    const camera = state.camera as THREE.PerspectiveCamera;
+    // Anchor the clock on the first frame we actually render, not during render.
+    if (cinematicStartRef.current === 0) cinematicStartRef.current = Date.now();
     const elapsed = (Date.now() - cinematicStartRef.current) / 1000;
     const t = elapsed / timeSpeed;
 
@@ -80,10 +95,12 @@ function SceneContent({ onSelectStar }: { onSelectStar: (star: StarName | null) 
       if (t >= CINEMATIC.TAIL_REVEAL_START && cinematicPhase === 'pull-back') {
         setCinematicPhase('tail-reveal');
       }
-      if (t >= CINEMATIC.EXPLORE_MODE) {
-        setCinematicPhase('explore');
-        setIntroComplete(true);
-      }
+    } else if (cinematicPhase !== 'explore') {
+      // The opening finished: hand over to free exploration. This has to live outside
+      // the `t < EXPLORE_MODE` branch above, or the sequence never ends on its own and
+      // the viewer is stranded on the last cinematic frame until they press Skip.
+      setCinematicPhase('explore');
+      setIntroComplete(true);
     }
 
     // Camera animation during cinematic
@@ -143,6 +160,13 @@ function SceneContent({ onSelectStar }: { onSelectStar: (star: StarName | null) 
       secondary: newPositions.secondary,
     };
 
+    // Mira B moves every frame, so it is positioned imperatively rather than through
+    // props: prop values are only re-applied on re-render, which stops once the
+    // cinematic ends and would leave the companion frozen in explore mode.
+    const secondary = newPositions.secondary;
+    miraBGroupRef.current?.position.set(secondary[0], secondary[1], secondary[2]);
+    miraBTargetRef.current?.position.set(secondary[0], secondary[1], secondary[2]);
+
     // Compute tail opacity in the animation loop (Zustand updates don't trigger re-renders)
     const cp = cinematicPhase;
     const ct = t;
@@ -187,14 +211,16 @@ function SceneContent({ onSelectStar }: { onSelectStar: (star: StarName | null) 
       </group>
 
       {/* Mira B - White Dwarf */}
-      <MiraB
-        position={positionsRef.current.secondary}
-        radius={PHYSICS.MIRA_B.radius}
-        segments={lod.sphereSegments}
-      />
+      <group ref={miraBGroupRef}>
+        <MiraB
+          position={[0, 0, 0]}
+          radius={PHYSICS.MIRA_B.radius}
+          segments={lod.sphereSegments}
+        />
+      </group>
       {/* Invisible click target for Mira B */}
       <mesh
-        position={positionsRef.current.secondary}
+        ref={miraBTargetRef}
         userData={{ starName: 'miraB' }}
         onClick={(e) => {
           e.stopPropagation();
@@ -215,7 +241,7 @@ function SceneContent({ onSelectStar }: { onSelectStar: (star: StarName | null) 
       {/* Always-visible material stream */}
       <MaterialStream
         positionsRef={positionsRef}
-        particleCount={PHYSICS.STREAM.particleCount}
+        particleCount={lod.streamParticles}
         turbulence={0.3}
       />
 
@@ -285,6 +311,9 @@ function PostProcessing() {
   const isMobile = useMobile();
   const lod = isMobile ? LOD.mobile : LOD.desktop;
 
+  // Bloom is a stack of full-screen passes: keep it off the light tier.
+  if (resolveQualityTier() === 'low') return null;
+
   return (
     <EffectComposer enableNormalPass={false}>
       <Bloom
@@ -299,6 +328,8 @@ function PostProcessing() {
 }
 
 export default function Scene({ onSelectStar }: SceneProps) {
+  const lowQuality = resolveQualityTier() === 'low';
+
   return (
     <Canvas
       camera={{
@@ -306,12 +337,12 @@ export default function Scene({ onSelectStar }: SceneProps) {
         fov: CAMERA.CLOSE.fov,
       }}
       gl={{
-        antialias: true,
+        antialias: !lowQuality,
         alpha: false,
         stencil: false,
         depth: true,
       }}
-      dpr={[1, 1.5]}
+      dpr={lowQuality ? 1 : [1, 1.5]}
       style={{
         position: 'fixed',
         top: 0,
