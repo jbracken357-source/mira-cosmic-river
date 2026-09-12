@@ -3,7 +3,14 @@ import {
   MIRA_MAXIMUM_EPOCH_MS,
   MIRA_PERIOD_DAYS,
   MIRA_RISE_DAYS,
+  MILESTONE_WINDOW_DAYS,
   skyStateAt,
+  daysUntilNextMaximum,
+  daysUntilNextMinimum,
+  phaseMilestone,
+  phaseDirection,
+  phaseReadout,
+  milestoneStorageKey,
 } from '../../src/lib/starClock';
 import type { SkyState } from '../../src/lib/starClock';
 
@@ -33,6 +40,7 @@ test.describe('star clock', () => {
     expect(state.pulsationPhase).toBe(0);
     expect(state.brightness).toBe(1);
     expect(state.colorShift).toBe(1);
+    expect(state.cycleIndex).toBe(0);
   });
 
   test('shifts colour ahead of brightness rather than restating it', () => {
@@ -117,5 +125,85 @@ test.describe('star clock', () => {
       expect(advance).toBeGreaterThan(0);
       expect(advance).toBeLessThan(0.1);
     }
+  });
+});
+
+test.describe('phase readout', () => {
+  test('days until next maximum is ~0 at epoch and ~rise at minimum', () => {
+    expect(daysUntilNextMaximum(new Date(MIRA_MAXIMUM_EPOCH_MS))).toBeCloseTo(0, 5);
+    expect(daysUntilNextMaximum(new Date(MINIMUM_EPOCH_MS))).toBeCloseTo(MIRA_RISE_DAYS, 5);
+    expect(daysUntilNextMaximum(skyStateAt(new Date(MIRA_MAXIMUM_EPOCH_MS)))).toBeCloseTo(0, 5);
+  });
+
+  test('days until next minimum is ~0 at the dimmest moment and a decline-length at epoch', () => {
+    expect(daysUntilNextMinimum(new Date(MINIMUM_EPOCH_MS))).toBeCloseTo(0, 5);
+    expect(daysUntilNextMinimum(new Date(MIRA_MAXIMUM_EPOCH_MS))).toBeCloseTo(
+      MIRA_PERIOD_DAYS - MIRA_RISE_DAYS,
+      5,
+    );
+  });
+
+  test('days until next maximum decreases through a cycle and wraps at the following peak', () => {
+    const stepDays = 1;
+    const from = MIRA_MAXIMUM_EPOCH_MS + DAY_MS;
+    const to = MIRA_MAXIMUM_EPOCH_MS + (MIRA_PERIOD_DAYS - 1) * DAY_MS;
+    const days: number[] = [];
+    for (let ms = from; ms <= to; ms += stepDays * DAY_MS) {
+      days.push(daysUntilNextMaximum(new Date(ms)));
+    }
+
+    for (let i = 1; i < days.length; i++) {
+      expect(days[i]).toBeLessThan(days[i - 1]);
+      expect(days[i - 1] - days[i]).toBeCloseTo(stepDays, 5);
+    }
+
+    expect(days[0]).toBeCloseTo(MIRA_PERIOD_DAYS - 1, 5);
+    expect(daysUntilNextMaximum(new Date(MIRA_MAXIMUM_EPOCH_MS + (MIRA_PERIOD_DAYS - 1) * DAY_MS))).toBeCloseTo(1, 5);
+
+    const nextPeak = MIRA_MAXIMUM_EPOCH_MS + MIRA_PERIOD_DAYS * DAY_MS;
+    expect(daysUntilNextMaximum(new Date(nextPeak))).toBeCloseTo(0, 5);
+    expect(skyStateAt(new Date(nextPeak)).cycleIndex).toBe(1);
+  });
+
+  test('milestone is maximum or minimum only inside the window, otherwise none', () => {
+    expect(phaseMilestone(new Date(MIRA_MAXIMUM_EPOCH_MS))).toBe('maximum');
+    expect(phaseMilestone(new Date(MIRA_MAXIMUM_EPOCH_MS + 9 * DAY_MS))).toBe('maximum');
+    expect(phaseMilestone(new Date(MIRA_MAXIMUM_EPOCH_MS - 9 * DAY_MS))).toBe('maximum');
+    expect(phaseMilestone(new Date(MIRA_MAXIMUM_EPOCH_MS + 11 * DAY_MS))).toBe('none');
+    expect(phaseMilestone(new Date(MIRA_MAXIMUM_EPOCH_MS - 11 * DAY_MS))).toBe('none');
+
+    expect(phaseMilestone(new Date(MINIMUM_EPOCH_MS))).toBe('minimum');
+    expect(phaseMilestone(new Date(MINIMUM_EPOCH_MS + 9 * DAY_MS))).toBe('minimum');
+    expect(phaseMilestone(new Date(MINIMUM_EPOCH_MS - 9 * DAY_MS))).toBe('minimum');
+    expect(phaseMilestone(new Date(MINIMUM_EPOCH_MS + 11 * DAY_MS))).toBe('none');
+
+    expect(MILESTONE_WINDOW_DAYS).toBe(10);
+  });
+
+  test('direction is fading after maximum and brightening after minimum', () => {
+    expect(phaseDirection(new Date(MIRA_MAXIMUM_EPOCH_MS))).toBe('fading');
+    expect(phaseDirection(new Date(MIRA_MAXIMUM_EPOCH_MS + 20 * DAY_MS))).toBe('fading');
+    expect(phaseDirection(new Date(MINIMUM_EPOCH_MS))).toBe('brightening');
+    expect(phaseDirection(new Date(MINIMUM_EPOCH_MS + 20 * DAY_MS))).toBe('brightening');
+  });
+
+  test('readout numbers match the clock and the storage key is stable across one peak', () => {
+    const atMax = phaseReadout(new Date(MIRA_MAXIMUM_EPOCH_MS));
+    expect(atMax.daysToNextMaximum).toBeCloseTo(0, 5);
+    expect(atMax.milestone).toBe('maximum');
+    expect(atMax.direction).toBe('fading');
+
+    const atMin = phaseReadout(new Date(MINIMUM_EPOCH_MS));
+    expect(atMin.daysToNextMaximum).toBeCloseTo(MIRA_RISE_DAYS, 5);
+    expect(atMin.milestone).toBe('minimum');
+    expect(atMin.direction).toBe('brightening');
+
+    const before = skyStateAt(new Date(MIRA_MAXIMUM_EPOCH_MS - 5 * DAY_MS));
+    const after = skyStateAt(new Date(MIRA_MAXIMUM_EPOCH_MS + 5 * DAY_MS));
+    expect(milestoneStorageKey('maximum', before)).toBe('mira:milestone:maximum:0');
+    expect(milestoneStorageKey('maximum', after)).toBe('mira:milestone:maximum:0');
+    expect(milestoneStorageKey('minimum', skyStateAt(new Date(MINIMUM_EPOCH_MS)))).toBe(
+      'mira:milestone:minimum:0',
+    );
   });
 });

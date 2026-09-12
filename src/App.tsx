@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Scene } from './components/Scene';
-import { CinematicOverlay, InfoCards, ClosingMessage } from './components/UI';
+import { CinematicOverlay, InfoCards, ClosingMessage, MilestoneHint } from './components/UI';
 import type { StarName } from './components/UI/InfoCards';
 import { hasFoundTail, persistFoundTail, useBinaryStar } from './hooks';
 import './App.css';
@@ -46,6 +46,7 @@ export default function App() {
           showTailFound={showTailFound}
         />
         <ClosingMessage />
+        <MilestoneHint />
       </div>
     </>
   );

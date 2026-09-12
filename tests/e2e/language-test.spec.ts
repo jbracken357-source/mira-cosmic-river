@@ -21,17 +21,17 @@ test.describe('Language Toggle Test', () => {
     const langButton = page.getByRole('button', { name: /^(中文|EN)$/ });
     await expect(langButton).toBeVisible();
 
-    // Default language is English, so the button offers Chinese
-    await expect(langButton).toHaveText('中文');
-
-    await page.screenshot({ path: 'tests/e2e/screenshots/en-version.png' });
-
-    await langButton.click();
+    // Default language is Chinese, so the button offers English
     await expect(langButton).toHaveText('EN');
 
     await page.screenshot({ path: 'tests/e2e/screenshots/cn-version.png' });
 
     await langButton.click();
     await expect(langButton).toHaveText('中文');
+
+    await page.screenshot({ path: 'tests/e2e/screenshots/en-version.png' });
+
+    await langButton.click();
+    await expect(langButton).toHaveText('EN');
   });
 });

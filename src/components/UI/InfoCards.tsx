@@ -2,6 +2,7 @@ import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { useBinaryStar, useMobile } from '../../hooks';
 import { TRANSLATIONS } from '../../constants/translations';
 import { EASE } from '../../constants/animation';
+import { phaseReadout } from '../../lib/starClock';
 
 export type StarName = 'miraA' | 'miraB' | 'tail';
 
@@ -15,11 +16,23 @@ export default function InfoCards({ selectedStar, onSelectStar, showTailFound }:
   const language = useBinaryStar((state) => state.language);
   const timeSpeed = useBinaryStar((state) => state.parameters.timeSpeed);
   const setParameter = useBinaryStar((state) => state.setParameter);
+  const sky = useBinaryStar((state) => state.sky);
   const t = TRANSLATIONS[language];
   const isMobile = useMobile();
   const reduceMotion = Boolean(useReducedMotion());
   const cardFade = reduceMotion ? 0 : 0.5;
   const toastFade = reduceMotion ? 0 : 0.8;
+  const readout = phaseReadout(sky);
+  const daysToMax = Math.round(readout.daysToNextMaximum);
+  const daysToMin = Math.round(readout.daysToNextMinimum);
+  const phaseLine =
+    readout.milestone === 'maximum' || daysToMax === 0
+      ? t.phaseAtMaximum
+      : readout.milestone === 'minimum' || daysToMin === 0
+        ? t.phaseAtMinimum
+        : readout.direction === 'brightening'
+          ? t.phaseDaysToMax.replace('{n}', String(daysToMax))
+          : t.phaseDaysToMin.replace('{n}', String(daysToMin));
 
   const cardData: Record<StarName, { title: string; desc: string; color: string; accent: string }> = {
     miraA: {
@@ -63,7 +76,6 @@ export default function InfoCards({ selectedStar, onSelectStar, showTailFound }:
             : 'rounded-lg p-4 md:p-5'
         }`}
       >
-        {/* Close button */}
         <button
           onClick={() => onSelectStar(null)}
           className="absolute top-2 right-2 text-white/30 hover:text-white/60 transition-colors text-lg leading-none"
@@ -71,17 +83,33 @@ export default function InfoCards({ selectedStar, onSelectStar, showTailFound }:
           ×
         </button>
 
-        {/* Title */}
         <h3 className="font-display text-xl md:text-2xl text-white/90 italic mb-2">
           {cardData[selectedStar].title}
         </h3>
 
-        {/* Description */}
         <p className="text-xs md:text-sm text-white/60 font-extralight leading-relaxed mb-4">
           {cardData[selectedStar].desc}
         </p>
 
-        {/* Time Speed slider — only on tail card */}
+        {selectedStar === 'miraA' && (
+          <div className="mb-1">
+            <p
+              data-phase-days-to-max={daysToMax}
+              data-phase-days-to-min={daysToMin}
+              data-phase-direction={readout.direction}
+              data-phase-milestone={readout.milestone}
+              className="text-xs md:text-sm text-white/75 font-extralight leading-relaxed"
+            >
+              {phaseLine}
+            </p>
+            {readout.milestone === 'none' && (
+              <p className="text-[10px] tracking-[0.15em] uppercase text-white/35 font-extralight mt-1">
+                {readout.direction === 'brightening' ? t.phaseBrightening : t.phaseFading}
+              </p>
+            )}
+          </div>
+        )}
+
         {selectedStar === 'tail' && (
           <div className="flex items-center gap-3">
             <span className="text-[9px] tracking-[0.2em] uppercase text-white/30 font-extralight">
