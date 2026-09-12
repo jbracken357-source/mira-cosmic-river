@@ -3,6 +3,12 @@
 
 import * as THREE from 'three';
 
+// One decorative pulsation rate for the whole star: the surface radius, the surface colour and
+// the atmosphere all breathe together, or the halo detaches from the star. (Shader strings are
+// built at module load, so these have to be declared before the shaders that interpolate them.)
+const PULSE_RATE = 0.785; // ~8s cycle
+const PULSE_AMPLITUDE = 0.09; // 9% of the radius come and gone each cycle
+
 // Noise GLSL utility - simplex noise for shader surface variation
 export const NOISE_GLSL = `
   vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
@@ -101,10 +107,12 @@ export const MiraA_Shader = {
 
     void main() {
       vUv = uv;
-      vNormal = normal;
+      // View-space normal: the disc shading below has to follow the camera, not the model,
+      // or the star reads as a flat patty that only rotates its own sticker.
+      vNormal = normalize(normalMatrix * normal);
 
       // Pulsation: 332-day period scaled to ~8 second visual rhythm
-      float pulsePhase = sin(uTime * 0.785) * 0.5 + 0.5; // ~8s period
+      float pulsePhase = sin(uTime * ${PULSE_RATE}) * 0.5 + 0.5; // ~8s period
       float timeSpeed = uTime * (0.1 + uTurbulence * 1.5);
       float noiseAmp = uNoiseAmp * (0.8 + pulsePhase * 0.4);
 
@@ -113,9 +121,12 @@ export const MiraA_Shader = {
 
       vNoise = lowFreq * 0.7 + highFreq * 0.3;
 
-      // Radius pulsation
-      float radiusPulse = 1.0 + 0.05 * sin(uTime * 0.785);
-      vec3 newPos = position * radiusPulse + normal * (vNoise * noiseAmp);
+      // Radius pulsation. Visible: the viewer has to see the star breathe, so the swing is
+      // close to a tenth of the radius rather than a hairline.
+      float radiusPulse = 1.0 + ${PULSE_AMPLITUDE} * sin(uTime * ${PULSE_RATE});
+      // Granulation is displacement, not the silhouette: keeping it well under the pulse
+      // amplitude leaves a round limb to darken instead of a wobbling potato.
+      vec3 newPos = position * radiusPulse + normal * (vNoise * noiseAmp * 0.38);
 
       gl_Position = projectionMatrix * modelViewMatrix * vec4(newPos, 1.0);
     }
@@ -131,22 +142,26 @@ export const MiraA_Shader = {
     uniform float uColorShift;
 
     void main() {
-      // Fresnel effect for limb darkening
-      float fresnel = pow(1.0 - abs(dot(vNormal, vec3(0.0, 0.0, 1.0))), 2.0);
+      // Limb darkening: a red giant is brightest at the disc centre and falls off toward the
+      // limb because you are looking through less photosphere there. Without this the star is
+      // a uniformly filled circle.
+      float mu = clamp(abs(normalize(vNormal).z), 0.0, 1.0);
 
-      // Pulsation: brighter (whiter) at peak, redder at dim
-      float pulsePhase = sin(uTime * 0.785) * 0.5 + 0.5;
-      vec3 pulseColor = mix(
-        uColorSurface * 0.8,  // dim = deeper red
-        uColorCore * 1.2,     // bright = hotter/whiter
-        pulsePhase
-      );
+      // Pulsation: the decorative cycle swings brightness hard and hue with it — deeper red at
+      // the trough, hotter and less saturated at the peak.
+      float pulsePhase = sin(uTime * ${PULSE_RATE}) * 0.5 + 0.5;
+      vec3 dimColor = mix(uColorCore, uColorSurface, 0.2) * 0.5;
+      vec3 hotColor = mix(uColorSurface, vec3(1.0, 0.86, 0.68), 0.45) * 1.3;
+      vec3 pulseColor = mix(dimColor, hotColor, pulsePhase);
 
-      // Mix colors based on noise and pulsation
-      vec3 color = mix(pulseColor, uColorCore, vNoise * 0.6 + 0.4);
+      // Granulation mottles the photosphere, but the deep core colour stays in the mix: this
+      // is a cool red giant, not a peach-coloured ball.
+      float mottle = vNoise * 0.5 + 0.5;
+      vec3 color = mix(uColorCore, pulseColor, 0.55 + 0.35 * mottle);
 
-      // Edge glow (subtle, not bright)
-      color += vec3(0.6, 0.2, 0.05) * fresnel * 0.15;
+      // Limb darkening, then a thin warm rim right at the edge.
+      color *= mix(0.5, 1.15, pow(mu, 0.6));
+      color += vec3(0.55, 0.16, 0.03) * pow(1.0 - mu, 3.0) * 0.22;
 
       // The 8s pulse above is decorative. uBrightness and uColorShift are the real-clock
       // pulsation, and they are the only thing that differs between tonight and next month: a
@@ -159,31 +174,127 @@ export const MiraA_Shader = {
   `,
 };
 
-// Atmosphere Halo Shader for the glow effect around Mira A
+// Shader materials get their uniforms object by assignment, not by cloning, so every shell
+// asks for its own set. Sharing one object between shells would make whichever material was
+// written to last decide the glow of both.
+export function makeAtmosphereUniforms(overrides: {
+  color: THREE.Color | string;
+  shellRadius: number;
+  coreRadius: number;
+  opacity: number;
+  falloff: number;
+  pulseAmp?: number;
+}): Record<string, { value: unknown }> {
+  return {
+    uColor: { value: new THREE.Color(overrides.color) },
+    uBrightness: { value: 0.5 },
+    uTime: { value: 0 },
+    uOpacity: { value: overrides.opacity },
+    uFalloff: { value: overrides.falloff },
+    uShellRadius: { value: overrides.shellRadius },
+    uCoreRadius: { value: overrides.coreRadius },
+    uPulseAmp: { value: overrides.pulseAmp ?? 0 },
+  };
+}
+
+// Mira A's atmosphere, as two shells a viewer reads as one volume: a dense layer hugging the
+// photosphere and a wide thin haze that gives the star its reach on screen. `falloff` is the
+// exponential rate at which each shell's glow dies away between the limb and the shell edge —
+// a low rate for the wide haze, a high one for the dense layer.
+export const MIRA_A_ATMOSPHERE = {
+  mid: { scale: 1.4, opacity: 0.46, falloff: 2.4, color: '#ff5a1e' },
+  outer: { scale: 2.35, opacity: 0.3, falloff: 1.7, color: '#c22a05' },
+} as const;
+
+// Mira B's corona: same shader, white dwarf colours, a much tighter shell. Kept small on
+// purpose — a broad halo around the companion buries the accretion disk behind it.
+export const MIRA_B_CORONA = {
+  scale: 1.7,
+  opacity: 0.26,
+  falloff: 1.7,
+  color: '#dbe6ff',
+  pulseAmp: 0.015,
+} as const;
+
+// Glow shell shader, shared by Mira A's atmosphere and Mira B's corona.
+//
+// A single shell cannot be a volume, but it can fake one: every fragment works out which
+// sight-line it sits on, and how far along the shell that line passes. The glow is thickest
+// right at the star's limb — the longest path through the gas — and dies away exponentially
+// out to the shell's edge, so the halo has a wide, soft falloff instead of a rim.
 export const Atmosphere_Shader = {
   uniforms: {
-    uColor: { value: new THREE.Color('#331100') },
+    uColor: { value: new THREE.Color('#ff5a1e') },
     uBrightness: { value: 0.5 },
+    uTime: { value: 0 },
+    uOpacity: { value: 0.46 },
+    uFalloff: { value: 2.4 },
+    // Radii in view-space units (shell radius, occluding star radius).
+    uShellRadius: { value: 3.5 },
+    uCoreRadius: { value: 2.5 },
+    // Radius pulse of the star the shell wraps (0 disables it).
+    uPulseAmp: { value: PULSE_AMPLITUDE },
   },
   vertexShader: `
-    varying vec3 vNormal;
+    varying vec3 vViewPos;
+    varying vec3 vCentre;
     void main() {
-      vNormal = normalize(normalMatrix * normal);
-      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      vec4 mv = modelViewMatrix * vec4(position, 1.0);
+      vViewPos = mv.xyz;
+      // Every vertex of the shell is the same distance from the shell's centre, so the centre
+      // in view space is a constant we can compute here. (modelViewMatrix is vertex-stage only
+      // in three.js; using it in the fragment shader fails to compile.)
+      vCentre = (modelViewMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+      gl_Position = projectionMatrix * mv;
     }
   `,
   fragmentShader: `
-    varying vec3 vNormal;
+    varying vec3 vViewPos;
+    varying vec3 vCentre;
     uniform vec3 uColor;
     uniform float uBrightness;
+    uniform float uTime;
+    uniform float uOpacity;
+    uniform float uFalloff;
+    uniform float uShellRadius;
+    uniform float uCoreRadius;
+    uniform float uPulseAmp;
+
     void main() {
-      float intensity = pow(0.6 - dot(vNormal, vec3(0, 0, 1.0)), 4.0);
-      // The halo shrinks with the star at minimum rather than vanishing, so Mira A stays
-      // findable in the frame at every point of the cycle.
-      gl_FragColor = vec4(uColor, intensity * (0.08 + 0.32 * uBrightness));
+      vec3 dir = normalize(vViewPos);
+
+      // Impact parameter: how far this sight-line passes from the star's centre.
+      float b = length(vCentre - dot(vCentre, dir) * dir);
+
+      // The limb breathes with the star it wraps.
+      float pulse = sin(uTime * ${PULSE_RATE}) * 0.5 + 0.5;
+      float core = uCoreRadius * (1.0 + uPulseAmp * (pulse * 2.0 - 1.0));
+
+      // Thickness of the shell along this line of sight, 0 at the shell's own edge and 1 right
+      // at the limb, then faded so the shell's outline never shows as an edge. That gradient —
+      // over more than the star's own radius — is the whole volume effect.
+      float inner = clamp(core / uShellRadius, 0.0, 1.0);
+      float span = max(1.0 - inner, 0.001);
+      float across = clamp((b / uShellRadius - inner) / span, 0.0, 1.0);
+      // Faded to nothing over its own outer third: an exponential that is simply cut off at the
+      // shell radius leaves a visible circle in the sky, which is how a volume starts to look
+      // like a stack of discs again.
+      float glow = exp(-uFalloff * across) * (1.0 - smoothstep(0.68, 1.0, across));
+
+      // Slow, cheap wobble so the halo is not a perfect surface of revolution.
+      float ripple = 1.0 + 0.07 * sin(dir.y * 9.0 + uTime * 0.7) * sin(dir.x * 7.0 - uTime * 0.5);
+
+      // Still a halo at the dimmest end of the real cycle — the star must stay findable — but
+      // unmistakably larger and brighter at maximum, and breathing with the decorative pulse
+      // so the star's radius change is visible in its atmosphere and not only in the photosphere.
+      float clock = 0.38 + 0.62 * uBrightness;
+      float intensity = glow * ripple * clock * (0.7 + 0.5 * pulse);
+
+      gl_FragColor = vec4(uColor, intensity * uOpacity);
     }
   `,
 };
+
 
 // Mass Transfer Stream Shader - visualizes matter flowing from Mira A to Mira B
 export const Stream_Shader = {

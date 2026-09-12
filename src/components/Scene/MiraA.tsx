@@ -1,7 +1,12 @@
 import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { MiraA_Shader, Atmosphere_Shader } from '../../shaders/miraA';
+import {
+  MiraA_Shader,
+  Atmosphere_Shader,
+  MIRA_A_ATMOSPHERE,
+  makeAtmosphereUniforms,
+} from '../../shaders/miraA';
 import { useBinaryStar } from '../../hooks';
 
 interface MiraAProps {
@@ -14,7 +19,8 @@ interface MiraAProps {
 export default function MiraA({ position, radius, turbulence, segments = 64 }: MiraAProps) {
   const meshRef = useRef<THREE.Mesh>(null);
   const materialRef = useRef<THREE.ShaderMaterial>(null);
-  const atmosphereRef = useRef<THREE.ShaderMaterial>(null);
+  const innerAtmosphereRef = useRef<THREE.ShaderMaterial>(null);
+  const outerAtmosphereRef = useRef<THREE.ShaderMaterial>(null);
 
   // Where the real clock has Mira A in its ~332 day pulsation cycle: how bright it is, and
   // how far its colour has already shifted toward its hottest.
@@ -26,9 +32,8 @@ export default function MiraA({ position, radius, turbulence, segments = 64 }: M
   const colors = useMemo(() => {
     const colorCore = new THREE.Color('#ff3d00');
     const colorSurface = new THREE.Color('#ff8a50');
-    const atmosphere = new THREE.Color('#331100');
 
-    return { colorCore, colorSurface, atmosphere };
+    return { colorCore, colorSurface };
   }, []);
 
   useFrame((state) => {
@@ -44,8 +49,11 @@ export default function MiraA({ position, radius, turbulence, segments = 64 }: M
       materialRef.current.uniforms.uColorShift.value = colorShift;
     }
 
-    if (atmosphereRef.current) {
-      atmosphereRef.current.uniforms.uBrightness.value = brightness;
+    for (const ref of [innerAtmosphereRef, outerAtmosphereRef]) {
+      if (ref.current) {
+        ref.current.uniforms.uTime.value = time;
+        ref.current.uniforms.uBrightness.value = brightness;
+      }
     }
 
     // Subtle rotation for surface animation
@@ -68,29 +76,47 @@ export default function MiraA({ position, radius, turbulence, segments = 64 }: M
         />
       </mesh>
 
-      {/* Atmospheric halo */}
-      <mesh scale={1.15}>
-        <sphereGeometry args={[radius, Math.max(32, Math.floor(segments * 0.75)), Math.max(32, Math.floor(segments * 0.75))]} />
+      {/* Atmospheric halo: dense inner layer */}
+      <mesh scale={MIRA_A_ATMOSPHERE.mid.scale}>
+        <sphereGeometry args={[radius, 32, 24]} />
         <shaderMaterial
-          ref={atmosphereRef}
-          {...Atmosphere_Shader}
+          ref={innerAtmosphereRef}
+          vertexShader={Atmosphere_Shader.vertexShader}
+          fragmentShader={Atmosphere_Shader.fragmentShader}
+          uniforms={makeAtmosphereUniforms({
+            color: MIRA_A_ATMOSPHERE.mid.color,
+            shellRadius: radius * MIRA_A_ATMOSPHERE.mid.scale,
+            coreRadius: radius,
+            opacity: MIRA_A_ATMOSPHERE.mid.opacity,
+            falloff: MIRA_A_ATMOSPHERE.mid.falloff,
+            pulseAmp: 0.09,
+          })}
           side={THREE.BackSide}
           blending={THREE.AdditiveBlending}
           transparent={true}
           depthWrite={false}
-          opacity={0.5}
         />
       </mesh>
 
-      {/* Outer glow sphere */}
-      <mesh scale={1.3}>
-        <sphereGeometry args={[radius, 32, 32]} />
-        <meshBasicMaterial
-          color={colors.atmosphere}
-          transparent
-          opacity={(0.04 + turbulence * 0.03) * (0.5 + brightness)}
+      {/* Atmospheric halo: wide, thin outer haze that gives the star its size on screen */}
+      <mesh scale={MIRA_A_ATMOSPHERE.outer.scale}>
+        <sphereGeometry args={[radius, 32, 24]} />
+        <shaderMaterial
+          ref={outerAtmosphereRef}
+          vertexShader={Atmosphere_Shader.vertexShader}
+          fragmentShader={Atmosphere_Shader.fragmentShader}
+          uniforms={makeAtmosphereUniforms({
+            color: MIRA_A_ATMOSPHERE.outer.color,
+            shellRadius: radius * MIRA_A_ATMOSPHERE.outer.scale,
+            coreRadius: radius,
+            opacity: MIRA_A_ATMOSPHERE.outer.opacity,
+            falloff: MIRA_A_ATMOSPHERE.outer.falloff,
+            pulseAmp: 0.09,
+          })}
           side={THREE.BackSide}
           blending={THREE.AdditiveBlending}
+          transparent={true}
+          depthWrite={false}
         />
       </mesh>
 

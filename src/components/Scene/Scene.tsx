@@ -4,6 +4,7 @@ import { OrbitControls as DreiOrbitControls } from '@react-three/drei';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import { useBinaryStar, useMobile } from '../../hooks';
 import { COLORS, PHYSICS, calculateOrbitalPosition, CINEMATIC, CAMERA, resolveQualityTier } from '../../constants';
+import { Atmosphere_Shader, makeAtmosphereUniforms } from '../../shaders/miraA';
 import * as THREE from 'three';
 import type { StarName } from '../UI/InfoCards';
 import MiraA from './MiraA';
@@ -216,6 +217,7 @@ function SceneContent({ onSelectStar }: { onSelectStar: (star: StarName | null) 
           position={[0, 0, 0]}
           radius={PHYSICS.MIRA_B.radius}
           segments={lod.sphereSegments}
+          positionsRef={positionsRef}
         />
       </group>
       {/* Invisible click target for Mira B */}
@@ -266,16 +268,25 @@ function SceneContent({ onSelectStar }: { onSelectStar: (star: StarName | null) 
         <meshBasicMaterial visible={false} side={THREE.DoubleSide} />
       </mesh>
 
-      {/* Subtle ambient glow halo around tail area — helps anchor visibility in explore mode */}
+      {/* Ambient haze around the tail area — helps anchor visibility in explore mode. It fades
+          exponentially to nothing instead of stopping at a sphere's silhouette: a constant-colour
+          shell reads as a flat disc lying over the stars, which is the opposite of depth. */}
       {cinematicPhase === 'explore' && (
         <mesh position={[-6, 1, 4]}>
-          <sphereGeometry args={[5, 16, 16]} />
-          <meshBasicMaterial
-            color="#ff6b35"
-            transparent
-            opacity={0.03}
+          <sphereGeometry args={[5, 32, 24]} />
+          <shaderMaterial
+            vertexShader={Atmosphere_Shader.vertexShader}
+            fragmentShader={Atmosphere_Shader.fragmentShader}
+            uniforms={makeAtmosphereUniforms({
+              color: '#ff6b35',
+              shellRadius: 5,
+              coreRadius: 0,
+              opacity: 0.042,
+              falloff: 2.4,
+            })}
             side={THREE.BackSide}
             blending={THREE.AdditiveBlending}
+            transparent={true}
             depthWrite={false}
           />
         </mesh>
