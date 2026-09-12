@@ -112,8 +112,7 @@ export const COLOR_INFO: Record<keyof typeof COLORS, ColorWithEmotion | null> = 
     hex: '#fef3c7',
     emotion: 'Pure Love / 纯净的爱',
   },
-  // Added with the star and background texture pass (#4): the palette entries below carry no
-  // emotion label of their own — they are shades of the same few feelings above.
+  // Shades of the palette above; no separate emotion labels.
   MIRA_A_CORE: null,
   MIRA_A_SURFACE: null,
   MIRA_A_ATMOSPHERE_DENSE: null,

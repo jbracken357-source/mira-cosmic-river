@@ -75,8 +75,8 @@ const DISK_TILT = Math.PI / 9;
 const DISK_SCALE = 5.5;
 // The disk is a puff, not a mathematical plane: the camera's azimuth is unrestricted, and a
 // flat ring is exactly edge-on at two points of every revolution, where it degenerates into a
-// one-pixel bar. A tenth of the radius of vertical thickness means the worst case is still a
-// lens with a readable height to it. Real disks flared like this are just as thin.
+// one-pixel bar. About a sixth of the radius as vertical thickness means the worst case is still
+// a lens with a readable height to it. Real disks flared like this are just as thin.
 const DISK_THICKNESS = 0.16;
 
 export default function MiraB({ position, radius, segments = 64, positionsRef }: MiraBProps) {
@@ -138,8 +138,7 @@ export default function MiraB({ position, radius, segments = 64, positionsRef }:
         />
       </mesh>
 
-      {/* Corona: one soft shell instead of stacked flat discs — a white dwarf is a hot point
-          with a tight halo, not a grey plate. */}
+      {/* Tight corona — a broad halo would bury the accretion disk. */}
       <GlowShell
         materialRef={coronaRef}
         shellRadius={radius * MIRA_B_CORONA.scale}

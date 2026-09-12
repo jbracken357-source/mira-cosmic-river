@@ -198,7 +198,7 @@ function SceneContent({ onSelectStar }: { onSelectStar: (star: StarName | null) 
           turbulence={0.3}
           segments={lod.sphereSegments}
         />
-        {/* Invisible click target */}
+        {/* Invisible click target — inner atmosphere, so a click on the halo selects the star. */}
         <mesh
           userData={{ starName: 'miraA' }}
           onClick={(e) => {
@@ -206,7 +206,7 @@ function SceneContent({ onSelectStar }: { onSelectStar: (star: StarName | null) 
             if (cinematicPhase === 'explore') onSelectStar('miraA');
           }}
         >
-          <sphereGeometry args={[PHYSICS.MIRA_A.radius * 1.2, 16, 16]} />
+          <sphereGeometry args={[PHYSICS.MIRA_A.radius * 1.4, 16, 16]} />
           <meshBasicMaterial visible={false} side={THREE.DoubleSide} />
         </mesh>
       </group>
@@ -268,18 +268,16 @@ function SceneContent({ onSelectStar }: { onSelectStar: (star: StarName | null) 
         <meshBasicMaterial visible={false} side={THREE.DoubleSide} />
       </mesh>
 
-      {/* Ambient haze around the tail area — helps anchor visibility in explore mode. It fades
-          exponentially to nothing instead of stopping at a sphere's silhouette: a constant-colour
-          shell reads as a flat disc lying over the stars, which is the opposite of depth. */}
+      {/* Ambient haze around the tail — anchors it against the star field in explore mode. */}
       {cinematicPhase === 'explore' && (
-        <mesh position={[-6, 1, 4]}>
+        <group position={[-6, 1, 4]}>
           <GlowShell
             shellRadius={5}
             color={COLORS.STELLAR_ORANGE}
             opacity={0.042}
             falloff={2.4}
           />
-        </mesh>
+        </group>
       )}
 
       {/* Background click to deselect */}

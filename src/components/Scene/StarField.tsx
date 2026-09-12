@@ -67,7 +67,6 @@ export default function StarField({ count = 5000 }: StarFieldProps) {
 
     for (let i = 0; i < count; i++) {
       // Which shell this star belongs to.
-      // Which shell this star belongs to.
       const layerName = pickWeighted(rand(), LAYER_LIST).name;
       const layer = LAYERS[layerName];
 

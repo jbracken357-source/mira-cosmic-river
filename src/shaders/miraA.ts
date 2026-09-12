@@ -149,17 +149,13 @@ export const MiraA_Shader = {
       // a uniformly filled circle.
       float mu = clamp(abs(normalize(vNormal).z), 0.0, 1.0);
 
-      // Pulsation: the decorative cycle swings brightness hard, and the hue swings with it —
-      // deep red at the trough, a hotter red-orange at the peak. Both ends stay inside the red
-      // end of the palette: the star is a cool red giant, and a peak that reads pink or salmon
-      // is a bug, not a highlight.
+      // Decorative cycle: deep red at the trough, hotter red-orange at the peak.
       float pulsePhase = sin(uTime * ${PULSE_RATE}) * 0.5 + 0.5;
       vec3 dimColor = mix(uColorCore, uColorSurface, 0.02) * 0.42;
       vec3 hotColor = mix(uColorCore, uColorSurface, 0.1) * 1.25;
       vec3 pulseColor = mix(dimColor, hotColor, pulsePhase);
 
-      // Granulation mottles the photosphere, but the deep core colour stays in the mix: this
-      // is a cool red giant, not a peach-coloured ball.
+      // Granulation mottles the photosphere; the deep core colour stays in the mix.
       float mottle = vNoise * 0.5 + 0.5;
       vec3 color = mix(uColorCore, pulseColor, 0.55 + 0.35 * mottle);
 
@@ -284,10 +280,11 @@ export const Atmosphere_Shader = {
       float ripple = 1.0 + 0.07 * sin(dir.y * 9.0 + uTime * 0.7) * sin(dir.x * 7.0 - uTime * 0.5);
 
       // Still a halo at the dimmest end of the real cycle — the star must stay findable — but
-      // unmistakably larger and brighter at maximum, and breathing with the decorative pulse
-      // so the star's radius change is visible in its atmosphere and not only in the photosphere.
+      // unmistakably larger and brighter at maximum. Intensity breath is Mira A's 8s cycle;
+      // a small (or zero) uPulseAmp only moves the limb.
       float clock = 0.38 + 0.62 * uBrightness;
-      float intensity = glow * ripple * clock * (0.7 + 0.5 * pulse);
+      float breath = mix(1.0, 0.7 + 0.5 * pulse, step(${MIRA_A_PULSE_AMPLITUDE} * 0.5, uPulseAmp));
+      float intensity = glow * ripple * clock * breath;
 
       gl_FragColor = vec4(uColor, intensity * uOpacity);
     }

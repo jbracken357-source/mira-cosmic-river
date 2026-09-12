@@ -22,10 +22,7 @@ interface GlowShellProps {
   materialRef?: RefObject<THREE.ShaderMaterial | null>;
 }
 
-// One glow shell. Every caller wraps an opaque sphere or an empty volume in the same way: a
-// back-facing unit sphere scaled to the shell radius, rendered additively on top of whatever is
-// behind it. Four of these exist (two around Mira A, one around Mira B, one over the tail) and
-// they differ only in these numbers, so the JSX lives here once.
+// Back-facing unit sphere, additively blended over whatever is behind it.
 export default function GlowShell({
   shellRadius,
   coreRadius,
