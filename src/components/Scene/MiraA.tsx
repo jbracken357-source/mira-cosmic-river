@@ -2,6 +2,7 @@ import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { MiraA_Shader, Atmosphere_Shader } from '../../shaders/miraA';
+import { useBinaryStar } from '../../hooks';
 
 interface MiraAProps {
   position: [number, number, number];
@@ -14,6 +15,9 @@ export default function MiraA({ position, radius, turbulence, segments = 64 }: M
   const meshRef = useRef<THREE.Mesh>(null);
   const materialRef = useRef<THREE.ShaderMaterial>(null);
   const atmosphereRef = useRef<THREE.ShaderMaterial>(null);
+
+  // Where the real clock has Mira A in its ~332 day pulsation cycle.
+  const brightness = useBinaryStar((state) => state.sky.brightness);
 
   // Convert hue to color — deep red giant tones
   // Product direction: core #ff3d00, surface #ff8a50
@@ -34,6 +38,11 @@ export default function MiraA({ position, radius, turbulence, segments = 64 }: M
       // Pass computed colors to shader (overrides hardcoded defaults)
       materialRef.current.uniforms.uColorCore.value = colors.colorCore;
       materialRef.current.uniforms.uColorSurface.value = colors.colorSurface;
+      materialRef.current.uniforms.uBrightness.value = brightness;
+    }
+
+    if (atmosphereRef.current) {
+      atmosphereRef.current.uniforms.uBrightness.value = brightness;
     }
 
     // Subtle rotation for surface animation
@@ -76,7 +85,7 @@ export default function MiraA({ position, radius, turbulence, segments = 64 }: M
         <meshBasicMaterial
           color={colors.atmosphere}
           transparent
-          opacity={0.04 + turbulence * 0.03}
+          opacity={(0.04 + turbulence * 0.03) * (0.5 + brightness)}
           side={THREE.BackSide}
           blending={THREE.AdditiveBlending}
         />

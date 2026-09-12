@@ -86,6 +86,7 @@ export const MiraA_Shader = {
     uColorSurface: { value: new THREE.Color('#0d0200') },
     uTurbulence: { value: 0.3 },
     uNoiseAmp: { value: 0.35 },
+    uBrightness: { value: 0.5 },
   },
   vertexShader: `
     varying vec2 vUv;
@@ -125,6 +126,7 @@ export const MiraA_Shader = {
     uniform vec3 uColorCore;
     uniform vec3 uColorSurface;
     uniform float uTime;
+    uniform float uBrightness;
 
     void main() {
       // Fresnel effect for limb darkening
@@ -144,6 +146,12 @@ export const MiraA_Shader = {
       // Edge glow (subtle, not bright)
       color += vec3(0.6, 0.2, 0.05) * fresnel * 0.15;
 
+      // The 8s pulse above is decorative. uBrightness is the real-clock pulsation phase, and
+      // it is the only thing that differs between tonight and next month: a hot, near-white
+      // star at maximum against a dim deep red one at minimum.
+      vec3 skyTint = mix(vec3(0.55, 0.10, 0.02), vec3(1.18, 0.98, 0.85), uBrightness);
+      color *= skyTint * (0.58 + 0.62 * uBrightness);
+
       gl_FragColor = vec4(color, 1.0);
     }
   `,
@@ -153,6 +161,7 @@ export const MiraA_Shader = {
 export const Atmosphere_Shader = {
   uniforms: {
     uColor: { value: new THREE.Color('#331100') },
+    uBrightness: { value: 0.5 },
   },
   vertexShader: `
     varying vec3 vNormal;
@@ -164,9 +173,12 @@ export const Atmosphere_Shader = {
   fragmentShader: `
     varying vec3 vNormal;
     uniform vec3 uColor;
+    uniform float uBrightness;
     void main() {
       float intensity = pow(0.6 - dot(vNormal, vec3(0, 0, 1.0)), 4.0);
-      gl_FragColor = vec4(uColor, intensity * 0.3);
+      // The halo shrinks with the star at minimum rather than vanishing, so Mira A stays
+      // findable in the frame at every point of the cycle.
+      gl_FragColor = vec4(uColor, intensity * (0.08 + 0.32 * uBrightness));
     }
   `,
 };
