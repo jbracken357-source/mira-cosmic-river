@@ -33,7 +33,13 @@ test.describe('star clock', () => {
     expect(state.pulsationPhase).toBe(0);
     expect(state.brightness).toBe(1);
     expect(state.colorShift).toBe(1);
-    expect(state.daysToMaximum).toBe(MIRA_PERIOD_DAYS);
+  });
+
+  test('shifts colour ahead of brightness rather than restating it', () => {
+    // Half a rise before maximum: still dim, but already well past the red end.
+    const rising = skyStateAt(new Date(MIRA_MAXIMUM_EPOCH_MS - (MIRA_RISE_DAYS * DAY_MS) / 2));
+
+    expect(rising.colorShift).toBeGreaterThan(rising.brightness);
   });
 
   test('is brightest at maximum and dimmest at minimum', () => {
@@ -49,9 +55,15 @@ test.describe('star clock', () => {
     expect(Math.min(...cycle.map((s) => s.brightness))).toBeLessThan(0.001);
   });
 
-  test('takes about the documented 100 days to rise from minimum back to maximum', () => {
-    // The asymmetry the curve encodes: a ~100 day climb against a ~232 day fall.
-    expect(skyStateAt(new Date(MINIMUM_EPOCH_MS)).daysToMaximum).toBeCloseTo(MIRA_RISE_DAYS, 3);
+  test('spends about 100 days climbing and 232 falling', () => {
+    // The asymmetry the curve encodes: minimum sits exactly one rise-length before the anchor
+    // comes round again.
+    const atMinimum = skyStateAt(new Date(MINIMUM_EPOCH_MS));
+
+    expect(atMinimum.pulsationPhase).toBeCloseTo(
+      (MIRA_PERIOD_DAYS - MIRA_RISE_DAYS) / MIRA_PERIOD_DAYS,
+      3,
+    );
   });
 
   test('advances the pulsation phase monotonically with time', () => {

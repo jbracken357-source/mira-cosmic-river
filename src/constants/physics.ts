@@ -8,7 +8,7 @@ export const PHYSICS = {
     mass: 1.2,             // Solar masses
     temperature: 3000,     // Kelvin (cool red giant)
     luminosity: 9000,      // Solar luminosities (variable)
-    pulsationPeriod: 332,  // Days (real period)
+    pulsationPeriod: 331.96, // Days (mean period)
     variabilityRange: [2.0, 10.0], // Visual magnitude range
   },
 

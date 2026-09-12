@@ -87,6 +87,7 @@ export const MiraA_Shader = {
     uTurbulence: { value: 0.3 },
     uNoiseAmp: { value: 0.35 },
     uBrightness: { value: 0.5 },
+    uColorShift: { value: 0.5 },
   },
   vertexShader: `
     varying vec2 vUv;
@@ -127,6 +128,7 @@ export const MiraA_Shader = {
     uniform vec3 uColorSurface;
     uniform float uTime;
     uniform float uBrightness;
+    uniform float uColorShift;
 
     void main() {
       // Fresnel effect for limb darkening
@@ -146,10 +148,10 @@ export const MiraA_Shader = {
       // Edge glow (subtle, not bright)
       color += vec3(0.6, 0.2, 0.05) * fresnel * 0.15;
 
-      // The 8s pulse above is decorative. uBrightness is the real-clock pulsation phase, and
-      // it is the only thing that differs between tonight and next month: a hot, near-white
-      // star at maximum against a dim deep red one at minimum.
-      vec3 skyTint = mix(vec3(0.55, 0.10, 0.02), vec3(1.18, 0.98, 0.85), uBrightness);
+      // The 8s pulse above is decorative. uBrightness and uColorShift are the real-clock
+      // pulsation, and they are the only thing that differs between tonight and next month: a
+      // hot, near-white star at maximum against a dim deep red one at minimum.
+      vec3 skyTint = mix(vec3(0.55, 0.10, 0.02), vec3(1.18, 0.98, 0.85), uColorShift);
       color *= skyTint * (0.58 + 0.62 * uBrightness);
 
       gl_FragColor = vec4(color, 1.0);

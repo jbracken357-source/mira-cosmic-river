@@ -20,8 +20,8 @@ export default defineConfig({
   },
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
-    // The star clock is a pure module: it needs neither a browser nor the dev server, so it
-    // runs in Node on its own rather than pulling in a unit runner.
+    // The star clock is pure, so it runs in Node with no browser and no unit runner of its
+    // own. (The shared dev server below still boots for the run as a whole.)
     { name: 'unit', testDir: './tests/unit' },
   ],
   webServer: {

@@ -61,6 +61,7 @@ src/
   components/Scene/   the 3D scene: stars, tail, stream, orbit, star field
   components/UI/      cinematic overlay, info cards, closing message
   constants/          palette, physics, timings, translations, quality tiers
+  lib/                the star clock: pure functions, no rendering
   shaders/            GLSL sources
   hooks/              store and device hooks
 tests/e2e/            Playwright specs (behaviour, not pixels)

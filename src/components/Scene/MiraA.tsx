@@ -16,8 +16,10 @@ export default function MiraA({ position, radius, turbulence, segments = 64 }: M
   const materialRef = useRef<THREE.ShaderMaterial>(null);
   const atmosphereRef = useRef<THREE.ShaderMaterial>(null);
 
-  // Where the real clock has Mira A in its ~332 day pulsation cycle.
+  // Where the real clock has Mira A in its ~332 day pulsation cycle: how bright it is, and
+  // how far its colour has already shifted toward its hottest.
   const brightness = useBinaryStar((state) => state.sky.brightness);
+  const colorShift = useBinaryStar((state) => state.sky.colorShift);
 
   // Convert hue to color — deep red giant tones
   // Product direction: core #ff3d00, surface #ff8a50
@@ -39,6 +41,7 @@ export default function MiraA({ position, radius, turbulence, segments = 64 }: M
       materialRef.current.uniforms.uColorCore.value = colors.colorCore;
       materialRef.current.uniforms.uColorSurface.value = colors.colorSurface;
       materialRef.current.uniforms.uBrightness.value = brightness;
+      materialRef.current.uniforms.uColorShift.value = colorShift;
     }
 
     if (atmosphereRef.current) {

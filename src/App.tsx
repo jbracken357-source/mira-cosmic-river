@@ -1,9 +1,8 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { Scene } from './components/Scene';
 import { CinematicOverlay, InfoCards, ClosingMessage } from './components/UI';
 import type { StarName } from './components/UI/InfoCards';
 import { useBinaryStar } from './hooks';
-import { currentSkyState, SKY_REFRESH_INTERVAL_MS } from './lib/starClock';
 import './App.css';
 
 export default function App() {
@@ -13,14 +12,6 @@ export default function App() {
   }, []);
 
   const sky = useBinaryStar((state) => state.sky);
-
-  // The store already holds a sky read at load. Keeping it fresh has to happen on a timer
-  // rather than during a render, because reading the clock is not pure.
-  useEffect(() => {
-    const refreshSky = () => useBinaryStar.getState().setSky(currentSkyState());
-    const timer = setInterval(refreshSky, SKY_REFRESH_INTERVAL_MS);
-    return () => clearInterval(timer);
-  }, []);
 
   return (
     <>
