@@ -1,15 +1,16 @@
 // Accretion disk shader for Mira B (white dwarf)
-// A thin glowing ring with a hot spot where the matter stream impacts.
+// A glowing ring with a hot spot where the matter stream impacts.
 //
-// The ring is described in normalised radius (0 at the star, 1 at the mesh edge) so the
-// geometry can be a plain unit circle and the mesh scale decides how big the disk is. Every
-// term here is O(1) per fragment.
+// The ring is described in normalised radius (0 at the star, 1 at the disk's outer edge), so the
+// geometry is a unit sphere squeezed into the disk's shape and the mesh scale decides how big
+// the disk is. Every term here is O(1) per fragment.
 
 import * as THREE from 'three';
+import { COLORS } from '../constants/colors';
 
-// Where the bright band sits and how wide the annulus is. Fractions of the mesh radius.
-// The ring is deliberately thin against its own radius: a fat donut hugging the star reads as
-// a glowing ball, not as a disk, however bright it is.
+// Where the bright band sits and how wide the annulus is. Fractions of the disk's outer radius.
+// The ring is deliberately thin against its own radius: a fat donut hugging the star reads as a
+// glowing ball, not as a disk, however bright it is.
 export const DISK_SHAPE = {
   inner: 0.5, // inner edge of the ring
   outer: 1.0, // outer edge of the ring
@@ -17,12 +18,13 @@ export const DISK_SHAPE = {
   bandWidth: 0.18,
 } as const;
 
-// The disk has to clear the bloom luminance threshold (0.9) to get any glow at all, so the
-// band is authored above 1.0 and the hot spot well above it.
+// The disk has to clear the bloom luminance threshold (0.9) to get any glow at all, so the band
+// is authored above 1.0 and the hot spot well above it. (Both faces of the shell contribute, so
+// these are lower than they would be for a single surface.)
 export const DISK_GAIN = {
-  ring: 1.75,
-  hotSpot: 2.3,
-  innerGlow: 0.4,
+  ring: 1.3,
+  hotSpot: 1.9,
+  innerGlow: 0.3,
 } as const;
 
 // Shader materials take their uniforms object by assignment rather than by cloning, so each
@@ -31,9 +33,9 @@ export function makeDiskUniforms(): Record<string, { value: unknown }> {
   return {
     uTime: { value: 0 },
     // Cool white-blue: the disk is the white dwarf's own accreted material, heated hard.
-    uColor: { value: new THREE.Color('#cfe0ff') },
+    uColor: { value: new THREE.Color(COLORS.ACCRETION_DISK) },
     // The stream coming off Mira A is the hottest thing here and lands white-hot.
-    uHotColor: { value: new THREE.Color('#fff0dc') },
+    uHotColor: { value: new THREE.Color(COLORS.ACCRETION_DISK_HOT) },
     uOpacity: { value: 1.0 },
     // Local angle (radians) of the matter stream's impact, set from the real A→B direction.
     uImpactAngle: { value: 0 },
@@ -48,28 +50,13 @@ export function makeDiskUniforms(): Record<string, { value: unknown }> {
 }
 
 export const AccretionDisk_Shader = {
-  uniforms: {
-    uTime: { value: 0 },
-    // Cool white-blue: the disk is the white dwarf's own accreted material, heated hard.
-    uColor: { value: new THREE.Color('#cfe0ff') },
-    // The stream coming off Mira A is the hottest thing here and lands white-hot.
-    uHotColor: { value: new THREE.Color('#fff0dc') },
-    uOpacity: { value: 1.0 },
-    // Local angle (radians) of the matter stream's impact, set from the real A→B direction.
-    uImpactAngle: { value: 0 },
-    uInner: { value: DISK_SHAPE.inner },
-    uOuter: { value: DISK_SHAPE.outer },
-    uBand: { value: DISK_SHAPE.band },
-    uBandWidth: { value: DISK_SHAPE.bandWidth },
-    uRingGain: { value: DISK_GAIN.ring },
-    uHotGain: { value: DISK_GAIN.hotSpot },
-    uInnerGlow: { value: DISK_GAIN.innerGlow },
-  },
   vertexShader: `
-    varying vec2 vPosition;
+    varying vec3 vPosition;
 
     void main() {
-      vPosition = position.xy;
+      // The unit sphere's equatorial plane is the disk; its radius across that plane is the
+      // normalised disk radius the fragment shader works in.
+      vPosition = position;
       gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
     }
   `,
@@ -87,11 +74,11 @@ export const AccretionDisk_Shader = {
     uniform float uHotGain;
     uniform float uInnerGlow;
 
-    varying vec2 vPosition;
+    varying vec3 vPosition;
 
     void main() {
-      float r = length(vPosition);
-      float angle = atan(vPosition.y, vPosition.x);
+      float r = length(vPosition.xz);
+      float angle = atan(vPosition.z, vPosition.x);
 
       // Ring profile: a soft inner edge, a bright mid band, a soft outer edge. The inner and
       // outer edges are what make this read as a ring rather than a filled disc.

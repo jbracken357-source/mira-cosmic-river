@@ -1,32 +1,26 @@
 import { useRef, useMemo } from 'react';
-import type { MutableRefObject } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { AccretionDisk_Shader, makeDiskUniforms } from '../../shaders/accretionDisk';
-import {
-  Atmosphere_Shader,
-  MIRA_B_CORONA,
-  makeAtmosphereUniforms,
-} from '../../shaders/miraA';
-
-type OrbitPositionsRef = MutableRefObject<{
-  primary: [number, number, number];
-  secondary: [number, number, number];
-}>;
+import { MIRA_B_CORONA } from '../../shaders/miraA';
+import { COLORS } from '../../constants';
+import type { OrbitPositions } from '../../types';
+import GlowShell from './GlowShell';
+import type { MutableRefObject } from 'react';
 
 interface MiraBProps {
   position: [number, number, number];
   radius: number;
   segments?: number;
   /** Live orbital positions, so the hot spot can sit where the stream actually lands. */
-  positionsRef?: OrbitPositionsRef;
+  positionsRef?: MutableRefObject<OrbitPositions>;
 }
 
 // Custom shader for Mira B - White Dwarf with intense core glow
 const miraBShaderMaterial = {
   uniforms: {
     time: { value: 0 },
-    color: { value: new THREE.Color('#e0e7ff') },
+    color: { value: new THREE.Color(COLORS.MIRA_B_CORE) },
     intensity: { value: 1.7 },
   },
   vertexShader: `
@@ -73,12 +67,17 @@ const miraBShaderMaterial = {
 // The disk plane is tilted towards the viewer rather than lying in the 30-degree-inclined
 // orbital plane. Those are the same plane as far as the physics is concerned, but the explore
 // camera sits within a few degrees of the orbital plane, where a coplanar disk is edge-on and
-// collapses to a smear. A third of a radian keeps the ring an unmistakable ellipse from every
-// angle the camera actually reaches.
+// collapses to a smear. A ninth of a pi keeps the ring an unmistakable ellipse from the
+// angles the camera actually reaches.
 const DISK_TILT = Math.PI / 9;
 // Outer radius of the disk, in white dwarf radii. Far enough out that the ring clears the
 // star's own bloom — a disk you cannot see past the star is not a disk.
 const DISK_SCALE = 5.5;
+// The disk is a puff, not a mathematical plane: the camera's azimuth is unrestricted, and a
+// flat ring is exactly edge-on at two points of every revolution, where it degenerates into a
+// one-pixel bar. A tenth of the radius of vertical thickness means the worst case is still a
+// lens with a readable height to it. Real disks flared like this are just as thin.
+const DISK_THICKNESS = 0.16;
 
 export default function MiraB({ position, radius, segments = 64, positionsRef }: MiraBProps) {
   const meshRef = useRef<THREE.Mesh>(null);
@@ -87,9 +86,9 @@ export default function MiraB({ position, radius, segments = 64, positionsRef }:
   const diskMaterialRef = useRef<THREE.ShaderMaterial>(null);
 
   // White dwarf: hot blue-white (#e0e7ff per product direction)
-  const color = useMemo(() => new THREE.Color('#e0e7ff'), []);
+  const color = useMemo(() => new THREE.Color(COLORS.MIRA_B_CORE), []);
 
-  const diskScale = radius * DISK_SCALE;
+  const diskRadius = radius * DISK_SCALE;
 
   useFrame((state) => {
     const time = state.clock.elapsedTime;
@@ -106,16 +105,17 @@ export default function MiraB({ position, radius, segments = 64, positionsRef }:
     if (diskMaterialRef.current) {
       diskMaterialRef.current.uniforms.uTime.value = time;
 
-      // Aim the hot spot at Mira A. The stream arrives from that direction, and because the
-      // model matrix only ever carries a translation this is a rotation of the world-space
-      // A→B vector into the disk's own tilted plane.
+      // Aim the hot spot at Mira A. The stream arrives from that direction; the disk only ever
+      // carries a rotation about X, so the world-space A→B vector rotates into the disk's own
+      // tilted plane by hand: local X is world X, and local Z is the plane's second basis
+      // vector (0, -sin t, cos t).
       const live = positionsRef?.current;
       if (live) {
         const wx = live.primary[0] - live.secondary[0];
         const wy = live.primary[1] - live.secondary[1];
         const wz = live.primary[2] - live.secondary[2];
-        const localY = wy * Math.cos(DISK_TILT) + wz * Math.sin(DISK_TILT);
-        diskMaterialRef.current.uniforms.uImpactAngle.value = Math.atan2(localY, wx);
+        const localZ = -wy * Math.sin(DISK_TILT) + wz * Math.cos(DISK_TILT);
+        diskMaterialRef.current.uniforms.uImpactAngle.value = Math.atan2(localZ, wx);
       }
     }
 
@@ -140,26 +140,15 @@ export default function MiraB({ position, radius, segments = 64, positionsRef }:
 
       {/* Corona: one soft shell instead of stacked flat discs — a white dwarf is a hot point
           with a tight halo, not a grey plate. */}
-      <mesh scale={MIRA_B_CORONA.scale}>
-        <sphereGeometry args={[radius, 32, 24]} />
-        <shaderMaterial
-          ref={coronaRef}
-          vertexShader={Atmosphere_Shader.vertexShader}
-          fragmentShader={Atmosphere_Shader.fragmentShader}
-          uniforms={makeAtmosphereUniforms({
-            color: MIRA_B_CORONA.color,
-            shellRadius: radius * MIRA_B_CORONA.scale,
-            coreRadius: radius,
-            opacity: MIRA_B_CORONA.opacity,
-            falloff: MIRA_B_CORONA.falloff,
-            pulseAmp: MIRA_B_CORONA.pulseAmp,
-          })}
-          side={THREE.BackSide}
-          blending={THREE.AdditiveBlending}
-          transparent={true}
-          depthWrite={false}
-        />
-      </mesh>
+      <GlowShell
+        materialRef={coronaRef}
+        shellRadius={radius * MIRA_B_CORONA.scale}
+        coreRadius={radius}
+        color={MIRA_B_CORONA.color}
+        opacity={MIRA_B_CORONA.opacity}
+        falloff={MIRA_B_CORONA.falloff}
+        pulseAmp={MIRA_B_CORONA.pulseAmp}
+      />
 
       {/* Point light - white dwarfs are bright but small */}
       <pointLight
@@ -169,10 +158,10 @@ export default function MiraB({ position, radius, segments = 64, positionsRef }:
         decay={2}
       />
 
-      {/* Accretion disk. Unit geometry: the shader works in normalised radius and the scale
-          here is the disk's outer radius. */}
-      <mesh rotation-x={DISK_TILT} scale={diskScale}>
-        <circleGeometry args={[1, 96]} />
+      {/* Accretion disk: a unit sphere flattened into the disk's shape, so the shader can work
+          in normalised radius and the mesh scale is the disk's outer radius and half-thickness. */}
+      <mesh rotation-x={DISK_TILT} scale={[diskRadius, diskRadius * DISK_THICKNESS, diskRadius]}>
+        <sphereGeometry args={[1, 96, 24]} />
         <shaderMaterial
           ref={diskMaterialRef}
           vertexShader={AccretionDisk_Shader.vertexShader}

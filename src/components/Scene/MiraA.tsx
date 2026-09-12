@@ -3,11 +3,12 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import {
   MiraA_Shader,
-  Atmosphere_Shader,
   MIRA_A_ATMOSPHERE,
-  makeAtmosphereUniforms,
+  MIRA_A_PULSE_AMPLITUDE,
 } from '../../shaders/miraA';
+import { COLORS } from '../../constants';
 import { useBinaryStar } from '../../hooks';
+import GlowShell from './GlowShell';
 
 interface MiraAProps {
   position: [number, number, number];
@@ -27,11 +28,10 @@ export default function MiraA({ position, radius, turbulence, segments = 64 }: M
   const brightness = useBinaryStar((state) => state.sky.brightness);
   const colorShift = useBinaryStar((state) => state.sky.colorShift);
 
-  // Convert hue to color — deep red giant tones
-  // Product direction: core #ff3d00, surface #ff8a50
+  // Deep red giant tones, per the palette: core #ff3d00, surface #ff8a50.
   const colors = useMemo(() => {
-    const colorCore = new THREE.Color('#ff3d00');
-    const colorSurface = new THREE.Color('#ff8a50');
+    const colorCore = new THREE.Color(COLORS.MIRA_A_CORE);
+    const colorSurface = new THREE.Color(COLORS.MIRA_A_SURFACE);
 
     return { colorCore, colorSurface };
   }, []);
@@ -76,49 +76,27 @@ export default function MiraA({ position, radius, turbulence, segments = 64 }: M
         />
       </mesh>
 
-      {/* Atmospheric halo: dense inner layer */}
-      <mesh scale={MIRA_A_ATMOSPHERE.mid.scale}>
-        <sphereGeometry args={[radius, 32, 24]} />
-        <shaderMaterial
-          ref={innerAtmosphereRef}
-          vertexShader={Atmosphere_Shader.vertexShader}
-          fragmentShader={Atmosphere_Shader.fragmentShader}
-          uniforms={makeAtmosphereUniforms({
-            color: MIRA_A_ATMOSPHERE.mid.color,
-            shellRadius: radius * MIRA_A_ATMOSPHERE.mid.scale,
-            coreRadius: radius,
-            opacity: MIRA_A_ATMOSPHERE.mid.opacity,
-            falloff: MIRA_A_ATMOSPHERE.mid.falloff,
-            pulseAmp: 0.09,
-          })}
-          side={THREE.BackSide}
-          blending={THREE.AdditiveBlending}
-          transparent={true}
-          depthWrite={false}
-        />
-      </mesh>
-
-      {/* Atmospheric halo: wide, thin outer haze that gives the star its size on screen */}
-      <mesh scale={MIRA_A_ATMOSPHERE.outer.scale}>
-        <sphereGeometry args={[radius, 32, 24]} />
-        <shaderMaterial
-          ref={outerAtmosphereRef}
-          vertexShader={Atmosphere_Shader.vertexShader}
-          fragmentShader={Atmosphere_Shader.fragmentShader}
-          uniforms={makeAtmosphereUniforms({
-            color: MIRA_A_ATMOSPHERE.outer.color,
-            shellRadius: radius * MIRA_A_ATMOSPHERE.outer.scale,
-            coreRadius: radius,
-            opacity: MIRA_A_ATMOSPHERE.outer.opacity,
-            falloff: MIRA_A_ATMOSPHERE.outer.falloff,
-            pulseAmp: 0.09,
-          })}
-          side={THREE.BackSide}
-          blending={THREE.AdditiveBlending}
-          transparent={true}
-          depthWrite={false}
-        />
-      </mesh>
+      {/* Atmosphere, as two shells a viewer reads as one volume: a dense layer hugging the
+          photosphere and a wide thin haze that gives the star its reach on screen. Both breathe
+          with the star's own radius pulse, so the halo never detaches from the limb. */}
+      <GlowShell
+        materialRef={innerAtmosphereRef}
+        shellRadius={radius * MIRA_A_ATMOSPHERE.mid.scale}
+        coreRadius={radius}
+        color={MIRA_A_ATMOSPHERE.mid.color}
+        opacity={MIRA_A_ATMOSPHERE.mid.opacity}
+        falloff={MIRA_A_ATMOSPHERE.mid.falloff}
+        pulseAmp={MIRA_A_PULSE_AMPLITUDE}
+      />
+      <GlowShell
+        materialRef={outerAtmosphereRef}
+        shellRadius={radius * MIRA_A_ATMOSPHERE.outer.scale}
+        coreRadius={radius}
+        color={MIRA_A_ATMOSPHERE.outer.color}
+        opacity={MIRA_A_ATMOSPHERE.outer.opacity}
+        falloff={MIRA_A_ATMOSPHERE.outer.falloff}
+        pulseAmp={MIRA_A_PULSE_AMPLITUDE}
+      />
 
       {/* Point light for scene illumination */}
       <pointLight

@@ -4,7 +4,6 @@ import { OrbitControls as DreiOrbitControls } from '@react-three/drei';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import { useBinaryStar, useMobile } from '../../hooks';
 import { COLORS, PHYSICS, calculateOrbitalPosition, CINEMATIC, CAMERA, resolveQualityTier } from '../../constants';
-import { Atmosphere_Shader, makeAtmosphereUniforms } from '../../shaders/miraA';
 import * as THREE from 'three';
 import type { StarName } from '../UI/InfoCards';
 import MiraA from './MiraA';
@@ -13,6 +12,7 @@ import MiraTail from './MiraTail';
 import OrbitRing from './OrbitRing';
 import MaterialStream from './MaterialStream';
 import StarField from './StarField';
+import GlowShell from './GlowShell';
 
 interface SceneProps {
   onSelectStar: (star: StarName | null) => void;
@@ -273,21 +273,11 @@ function SceneContent({ onSelectStar }: { onSelectStar: (star: StarName | null) 
           shell reads as a flat disc lying over the stars, which is the opposite of depth. */}
       {cinematicPhase === 'explore' && (
         <mesh position={[-6, 1, 4]}>
-          <sphereGeometry args={[5, 32, 24]} />
-          <shaderMaterial
-            vertexShader={Atmosphere_Shader.vertexShader}
-            fragmentShader={Atmosphere_Shader.fragmentShader}
-            uniforms={makeAtmosphereUniforms({
-              color: '#ff6b35',
-              shellRadius: 5,
-              coreRadius: 0,
-              opacity: 0.042,
-              falloff: 2.4,
-            })}
-            side={THREE.BackSide}
-            blending={THREE.AdditiveBlending}
-            transparent={true}
-            depthWrite={false}
+          <GlowShell
+            shellRadius={5}
+            color={COLORS.STELLAR_ORANGE}
+            opacity={0.042}
+            falloff={2.4}
           />
         </mesh>
       )}

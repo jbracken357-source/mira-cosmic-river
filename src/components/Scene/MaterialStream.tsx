@@ -3,11 +3,9 @@ import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { COLORS } from '../../constants';
+import type { OrbitPositions } from '../../types';
 
-export type OrbitPositionsRef = MutableRefObject<{
-  primary: [number, number, number];
-  secondary: [number, number, number];
-}>;
+export type OrbitPositionsRef = MutableRefObject<OrbitPositions>;
 
 interface MaterialStreamProps {
   positionsRef: OrbitPositionsRef;

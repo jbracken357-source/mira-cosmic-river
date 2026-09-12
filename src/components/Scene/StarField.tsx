@@ -1,6 +1,7 @@
 import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { SKY_SPECTRAL } from '../../constants/colors';
 
 interface StarFieldProps {
   count?: number;
@@ -23,28 +24,32 @@ function mulberry32(seed: number) {
   };
 }
 
-// Spectral classes with plausible colours and weights. M and K dwarfs really do outnumber
-// everything else; the hot blue end is rare and that rarity is what makes it read as a real
-// sky rather than a colour-wheel decoration. Weights sum to 1.
-const SPECTRAL: Array<{ rgb: [number, number, number]; weight: number }> = [
-  { rgb: [0.62, 0.74, 1.0], weight: 0.06 }, // B - blue-white
-  { rgb: [0.76, 0.84, 1.0], weight: 0.11 }, // A - white-blue
-  { rgb: [0.94, 0.95, 1.0], weight: 0.13 }, // F - white
-  { rgb: [1.0, 0.97, 0.87], weight: 0.2 }, // G - yellow
-  { rgb: [1.0, 0.85, 0.62], weight: 0.26 }, // K - orange
-  { rgb: [1.0, 0.68, 0.47], weight: 0.24 }, // M - red-orange
-];
+// Pick one entry out of a weighted list with a single deterministic roll. The weights are read
+// in order, so the caller's list has to be in the order it wants the ranges to occupy.
+function pickWeighted<T extends { weight: number }>(roll: number, entries: readonly T[]): T {
+  let cumulative = 0;
+  for (const entry of entries) {
+    cumulative += entry.weight;
+    if (roll <= cumulative) return entry;
+  }
+  return entries[entries.length - 1];
+}
 
 // Three shells rather than one cloud. Distance does the depth work: the near shell is sparse,
 // large, saturated and barely twinkles; the far shell is small, dim and reddened by the dust
 // it is seen through, which is the same cue that makes a photograph of a sky look deep.
+// `farShare` is deliberately not the largest share: the far shell is the haze, not the subject.
 const LAYERS = {
-  near: { share: 0.26, min: 42, max: 70, sizeMin: 0.55, sizeMax: 2.1, brightMin: 0.62, brightMax: 1.0, redden: 0.0 },
-  mid: { share: 0.44, min: 70, max: 108, sizeMin: 0.35, sizeMax: 1.35, brightMin: 0.38, brightMax: 0.78, redden: 0.45 },
-  far: { share: 0.3, min: 108, max: 158, sizeMin: 0.25, sizeMax: 0.85, brightMin: 0.16, brightMax: 0.45, redden: 1.0 },
+  near: { share: 0.34, min: 42, max: 70, sizeMin: 0.55, sizeMax: 2.1, brightMin: 0.62, brightMax: 1.0, redden: 0.0 },
+  mid: { share: 0.4, min: 70, max: 108, sizeMin: 0.35, sizeMax: 1.35, brightMin: 0.38, brightMax: 0.78, redden: 0.35 },
+  far: { share: 0.26, min: 108, max: 158, sizeMin: 0.25, sizeMax: 0.85, brightMin: 0.16, brightMax: 0.45, redden: 1.0 },
 } as const;
 
 type LayerName = keyof typeof LAYERS;
+const LAYER_LIST = (Object.keys(LAYERS) as LayerName[]).map((name) => ({
+  name,
+  weight: LAYERS[name].share,
+}));
 
 // Custom twinkling star field - replaces DreiStars
 // Each star has its own colour temperature, depth, brightness and twinkle rhythm.
@@ -62,16 +67,8 @@ export default function StarField({ count = 5000 }: StarFieldProps) {
 
     for (let i = 0; i < count; i++) {
       // Which shell this star belongs to.
-      const layerRoll = rand();
-      let layerName: LayerName = 'mid';
-      let cumulativeShare = 0;
-      for (const name of Object.keys(LAYERS) as LayerName[]) {
-        cumulativeShare += LAYERS[name].share;
-        if (layerRoll <= cumulativeShare) {
-          layerName = name;
-          break;
-        }
-      }
+      // Which shell this star belongs to.
+      const layerName = pickWeighted(rand(), LAYER_LIST).name;
       const layer = LAYERS[layerName];
 
       // Spherical distribution inside the shell.
@@ -84,16 +81,7 @@ export default function StarField({ count = 5000 }: StarFieldProps) {
       positions[i * 3 + 2] = r * Math.cos(phi);
 
       // Colour temperature, then dust reddening for the far shell.
-      const roll = rand();
-      let cumulative = 0;
-      let rgb = SPECTRAL[0].rgb;
-      for (const spectral of SPECTRAL) {
-        cumulative += spectral.weight;
-        if (roll <= cumulative) {
-          rgb = spectral.rgb;
-          break;
-        }
-      }
+      const rgb = pickWeighted(rand(), SKY_SPECTRAL).rgb;
       const redden = layer.redden;
       const variation = 0.06;
       const tint = [

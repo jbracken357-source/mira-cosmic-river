@@ -2,12 +2,14 @@
 // Ported from mira-demo2/Mira-Demo2/components/MiraSystem.tsx
 
 import * as THREE from 'three';
+import { COLORS } from '../constants/colors';
 
 // One decorative pulsation rate for the whole star: the surface radius, the surface colour and
 // the atmosphere all breathe together, or the halo detaches from the star. (Shader strings are
 // built at module load, so these have to be declared before the shaders that interpolate them.)
 const PULSE_RATE = 0.785; // ~8s cycle
-const PULSE_AMPLITUDE = 0.09; // 9% of the radius come and gone each cycle
+/** Radius pulse of Mira A's decorative cycle. Exported so MiraA.tsx's shells breathe with it. */
+export const MIRA_A_PULSE_AMPLITUDE = 0.09; // 9% of the radius come and gone each cycle
 
 // Noise GLSL utility - simplex noise for shader surface variation
 export const NOISE_GLSL = `
@@ -123,7 +125,7 @@ export const MiraA_Shader = {
 
       // Radius pulsation. Visible: the viewer has to see the star breathe, so the swing is
       // close to a tenth of the radius rather than a hairline.
-      float radiusPulse = 1.0 + ${PULSE_AMPLITUDE} * sin(uTime * ${PULSE_RATE});
+      float radiusPulse = 1.0 + ${MIRA_A_PULSE_AMPLITUDE} * sin(uTime * ${PULSE_RATE});
       // Granulation is displacement, not the silhouette: keeping it well under the pulse
       // amplitude leaves a round limb to darken instead of a wobbling potato.
       vec3 newPos = position * radiusPulse + normal * (vNoise * noiseAmp * 0.38);
@@ -147,11 +149,13 @@ export const MiraA_Shader = {
       // a uniformly filled circle.
       float mu = clamp(abs(normalize(vNormal).z), 0.0, 1.0);
 
-      // Pulsation: the decorative cycle swings brightness hard and hue with it — deeper red at
-      // the trough, hotter and less saturated at the peak.
+      // Pulsation: the decorative cycle swings brightness hard, and the hue swings with it —
+      // deep red at the trough, a hotter red-orange at the peak. Both ends stay inside the red
+      // end of the palette: the star is a cool red giant, and a peak that reads pink or salmon
+      // is a bug, not a highlight.
       float pulsePhase = sin(uTime * ${PULSE_RATE}) * 0.5 + 0.5;
-      vec3 dimColor = mix(uColorCore, uColorSurface, 0.2) * 0.5;
-      vec3 hotColor = mix(uColorSurface, vec3(1.0, 0.86, 0.68), 0.45) * 1.3;
+      vec3 dimColor = mix(uColorCore, uColorSurface, 0.02) * 0.42;
+      vec3 hotColor = mix(uColorCore, uColorSurface, 0.1) * 1.25;
       vec3 pulseColor = mix(dimColor, hotColor, pulsePhase);
 
       // Granulation mottles the photosphere, but the deep core colour stays in the mix: this
@@ -180,7 +184,12 @@ export const MiraA_Shader = {
 export function makeAtmosphereUniforms(overrides: {
   color: THREE.Color | string;
   shellRadius: number;
-  coreRadius: number;
+  /**
+   * Radius of the star inside the shell. Omit for a shell with nothing to occlude — a haze in
+   * open space — where the glow is then thickest at the centre of the shell rather than
+   * building towards a silhouette it does not have.
+   */
+  coreRadius?: number;
   opacity: number;
   falloff: number;
   pulseAmp?: number;
@@ -192,7 +201,7 @@ export function makeAtmosphereUniforms(overrides: {
     uOpacity: { value: overrides.opacity },
     uFalloff: { value: overrides.falloff },
     uShellRadius: { value: overrides.shellRadius },
-    uCoreRadius: { value: overrides.coreRadius },
+    uCoreRadius: { value: overrides.coreRadius ?? 0 },
     uPulseAmp: { value: overrides.pulseAmp ?? 0 },
   };
 }
@@ -202,8 +211,8 @@ export function makeAtmosphereUniforms(overrides: {
 // exponential rate at which each shell's glow dies away between the limb and the shell edge —
 // a low rate for the wide haze, a high one for the dense layer.
 export const MIRA_A_ATMOSPHERE = {
-  mid: { scale: 1.4, opacity: 0.46, falloff: 2.4, color: '#ff5a1e' },
-  outer: { scale: 2.35, opacity: 0.3, falloff: 1.7, color: '#c22a05' },
+  mid: { scale: 1.4, opacity: 0.46, falloff: 2.4, color: COLORS.MIRA_A_ATMOSPHERE_DENSE },
+  outer: { scale: 2.35, opacity: 0.3, falloff: 1.7, color: COLORS.MIRA_A_ATMOSPHERE_HAZE },
 } as const;
 
 // Mira B's corona: same shader, white dwarf colours, a much tighter shell. Kept small on
@@ -212,29 +221,19 @@ export const MIRA_B_CORONA = {
   scale: 1.7,
   opacity: 0.26,
   falloff: 1.7,
-  color: '#dbe6ff',
+  color: COLORS.MIRA_B_CORONA,
   pulseAmp: 0.015,
 } as const;
 
-// Glow shell shader, shared by Mira A's atmosphere and Mira B's corona.
+// Glow shell shader, shared by Mira A's atmosphere, Mira B's corona and the tail's haze. The
+// uniforms come from makeAtmosphereUniforms — there are no defaults here to drift out of step
+// with it — and GlowShell renders the geometry.
 //
 // A single shell cannot be a volume, but it can fake one: every fragment works out which
 // sight-line it sits on, and how far along the shell that line passes. The glow is thickest
 // right at the star's limb — the longest path through the gas — and dies away exponentially
 // out to the shell's edge, so the halo has a wide, soft falloff instead of a rim.
 export const Atmosphere_Shader = {
-  uniforms: {
-    uColor: { value: new THREE.Color('#ff5a1e') },
-    uBrightness: { value: 0.5 },
-    uTime: { value: 0 },
-    uOpacity: { value: 0.46 },
-    uFalloff: { value: 2.4 },
-    // Radii in view-space units (shell radius, occluding star radius).
-    uShellRadius: { value: 3.5 },
-    uCoreRadius: { value: 2.5 },
-    // Radius pulse of the star the shell wraps (0 disables it).
-    uPulseAmp: { value: PULSE_AMPLITUDE },
-  },
   vertexShader: `
     varying vec3 vViewPos;
     varying vec3 vCentre;
