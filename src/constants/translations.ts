@@ -23,6 +23,7 @@ export const TRANSLATIONS = {
     // UI
     timeSpeed: 'Time Speed',
     interactionHint: 'Drag to Rotate · Scroll to Zoom',
+    interactionHintMobile: 'Drag to Rotate · Pinch to Zoom',
     replayOpening: 'Full cinematic',
     tailHint: 'Find her tail',
     tailFound: 'You found her tail.',
@@ -52,6 +53,7 @@ export const TRANSLATIONS = {
     // UI
     timeSpeed: '时间速度',
     interactionHint: '拖拽旋转 · 滚轮缩放',
+    interactionHintMobile: '拖拽旋转 · 双指缩放',
     replayOpening: '完整开场',
     tailHint: '去找她的尾巴',
     tailFound: '你找到了她的尾巴。',

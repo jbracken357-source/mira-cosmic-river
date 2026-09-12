@@ -2,7 +2,8 @@ import { useRef, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls as DreiOrbitControls } from '@react-three/drei';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
-import { useBinaryStar, useMobile } from '../../hooks';
+import { useReducedMotion } from 'framer-motion';
+import { useBinaryStar } from '../../hooks';
 import { COLORS, PHYSICS, calculateOrbitalPosition, CINEMATIC, CAMERA, TRANSITIONS, TRANSLATIONS, resolveQualityTier } from '../../constants';
 import * as THREE from 'three';
 import type { StarName } from '../UI/InfoCards';
@@ -52,16 +53,21 @@ function clamp01(v: number): number {
   return Math.max(0, Math.min(1, v));
 }
 
-function SceneContent({ onSelectStar }: { onSelectStar: (star: StarName | null) => void }) {
+function SceneContent({
+  onSelectStar,
+  reduceMotion,
+}: {
+  onSelectStar: (star: StarName | null) => void;
+  reduceMotion: boolean;
+}) {
   const timeSpeed = useBinaryStar((state) => state.parameters.timeSpeed);
   const cinematicPhase = useBinaryStar((state) => state.cinematicPhase);
   const epilogueVisible = useBinaryStar((state) => state.epilogueVisible);
   const setCinematicPhase = useBinaryStar((state) => state.setCinematicPhase);
   const setCinematicTime = useBinaryStar((state) => state.setCinematicTime);
   const setIntroComplete = useBinaryStar((state) => state.setIntroComplete);
-  const isMobile = useMobile();
   const tier = resolveQualityTier();
-  const lod = tier === 'low' ? LOD.low : isMobile ? LOD.mobile : LOD.desktop;
+  const lod = tier === 'low' ? LOD.low : tier === 'mid' ? LOD.mobile : LOD.desktop;
 
   const timeRef = useRef(0);
   const cinematicStartRef = useRef(0);
@@ -125,7 +131,7 @@ function SceneContent({ onSelectStar }: { onSelectStar: (star: StarName | null) 
           exploreAppliedRef.current = true;
         }
       }
-      if (epilogueVisible) {
+      if (epilogueVisible && !reduceMotion) {
         const controls = orbitControlsRef.current;
         if (!closingArmed.current) {
           closingFromPos.current.copy(camera.position);
@@ -188,42 +194,57 @@ function SceneContent({ onSelectStar }: { onSelectStar: (star: StarName | null) 
           setCinematicPhase('tail-reveal');
         }
 
-        let camPos: [number, number, number];
-        let camFov: number;
-
-        if (t < CINEMATIC.STARS_APPEAR) {
-          camPos = CAMERA.CLOSE.position;
-          camFov = CAMERA.CLOSE.fov;
-        } else if (t < CINEMATIC.PULL_BACK_START) {
-          camPos = CAMERA.CLOSE.position;
-          camFov = CAMERA.CLOSE.fov;
-        } else if (t < CINEMATIC.PULL_BACK_END) {
-          const pullT = clamp01((t - CINEMATIC.PULL_BACK_START) / (CINEMATIC.PULL_BACK_END - CINEMATIC.PULL_BACK_START));
-          const eased = easeInOutCubic(pullT);
-          camPos = [
-            THREE.MathUtils.lerp(CAMERA.CLOSE.position[0], CAMERA.FAR.position[0], eased),
-            THREE.MathUtils.lerp(CAMERA.CLOSE.position[1], CAMERA.FAR.position[1], eased),
-            THREE.MathUtils.lerp(CAMERA.CLOSE.position[2], CAMERA.FAR.position[2], eased),
-          ];
-          camFov = THREE.MathUtils.lerp(CAMERA.FOV_START, CAMERA.FOV_END, eased);
-        } else {
-          camPos = CAMERA.FAR.position;
-          camFov = CAMERA.FOV_END;
-        }
-
-        camera.position.set(camPos[0], camPos[1], camPos[2]);
-        camera.fov = camFov;
-        camera.updateProjectionMatrix();
-
-        if (t >= CINEMATIC.TAIL_REVEAL_START) {
-          const lookT = clamp01((t - CINEMATIC.TAIL_REVEAL_START) / (CINEMATIC.TAIL_FULL - CINEMATIC.TAIL_REVEAL_START));
+        if (reduceMotion) {
+          camera.position.set(
+            CAMERA.EXPLORE.position[0],
+            CAMERA.EXPLORE.position[1],
+            CAMERA.EXPLORE.position[2],
+          );
+          camera.fov = CAMERA.EXPLORE.fov;
+          camera.updateProjectionMatrix();
           camera.lookAt(
-            THREE.MathUtils.lerp(0, CAMERA.FAR.lookAt[0], easeInOutCubic(lookT)),
-            THREE.MathUtils.lerp(0, CAMERA.FAR.lookAt[1], easeInOutCubic(lookT)),
-            THREE.MathUtils.lerp(0, CAMERA.FAR.lookAt[2], easeInOutCubic(lookT)),
+            CAMERA.EXPLORE.lookAt[0],
+            CAMERA.EXPLORE.lookAt[1],
+            CAMERA.EXPLORE.lookAt[2],
           );
         } else {
-          camera.lookAt(0, 0, 0);
+          let camPos: [number, number, number];
+          let camFov: number;
+
+          if (t < CINEMATIC.STARS_APPEAR) {
+            camPos = CAMERA.CLOSE.position;
+            camFov = CAMERA.CLOSE.fov;
+          } else if (t < CINEMATIC.PULL_BACK_START) {
+            camPos = CAMERA.CLOSE.position;
+            camFov = CAMERA.CLOSE.fov;
+          } else if (t < CINEMATIC.PULL_BACK_END) {
+            const pullT = clamp01((t - CINEMATIC.PULL_BACK_START) / (CINEMATIC.PULL_BACK_END - CINEMATIC.PULL_BACK_START));
+            const eased = easeInOutCubic(pullT);
+            camPos = [
+              THREE.MathUtils.lerp(CAMERA.CLOSE.position[0], CAMERA.FAR.position[0], eased),
+              THREE.MathUtils.lerp(CAMERA.CLOSE.position[1], CAMERA.FAR.position[1], eased),
+              THREE.MathUtils.lerp(CAMERA.CLOSE.position[2], CAMERA.FAR.position[2], eased),
+            ];
+            camFov = THREE.MathUtils.lerp(CAMERA.FOV_START, CAMERA.FOV_END, eased);
+          } else {
+            camPos = CAMERA.FAR.position;
+            camFov = CAMERA.FOV_END;
+          }
+
+          camera.position.set(camPos[0], camPos[1], camPos[2]);
+          camera.fov = camFov;
+          camera.updateProjectionMatrix();
+
+          if (t >= CINEMATIC.TAIL_REVEAL_START) {
+            const lookT = clamp01((t - CINEMATIC.TAIL_REVEAL_START) / (CINEMATIC.TAIL_FULL - CINEMATIC.TAIL_REVEAL_START));
+            camera.lookAt(
+              THREE.MathUtils.lerp(0, CAMERA.FAR.lookAt[0], easeInOutCubic(lookT)),
+              THREE.MathUtils.lerp(0, CAMERA.FAR.lookAt[1], easeInOutCubic(lookT)),
+              THREE.MathUtils.lerp(0, CAMERA.FAR.lookAt[2], easeInOutCubic(lookT)),
+            );
+          } else {
+            camera.lookAt(0, 0, 0);
+          }
         }
       } else if (cinematicPhase !== 'explore') {
         // The opening finished: hand over to free exploration. This has to live outside
@@ -375,23 +396,28 @@ function SceneContent({ onSelectStar }: { onSelectStar: (star: StarName | null) 
       <DreiOrbitControls
         ref={orbitControlsRef}
         enablePan={false}
+        enableRotate
+        enableZoom
         minDistance={5}
         maxDistance={40}
-        autoRotate={!epilogueVisible}
+        autoRotate={!epilogueVisible && !reduceMotion}
         autoRotateSpeed={0.3}
         enableDamping
         dampingFactor={0.05}
+        touches={{
+          ONE: THREE.TOUCH.ROTATE,
+          TWO: THREE.TOUCH.DOLLY_PAN,
+        }}
       />
     </>
   );
 }
 
 function PostProcessing() {
-  const isMobile = useMobile();
-  const lod = isMobile ? LOD.mobile : LOD.desktop;
-
+  const tier = resolveQualityTier();
   // Bloom is a stack of full-screen passes: keep it off the light tier.
-  if (resolveQualityTier() === 'low') return null;
+  if (tier === 'low') return null;
+  const levels = tier === 'mid' ? LOD.mobile.bloomLevels : LOD.desktop.bloomLevels;
 
   return (
     <EffectComposer enableNormalPass={false}>
@@ -400,14 +426,16 @@ function PostProcessing() {
         mipmapBlur
         intensity={0.5}
         radius={0.5}
-        levels={lod.bloomLevels}
+        levels={levels}
       />
     </EffectComposer>
   );
 }
 
 export default function Scene({ onSelectStar }: SceneProps) {
-  const lowQuality = resolveQualityTier() === 'low';
+  const tier = resolveQualityTier();
+  const lowQuality = tier === 'low';
+  const reduceMotion = Boolean(useReducedMotion());
   const startInExplore = useBinaryStar.getState().introComplete;
   const [canvasReady, setCanvasReady] = useState(false);
   const language = useBinaryStar((state) => state.language);
@@ -437,7 +465,7 @@ export default function Scene({ onSelectStar }: SceneProps) {
         stencil: false,
         depth: true,
       }}
-      dpr={lowQuality ? 1 : [1, 1.5]}
+      dpr={tier === 'high' ? [1, 1.5] : 1}
       style={{
         position: 'fixed',
         top: 0,
@@ -452,7 +480,7 @@ export default function Scene({ onSelectStar }: SceneProps) {
       <color attach="background" args={[COLORS.VOID_BLACK]} />
       <fog attach="fog" args={[COLORS.VOID_BLACK, 15, 50]} />
 
-      <SceneContent onSelectStar={onSelectStar} />
+      <SceneContent onSelectStar={onSelectStar} reduceMotion={reduceMotion} />
       <PostProcessing />
     </Canvas>
     </>

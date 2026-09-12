@@ -1,5 +1,5 @@
-import { motion, AnimatePresence } from 'framer-motion';
-import { useBinaryStar } from '../../hooks';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
+import { useBinaryStar, useMobile } from '../../hooks';
 import { TRANSLATIONS } from '../../constants/translations';
 import { CINEMATIC, TRANSITIONS } from '../../constants/animation';
 import type { StarName } from './InfoCards';
@@ -15,6 +15,9 @@ export default function CinematicOverlay({
   const introComplete = useBinaryStar((state) => state.introComplete);
   const setLanguage = useBinaryStar((state) => state.setLanguage);
   const t = TRANSLATIONS[language];
+  const reduceMotion = Boolean(useReducedMotion());
+  const fade = reduceMotion ? 0 : TRANSITIONS.FADE_IN;
+  const finalFade = reduceMotion ? 0 : TRANSITIONS.FINAL_TEXT_FADE;
 
   const handleSkip = () => {
     useBinaryStar.getState().setIntroComplete(true);
@@ -27,10 +30,10 @@ export default function CinematicOverlay({
   return (
     <div
       data-testid="cinematic-overlay"
-      className="relative z-10 flex h-screen w-full pointer-events-none select-none overflow-hidden"
+      className="relative z-10 flex h-dvh w-full pointer-events-none select-none overflow-hidden"
     >
       {/* Skip button */}
-      <div className="absolute top-4 right-4 pointer-events-auto z-50">
+      <div className="absolute top-[max(1rem,env(safe-area-inset-top))] right-[max(1rem,env(safe-area-inset-right))] pointer-events-auto z-50">
         <button
           data-testid="skip-cinematic"
           onClick={handleSkip}
@@ -49,8 +52,8 @@ export default function CinematicOverlay({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: TRANSITIONS.FADE_IN }}
-            className="absolute bottom-16 md:bottom-24 left-6 md:left-12 right-6 md:right-12 pointer-events-none select-none"
+            transition={{ duration: fade }}
+            className="absolute bottom-32 md:bottom-24 left-6 md:left-12 right-6 md:right-12 pointer-events-none select-none"
           >
             <p className="text-white/90 text-lg md:text-2xl font-extralight italic tracking-wide leading-relaxed bg-black/40 backdrop-blur-sm px-4 py-3 rounded-lg inline-block">
               {t.cinematic1}
@@ -67,8 +70,8 @@ export default function CinematicOverlay({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: TRANSITIONS.FADE_IN }}
-            className="absolute bottom-16 md:bottom-24 left-6 md:left-12 right-6 md:right-12 pointer-events-none select-none"
+            transition={{ duration: fade }}
+            className="absolute bottom-32 md:bottom-24 left-6 md:left-12 right-6 md:right-12 pointer-events-none select-none"
           >
             <p className="text-white/80 text-base md:text-xl font-extralight italic tracking-wide leading-relaxed bg-black/40 backdrop-blur-sm px-4 py-3 rounded-lg inline-block">
               {t.cinematic2}
@@ -85,8 +88,8 @@ export default function CinematicOverlay({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: TRANSITIONS.FADE_IN }}
-            className="absolute bottom-16 md:bottom-24 left-6 md:left-12 right-6 md:right-12 pointer-events-none select-none"
+            transition={{ duration: fade }}
+            className="absolute bottom-32 md:bottom-24 left-6 md:left-12 right-6 md:right-12 pointer-events-none select-none"
           >
             <p className="text-white/80 text-base md:text-xl font-extralight italic tracking-wide leading-relaxed bg-black/40 backdrop-blur-sm px-4 py-3 rounded-lg inline-block">
               {t.cinematic3}
@@ -102,7 +105,7 @@ export default function CinematicOverlay({
             key="text-final"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: TRANSITIONS.FINAL_TEXT_FADE }}
+            transition={{ duration: finalFade }}
             className="absolute top-1/3 left-6 md:left-12 pointer-events-none select-none"
           >
             <h1 className="font-display text-5xl md:text-7xl lg:text-8xl font-light text-white/90 tracking-wider">
@@ -116,7 +119,7 @@ export default function CinematicOverlay({
       </AnimatePresence>
 
       {/* Language switch */}
-      <div className="absolute bottom-4 left-4 pointer-events-auto z-50">
+      <div className="absolute bottom-[max(1rem,env(safe-area-inset-bottom))] left-[max(1rem,env(safe-area-inset-left))] pointer-events-auto z-50">
         <button
           onClick={() => setLanguage(language === 'en' ? 'ch' : 'en')}
           className="text-white/30 text-xs font-extralight tracking-widest hover:text-white/60 transition-colors"
@@ -133,19 +136,21 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
   const language = useBinaryStar((state) => state.language);
   const setLanguage = useBinaryStar((state) => state.setLanguage);
   const t = TRANSLATIONS[language];
+  const isMobile = useMobile();
+  const reduceMotion = Boolean(useReducedMotion());
 
   return (
     <div
       data-testid="explore-ui"
-      className="relative z-10 flex h-screen w-full pointer-events-none select-none overflow-hidden"
+      className="relative z-10 flex h-dvh w-full pointer-events-none select-none overflow-hidden"
     >
       {/* Top bar */}
-      <header className="absolute top-0 left-0 right-0 px-4 md:px-14 py-4 md:py-8 flex items-center justify-between">
+      <header className="absolute top-0 left-0 right-0 px-4 md:px-14 pt-[max(1rem,env(safe-area-inset-top))] pb-4 md:pb-8 flex items-center justify-between">
         <div className="flex items-center gap-3 md:gap-6">
           <motion.span
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: TRANSITIONS.EXPLORE_TRANSITION }}
+            transition={{ duration: reduceMotion ? 0 : TRANSITIONS.EXPLORE_TRANSITION }}
             className="font-display text-2xl md:text-4xl text-orange-400/80 italic tracking-widest"
           >
             Mira
@@ -170,7 +175,7 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
       </header>
 
       {/* Bottom hint — tail line on its own row so it does not collide with the pill on narrow viewports */}
-      <footer className="absolute bottom-4 md:bottom-8 left-0 right-0 px-8 flex flex-col items-center gap-3">
+      <footer className="absolute bottom-0 left-0 right-0 px-8 pb-[max(1rem,env(safe-area-inset-bottom))] md:pb-8 pt-2 flex flex-col items-center gap-3">
         <button
           data-testid="tail-hint"
           onClick={() => onSelectStar('tail')}
@@ -182,7 +187,7 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
           <div className="flex items-center gap-2">
             <div className="w-1.5 h-1.5 rounded-full bg-orange-500/60 animate-pulse" />
             <span className="text-[9px] tracking-[0.2em] uppercase text-white/40 font-extralight">
-              {t.interactionHint}
+              {isMobile ? t.interactionHintMobile : t.interactionHint}
             </span>
           </div>
         </div>
