@@ -123,7 +123,7 @@ export default function StarField({ count = 5000 }: StarFieldProps) {
   useFrame((state) => {
     if (materialRef.current) {
       materialRef.current.uniforms.uTime.value = state.clock.elapsedTime;
-      // Always-on envelope: bloom is gone on the light tier, the field is not.
+      // Low quality has no bloom, so the field carries the sky envelope.
       materialRef.current.uniforms.uSky.value = 0.35 + 0.65 * brightness;
     }
   });
