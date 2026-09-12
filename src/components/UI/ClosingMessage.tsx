@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { useBinaryStar } from '../../hooks';
 import { TRANSLATIONS } from '../../constants/translations';
 import { TRANSITIONS } from '../../constants/animation';
@@ -10,6 +10,7 @@ export default function ClosingMessage() {
   const language = useBinaryStar((state) => state.language);
   const introComplete = useBinaryStar((state) => state.introComplete);
   const t = TRANSLATIONS[language];
+  const reduceMotion = Boolean(useReducedMotion());
 
   const [isVisible, setIsVisible] = useState(false);
   const lastActivityRef = useRef(0);
@@ -74,8 +75,8 @@ export default function ClosingMessage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 2 }}
-          className="absolute inset-0 flex items-center justify-center z-30 pointer-events-none"
+          transition={{ duration: reduceMotion ? 0 : 2 }}
+          className="absolute inset-0 flex items-center justify-center z-30 pointer-events-none pl-[max(2rem,env(safe-area-inset-left))] pr-[max(2rem,env(safe-area-inset-right))]"
         >
           <p
             className="text-white/50 text-lg md:text-2xl italic max-w-lg px-8 text-center leading-relaxed"

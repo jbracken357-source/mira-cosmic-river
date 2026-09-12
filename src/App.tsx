@@ -37,7 +37,7 @@ export default function App() {
         data-sky-phase={sky.pulsationPhase.toFixed(4)}
         data-sky-brightness={sky.brightness.toFixed(4)}
         data-sky-orbital-phase={sky.orbitalPhase.toFixed(4)}
-        className="relative w-full h-screen overflow-hidden pointer-events-none"
+        className="relative w-full h-dvh overflow-hidden pointer-events-none"
       >
         <CinematicOverlay onSelectStar={handleSelectStar} />
         <InfoCards
