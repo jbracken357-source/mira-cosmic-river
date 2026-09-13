@@ -53,6 +53,12 @@ function clamp01(v: number): number {
   return Math.max(0, Math.min(1, v));
 }
 
+// Preserve the horizontal view on portrait screens instead of cropping the stars.
+function fittedFov(fov: number, aspect: number, fromAspect = 1) {
+  const scale = Math.min(1, fromAspect) / Math.min(1, aspect);
+  return THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(fov) / 2) * scale));
+}
+
 function SceneContent({
   onSelectStar,
   reduceMotion,
@@ -83,6 +89,7 @@ function SceneContent({
   const closingBlend = useRef(0);
   const closingArmed = useRef(false);
   const closingLook = useRef(new THREE.Vector3());
+  const previousAspect = useRef(1);
 
   const positionsRef = useRef({
     primary: [0, 0, 0] as [number, number, number],
@@ -94,6 +101,13 @@ function SceneContent({
   // Main loop: cinematic + orbital animation
   useFrame((state, delta) => {
     const camera = state.camera as THREE.PerspectiveCamera;
+    if (camera.aspect !== previousAspect.current) {
+      // Undo the old portrait expansion, then apply the new aspect (including rotation).
+      camera.fov = fittedFov(camera.fov, camera.aspect, previousAspect.current);
+      if (closingArmed.current) closingFromFov.current = fittedFov(closingFromFov.current, camera.aspect, previousAspect.current);
+      camera.updateProjectionMatrix();
+      previousAspect.current = camera.aspect;
+    }
     const { introComplete, cinematicPhase } = useBinaryStar.getState();
 
     if (introComplete) {
@@ -110,7 +124,7 @@ function SceneContent({
             CAMERA.EXPLORE.position[1],
             CAMERA.EXPLORE.position[2],
           );
-          camera.fov = CAMERA.EXPLORE.fov;
+          camera.fov = fittedFov(CAMERA.EXPLORE.fov, camera.aspect);
           camera.updateProjectionMatrix();
           camera.lookAt(
             CAMERA.EXPLORE.lookAt[0],
@@ -155,7 +169,7 @@ function SceneContent({
           THREE.MathUtils.lerp(closingFromPos.current.y, CAMERA.CLOSING.position[1], k),
           THREE.MathUtils.lerp(closingFromPos.current.z, CAMERA.CLOSING.position[2], k),
         );
-        camera.fov = THREE.MathUtils.lerp(closingFromFov.current, CAMERA.CLOSING.fov, k);
+        camera.fov = THREE.MathUtils.lerp(closingFromFov.current, fittedFov(CAMERA.CLOSING.fov, camera.aspect), k);
         camera.updateProjectionMatrix();
         closingLook.current.set(
           THREE.MathUtils.lerp(closingFromLook.current.x, CAMERA.CLOSING.lookAt[0], k),
@@ -200,7 +214,7 @@ function SceneContent({
             CAMERA.EXPLORE.position[1],
             CAMERA.EXPLORE.position[2],
           );
-          camera.fov = CAMERA.EXPLORE.fov;
+          camera.fov = fittedFov(CAMERA.EXPLORE.fov, camera.aspect);
           camera.updateProjectionMatrix();
           camera.lookAt(
             CAMERA.EXPLORE.lookAt[0],
@@ -232,7 +246,7 @@ function SceneContent({
           }
 
           camera.position.set(camPos[0], camPos[1], camPos[2]);
-          camera.fov = camFov;
+          camera.fov = fittedFov(camFov, camera.aspect);
           camera.updateProjectionMatrix();
 
           if (t >= CINEMATIC.TAIL_REVEAL_START) {

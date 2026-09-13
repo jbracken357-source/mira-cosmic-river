@@ -1,6 +1,6 @@
 // Mira Tail Particle Shader - The hero shader
 // 10,000+ particles forming a 13-light-year UV tail behind Mira A
-// Mouse-reactive gravitational ripples, depth fog, orange-to-UV-blue gradient
+// Mouse-reactive ripples, soft particles, warm pearl-to-blue gradient
 
 import * as THREE from 'three';
 
@@ -109,9 +109,9 @@ export const TailVertexShader = `
 `;
 
 export const TailFragmentShader = `
-  uniform vec3 uColorNear;   // Orange near Mira A: #ff6b35
-  uniform vec3 uColorMid;    // Transition: #a78bfa
-  uniform vec3 uColorFar;    // UV blue at tail end: #4f46e5
+  uniform vec3 uColorNear;
+  uniform vec3 uColorMid;
+  uniform vec3 uColorFar;
 
   varying float vLength;
   varying float vSeed;
@@ -122,9 +122,9 @@ export const TailFragmentShader = `
     float dist = length(gl_PointCoord - vec2(0.5));
     if (dist > 0.5) discard;
 
-    float circle = 1.0 - smoothstep(0.3, 0.5, dist);
+    float circle = exp(-dist * dist * 24.0) * (1.0 - smoothstep(0.3, 0.5, dist));
 
-    // Color gradient: orange → violet → UV blue
+    // Color gradient: warm pearl → muted violet → blue
     vec3 color;
     if (vLength < 0.5) {
       color = mix(uColorNear, uColorMid, vLength * 2.0);
@@ -152,10 +152,10 @@ export function createTailMaterial(): THREE.ShaderMaterial {
       uOpacity: { value: 0 },
       uMouse: { value: new THREE.Vector2(0, 0) },
       uMouseInfluence: { value: 0 },
-      uParticleSize: { value: 8.0 },
-      uColorNear: { value: new THREE.Color('#ff6b35') },
-      uColorMid: { value: new THREE.Color('#a78bfa') },
-      uColorFar: { value: new THREE.Color('#4f46e5') },
+      uParticleSize: { value: 1.2 },
+      uColorNear: { value: new THREE.Color('#e3bd8b') },
+      uColorMid: { value: new THREE.Color('#a99ccc') },
+      uColorFar: { value: new THREE.Color('#789ac2') },
     },
     vertexShader: TailVertexShader,
     fragmentShader: TailFragmentShader,

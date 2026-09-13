@@ -2,6 +2,8 @@ import { useEffect, useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { createTailMaterial } from '../../shaders/tail';
+import { useReducedMotion } from 'framer-motion';
+import RiverVeil from './RiverVeil';
 
 interface MiraTailProps {
   opacityRef: React.MutableRefObject<number>;
@@ -18,6 +20,12 @@ function generateTailData(count: number, length: number) {
   const lengths = new Float32Array(count);
   const spreads = new Float32Array(count);
 
+  // Stable particles keep reloads and quality comparisons visually reproducible.
+  let seed = 17;
+  const random = () => {
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    return seed / 4294967296;
+  };
   for (let i = 0; i < count; i++) {
     const t = i / count; // 0 = near star, 1 = far end
     const l = t * length;
@@ -28,18 +36,18 @@ function generateTailData(count: number, length: number) {
     const curve = Math.sin(t * Math.PI * 0.8) * 2.0; // upward curve
 
     // Random position within the cone
-    const angle = Math.random() * Math.PI * 2;
-    const radius = Math.sqrt(Math.random()) * spread;
+    const angle = random() * Math.PI * 2;
+    const radius = Math.sqrt(random()) * spread;
 
     // Tail extends in -X direction with +Z offset toward the camera
     positions[i * 3] = -l * 0.6;     // behind Mira A (reduced for visibility)
     positions[i * 3 + 1] = Math.cos(angle) * radius + curve;
     positions[i * 3 + 2] = Math.sin(angle) * radius + l * 0.5; // +Z toward camera
 
-    seeds[i] = Math.random();
-    sizes[i] = 0.5 + Math.random() * 1.5;
+    seeds[i] = random();
+    sizes[i] = 0.5 + random() * 1.5;
     lengths[i] = t;
-    spreads[i] = 0.5 + Math.random() * 1.5;
+    spreads[i] = 0.5 + random() * 1.5;
   }
 
   return { positions, seeds, sizes, lengths, spreads };
@@ -50,8 +58,9 @@ export default function MiraTail({
   particleCount = 10000,
   tailLength = 25,
 }: MiraTailProps) {
-  const materialRef = useRef<THREE.ShaderMaterial>(null);
-  const pointsRef = useRef<THREE.Points>(null);
+  const textureReadyRef = useRef(false);
+  const pointsRef = useRef<THREE.Points<THREE.BufferGeometry, THREE.ShaderMaterial>>(null);
+  const reduceMotion = Boolean(useReducedMotion());
 
   const geometry = useMemo(() => {
     const { positions, seeds, sizes, lengths, spreads } =
@@ -68,6 +77,9 @@ export default function MiraTail({
 
   const material = useMemo(() => createTailMaterial(), []);
 
+  useEffect(() => () => { geometry.dispose(); }, [geometry]);
+  useEffect(() => () => { material.dispose(); }, [material]);
+
   // Track mouse position for ripple effect
   const mouseRef = useRef(new THREE.Vector2(0, 0));
 
@@ -81,21 +93,23 @@ export default function MiraTail({
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
 
-  useFrame(() => {
-    if (materialRef.current) {
-      const mat = materialRef.current;
-      mat.uniforms.uTime.value += 0.016;
-      mat.uniforms.uOpacity.value = opacityRef.current;
-      mat.uniforms.uMouse.value.copy(mouseRef.current);
-      mat.uniforms.uMouseInfluence.value = THREE.MathUtils.lerp(
-        mat.uniforms.uMouseInfluence.value,
-        0.8,
-        0.05,
-      );
-    }
+  useFrame((_, delta) => {
+    // Update the material actually mounted on the points (the old ref was never bound).
+    const mat = pointsRef.current?.material;
+    if (!mat) return;
+    if (!reduceMotion && !document.hidden) mat.uniforms.uTime.value += Math.min(delta, .05);
+    const particleOpacity = textureReadyRef.current
+      ? .09 * Math.min(1, 600 / particleCount)
+      : .6 * Math.min(1, Math.sqrt(300 / particleCount));
+    mat.uniforms.uOpacity.value = opacityRef.current * particleOpacity;
+    mat.uniforms.uMouse.value.copy(mouseRef.current);
+    mat.uniforms.uMouseInfluence.value = reduceMotion ? 0 : .3;
   });
 
   return (
-    <points ref={pointsRef} geometry={geometry} material={material} />
+    <group>
+      <points ref={pointsRef} geometry={geometry} material={material} raycast={() => {}} />
+      <RiverVeil opacityRef={opacityRef} readyRef={textureReadyRef} length={tailLength} reduceMotion={reduceMotion} />
+    </group>
   );
 }
