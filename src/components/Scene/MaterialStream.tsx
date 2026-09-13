@@ -4,6 +4,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { COLORS } from '../../constants';
 import type { OrbitPositions } from '../../types';
+import { useReducedMotion } from 'framer-motion';
 
 export type OrbitPositionsRef = MutableRefObject<OrbitPositions>;
 
@@ -25,6 +26,8 @@ export default function MaterialStream({
   turbulence,
 }: MaterialStreamProps) {
   const pointsRef = useRef<THREE.Points>(null);
+  const timeRef = useRef(0);
+  const reduceMotion = Boolean(useReducedMotion());
 
   const { colors, sizes } = useMemo(() => {
     const colorsArr = new Float32Array(particleCount * 3);
@@ -53,41 +56,40 @@ export default function MaterialStream({
     return geo;
   }, [particleCount, colors, sizes]);
 
-  useFrame((state) => {
+  useFrame((_, delta) => {
     const pts = pointsRef.current;
     if (!pts) return;
 
     const { primary, secondary } = positionsRef.current;
-    const start = new THREE.Vector3(...primary);
-    const end = new THREE.Vector3(...secondary);
-    const direction = end.clone().sub(start);
+    if (!reduceMotion && !document.hidden) timeRef.current += Math.min(delta, .05);
+    const dx = secondary[0] - primary[0];
+    const dy = secondary[1] - primary[1];
+    const dz = secondary[2] - primary[2];
+    const startFraction = Math.min(.8, 2.4 / Math.hypot(dx, dy, dz));
     const posAttr = pts.geometry.attributes.position;
     const arr = posAttr.array as Float32Array;
 
     for (let i = 0; i < particleCount; i++) {
-      const t = i / particleCount;
-      const pos = start.clone().add(direction.clone().multiplyScalar(t));
-      pos.x += (seededRandom(i * 3) - 0.5) * turbulence * 0.5;
-      pos.y += (seededRandom(i * 3 + 1) - 0.5) * turbulence * 0.3;
-      pos.z += (seededRandom(i * 3 + 2) - 0.5) * turbulence * 0.5;
-
-      const offset = (state.clock.elapsedTime + i * 0.01) % 1;
-      arr[i * 3] = pos.x + Math.sin(offset * 10) * turbulence * 0.1;
-      arr[i * 3 + 1] = pos.y;
-      arr[i * 3 + 2] = pos.z;
+      const t = (i / particleCount + timeRef.current * .045) % 1;
+      const along = startFraction + t * (1 - startFraction);
+      const curve = Math.sin(t * Math.PI);
+      arr[i * 3] = primary[0] + dx * along + (seededRandom(i * 3) - .5) * turbulence * .22;
+      arr[i * 3 + 1] = primary[1] + dy * along + curve * .25;
+      arr[i * 3 + 2] = primary[2] + dz * along + curve * .45 + (seededRandom(i * 3 + 2) - .5) * turbulence * .2;
     }
 
     posAttr.needsUpdate = true;
-    pts.rotation.y = state.clock.elapsedTime * 0.1;
+    // The endpoints already live in world space; rotating the whole stream breaks
+    // its connection to both stars.
   });
 
   return (
     <points ref={pointsRef} geometry={geometry}>
       <pointsMaterial
-        size={0.3}
+        size={0.06}
         vertexColors
         transparent
-        opacity={0.7}
+        opacity={0.16}
         sizeAttenuation
         blending={THREE.AdditiveBlending}
         depthWrite={false}

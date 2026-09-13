@@ -18,6 +18,10 @@ export default function CinematicOverlay({
   const reduceMotion = Boolean(useReducedMotion());
   const fade = reduceMotion ? 0 : TRANSITIONS.FADE_IN;
   const finalFade = reduceMotion ? 0 : TRANSITIONS.FINAL_TEXT_FADE;
+  const caption = cinematicTime < CINEMATIC.STARS_APPEAR || cinematicTime >= CINEMATIC.FINAL_TEXT
+    ? null
+    : cinematicTime < CINEMATIC.PULL_BACK_START ? t.cinematic1
+      : cinematicTime < CINEMATIC.TAIL_REVEAL_START ? t.cinematic2 : t.cinematic3;
 
   const handleSkip = () => {
     useBinaryStar.getState().setIntroComplete(true);
@@ -43,56 +47,19 @@ export default function CinematicOverlay({
         </button>
       </div>
 
-      {/* Dark screen (0-2s): nothing */}
-      {/* Stars appear text (2-4s) */}
-      <AnimatePresence>
-        {cinematicTime >= CINEMATIC.STARS_APPEAR && cinematicTime < CINEMATIC.PULL_BACK_START && (
+      {/* One caption at a time; exit finishes before the next line enters. */}
+      <AnimatePresence mode="wait">
+        {caption && (
           <motion.div
-            key="text1"
+            key={caption}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: fade }}
+            exit={{ opacity: 0, transition: { duration: reduceMotion ? 0 : .25 } }}
+            transition={{ duration: Math.min(fade, .75) }}
             className="absolute bottom-32 md:bottom-24 left-6 md:left-12 right-6 md:right-12 pointer-events-none select-none"
           >
-            <p className="text-white/90 text-lg md:text-2xl font-extralight italic tracking-wide leading-relaxed bg-black/40 backdrop-blur-sm px-4 py-3 rounded-lg inline-block">
-              {t.cinematic1}
-            </p>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Pull-back text (4-8s) */}
-      <AnimatePresence>
-        {cinematicTime >= CINEMATIC.PULL_BACK_START && cinematicTime < CINEMATIC.TAIL_REVEAL_START && (
-          <motion.div
-            key="text2"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: fade }}
-            className="absolute bottom-32 md:bottom-24 left-6 md:left-12 right-6 md:right-12 pointer-events-none select-none"
-          >
-            <p className="text-white/80 text-base md:text-xl font-extralight italic tracking-wide leading-relaxed bg-black/40 backdrop-blur-sm px-4 py-3 rounded-lg inline-block">
-              {t.cinematic2}
-            </p>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Tail reveal text (8-12.5s) */}
-      <AnimatePresence>
-        {cinematicTime >= CINEMATIC.TAIL_REVEAL_START && cinematicTime < CINEMATIC.FINAL_TEXT && (
-          <motion.div
-            key="text3"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: fade }}
-            className="absolute bottom-32 md:bottom-24 left-6 md:left-12 right-6 md:right-12 pointer-events-none select-none"
-          >
-            <p className="text-white/80 text-base md:text-xl font-extralight italic tracking-wide leading-relaxed bg-black/40 backdrop-blur-sm px-4 py-3 rounded-lg inline-block">
-              {t.cinematic3}
+            <p className="text-white/70 text-base md:text-xl font-extralight tracking-wide leading-relaxed" style={{ textShadow: '0 2px 12px #000' }}>
+              {caption}
             </p>
           </motion.div>
         )}

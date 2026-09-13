@@ -7,6 +7,7 @@ import { COLORS } from '../../constants';
 import type { OrbitPositions } from '../../types';
 import GlowShell from './GlowShell';
 import type { MutableRefObject } from 'react';
+import { useReducedMotion } from 'framer-motion';
 
 interface MiraBProps {
   position: [number, number, number];
@@ -21,7 +22,7 @@ const miraBShaderMaterial = {
   uniforms: {
     time: { value: 0 },
     color: { value: new THREE.Color(COLORS.MIRA_B_CORE) },
-    intensity: { value: 1.7 },
+    intensity: { value: 0.85 },
   },
   vertexShader: `
     varying vec3 vNormal;
@@ -60,6 +61,8 @@ const miraBShaderMaterial = {
       finalColor = mix(finalColor, vec3(0.7, 0.85, 1.0), 0.15);
 
       gl_FragColor = vec4(finalColor, 1.0);
+      #include <tonemapping_fragment>
+      #include <colorspace_fragment>
     }
   `,
 };
@@ -84,14 +87,17 @@ export default function MiraB({ position, radius, segments = 64, positionsRef }:
   const coronaRef = useRef<THREE.ShaderMaterial>(null);
   const materialRef = useRef<THREE.ShaderMaterial>(null);
   const diskMaterialRef = useRef<THREE.ShaderMaterial>(null);
+  const timeRef = useRef(0);
+  const reduceMotion = Boolean(useReducedMotion());
 
   // White dwarf: hot blue-white (#e0e7ff per product direction)
   const color = useMemo(() => new THREE.Color(COLORS.MIRA_B_CORE), []);
 
   const diskRadius = radius * DISK_SCALE;
 
-  useFrame((state) => {
-    const time = state.clock.elapsedTime;
+  useFrame((_, delta) => {
+    if (!reduceMotion && !document.hidden) timeRef.current += Math.min(delta, .05);
+    const time = timeRef.current;
 
     if (materialRef.current) {
       materialRef.current.uniforms.time.value = time;

@@ -7,7 +7,9 @@
 | dreamlike.png | 已选色彩与气质参考 | 仅概念图 |
 | epic.png | 已选纵深与尺度参考 | 仅概念图 |
 | ../../experiments/assets/river-density-v1.png | 单层灰度气流密度；亮度→透明度，着色交给 shader | 2172×724 PNG，990285 bytes；实验可用，尚未做交付压缩 |
-| ../../public/materials/river-density-v1.png | 同一素材的正式场景副本 | 本地 V1 已接入；随生产构建复制 |
+| ../../public/materials/river-density-v1.webp | 光河正式场景素材 | 77766 bytes；随生产构建复制 |
+| ../../experiments/assets/surface-density-v1.png | 星体表面灰度原始素材 | 3257888 bytes；仅源文件 |
+| ../../public/materials/surface-density-v1.webp | 星体表面正式素材 | 584140 bytes；随生产构建复制 |
 
 密度图生成约束：纯黑底；单条水平银白薄雾，右窄左宽；细丝与涡流；四边柔和淡出；无星星、双星、文字、颜色或光源；用于弯曲网格的局部纹理。原始文件保持不变。无需假设 PNG 有 alpha，shader 直接读取灰度。
 

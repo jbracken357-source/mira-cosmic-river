@@ -1,4 +1,5 @@
-import { useRef, useMemo } from 'react';
+import { useRef, useMemo, useEffect } from 'react';
+import { useReducedMotion } from 'framer-motion';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import {
@@ -22,6 +23,23 @@ export default function MiraA({ position, radius, turbulence, segments = 64 }: M
   const materialRef = useRef<THREE.ShaderMaterial>(null);
   const innerAtmosphereRef = useRef<THREE.ShaderMaterial>(null);
   const outerAtmosphereRef = useRef<THREE.ShaderMaterial>(null);
+  const timeRef = useRef(0);
+  const reduceMotion = Boolean(useReducedMotion());
+  const uniforms = useMemo(() => THREE.UniformsUtils.clone(MiraA_Shader.uniforms), []);
+
+  useEffect(() => {
+    let active = true;
+    const texture = new THREE.TextureLoader().load(`${import.meta.env.BASE_URL}materials/surface-density-v1.webp`, loaded => {
+      if (!active || !materialRef.current) return;
+      loaded.colorSpace = THREE.NoColorSpace;
+      materialRef.current.uniforms.uSurfaceMap.value = loaded;
+      materialRef.current.uniforms.uSurfaceReady.value = 1;
+    }, undefined, () => { /* Procedural convection remains visible without the map. */ });
+    return () => {
+      active = false;
+      texture.dispose();
+    };
+  }, []);
 
   // Where the real clock has Mira A in its ~332 day pulsation cycle: how bright it is, and
   // how far its colour has already shifted toward its hottest.
@@ -36,8 +54,9 @@ export default function MiraA({ position, radius, turbulence, segments = 64 }: M
     return { colorCore, colorSurface };
   }, []);
 
-  useFrame((state) => {
-    const time = state.clock.elapsedTime;
+  useFrame((_, delta) => {
+    if (!reduceMotion && !document.hidden) timeRef.current += Math.min(delta, .05);
+    const time = timeRef.current;
 
     if (materialRef.current) {
       materialRef.current.uniforms.uTime.value = time;
@@ -67,12 +86,12 @@ export default function MiraA({ position, radius, turbulence, segments = 64 }: M
     <group position={position}>
       {/* Core star mesh with custom shader */}
       <mesh ref={meshRef}>
-        <sphereGeometry args={[radius, segments, segments]} />
+        <sphereGeometry args={[radius, Math.max(24, segments), Math.max(24, segments)]} />
         <shaderMaterial
           ref={materialRef}
           vertexShader={MiraA_Shader.vertexShader}
           fragmentShader={MiraA_Shader.fragmentShader}
-          uniforms={MiraA_Shader.uniforms}
+          uniforms={uniforms}
         />
       </mesh>
 

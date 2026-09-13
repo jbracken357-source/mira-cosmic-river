@@ -96,11 +96,15 @@ export const MiraA_Shader = {
     uNoiseAmp: { value: 0.35 },
     uBrightness: { value: 0.5 },
     uColorShift: { value: 0.5 },
+    uSurfaceMap: { value: null },
+    uSurfaceReady: { value: 0 },
   },
   vertexShader: `
     varying vec2 vUv;
     varying vec3 vNormal;
     varying float vNoise;
+    varying vec3 vLocal;
+    varying vec3 vViewDirection;
     uniform float uTime;
     uniform float uTurbulence;
     uniform float uNoiseAmp;
@@ -109,6 +113,8 @@ export const MiraA_Shader = {
 
     void main() {
       vUv = uv;
+      vLocal = position;
+      vViewDirection = -(modelViewMatrix * vec4(position, 1.0)).xyz;
       // View-space normal: the disc shading below has to follow the camera, not the model,
       // or the star reads as a flat patty that only rotates its own sticker.
       vNormal = normalize(normalMatrix * normal);
@@ -137,39 +143,43 @@ export const MiraA_Shader = {
     varying vec2 vUv;
     varying vec3 vNormal;
     varying float vNoise;
+    varying vec3 vLocal;
+    varying vec3 vViewDirection;
     uniform vec3 uColorCore;
     uniform vec3 uColorSurface;
     uniform float uTime;
     uniform float uBrightness;
     uniform float uColorShift;
+    uniform sampler2D uSurfaceMap;
+    uniform float uSurfaceReady;
+
+    ${NOISE_GLSL}
 
     void main() {
-      // Limb darkening: a red giant is brightest at the disc centre and falls off toward the
-      // limb because you are looking through less photosphere there. Without this the star is
-      // a uniformly filled circle.
-      float mu = clamp(abs(normalize(vNormal).z), 0.0, 1.0);
-
-      // Decorative cycle: deep red at the trough, hotter red-orange at the peak.
-      float pulsePhase = sin(uTime * ${PULSE_RATE}) * 0.5 + 0.5;
-      vec3 dimColor = mix(uColorCore, uColorSurface, 0.02) * 0.42;
-      vec3 hotColor = mix(uColorCore, uColorSurface, 0.1) * 1.25;
-      vec3 pulseColor = mix(dimColor, hotColor, pulsePhase);
-
-      // Granulation mottles the photosphere; the deep core colour stays in the mix.
-      float mottle = vNoise * 0.5 + 0.5;
-      vec3 color = mix(uColorCore, pulseColor, 0.55 + 0.35 * mottle);
-
-      // Limb darkening, then a thin warm rim right at the edge.
-      color *= mix(0.5, 1.15, pow(mu, 0.6));
-      color += vec3(0.55, 0.16, 0.03) * pow(1.0 - mu, 3.0) * 0.22;
-
-      // The 8s pulse above is decorative. uBrightness and uColorShift are the real-clock
-      // pulsation, and they are the only thing that differs between tonight and next month: a
-      // hot, near-white star at maximum against a dim deep red one at minimum.
-      vec3 skyTint = mix(vec3(0.55, 0.10, 0.02), vec3(1.18, 0.98, 0.85), uColorShift);
-      color *= skyTint * (0.58 + 0.62 * uBrightness);
-
+      float mu = max(dot(normalize(vNormal), normalize(vViewDirection)), 0.0);
+      vec3 p = normalize(vLocal);
+      float cells = .5 + .5 * snoise(p * 14. + vec3(uTime * .025, 0., 0.));
+      float fine = .5 + .5 * snoise(p * 43. - uTime * .02);
+      float procedural = cells * .65 + fine * .35;
+      // Blend to procedural detail at the seam and poles: the generated map is not
+      // assumed to be perfectly periodic, and lighting is never baked into it.
+      float seam = smoothstep(0., .045, vUv.x) * (1. - smoothstep(.955, 1., vUv.x));
+      seam *= smoothstep(0., .07, vUv.y) * (1. - smoothstep(.93, 1., vUv.y));
+      vec2 uv = vUv + vec2(sin(vUv.y * 18. + uTime * .07), cos(vUv.x * 17. - uTime * .05)) * .003 * seam;
+      float density = procedural;
+      if (uSurfaceReady > .5) density = mix(procedural, texture2D(uSurfaceMap, uv).r, seam * .85);
+      float heat = smoothstep(.12, .73, density);
+      vec3 ember = uColorCore * .15 + vec3(.055, .006, .001);
+      vec3 amber = mix(uColorSurface, vec3(1., .38, .065), .65);
+      vec3 color = mix(ember, amber, heat);
+      color += vec3(1.2, .58, .16) * pow(heat, 5.) * .6;
+      color *= .36 + .64 * pow(mu, .55);
+      float pulse = .94 + .06 * sin(uTime * ${PULSE_RATE});
+      color *= pulse * (.68 + .55 * uBrightness);
+      color *= mix(vec3(1., .7, .5), vec3(1., 1., .94), uColorShift);
       gl_FragColor = vec4(color, 1.0);
+      #include <tonemapping_fragment>
+      #include <colorspace_fragment>
     }
   `,
 };
@@ -207,8 +217,8 @@ export function makeAtmosphereUniforms(overrides: {
 // exponential rate at which each shell's glow dies away between the limb and the shell edge —
 // a low rate for the wide haze, a high one for the dense layer.
 export const MIRA_A_ATMOSPHERE = {
-  mid: { scale: 1.4, opacity: 0.46, falloff: 2.4, color: COLORS.MIRA_A_ATMOSPHERE_DENSE },
-  outer: { scale: 2.35, opacity: 0.3, falloff: 1.7, color: COLORS.MIRA_A_ATMOSPHERE_HAZE },
+  mid: { scale: 1.22, opacity: 0.3, falloff: 3.4, color: '#f58b3c' },
+  outer: { scale: 1.8, opacity: 0.12, falloff: 2.5, color: '#df6531' },
 } as const;
 
 // Mira B's corona: same shader, white dwarf colours, a much tighter shell. Kept small on

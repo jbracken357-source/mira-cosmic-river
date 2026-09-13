@@ -15,16 +15,15 @@ export const DISK_SHAPE = {
   inner: 0.5, // inner edge of the ring
   outer: 1.0, // outer edge of the ring
   band: 0.74, // radius of the brightest band
-  bandWidth: 0.18,
+  bandWidth: 0.24,
 } as const;
 
-// The disk has to clear the bloom luminance threshold (0.9) to get any glow at all, so the band
-// is authored above 1.0 and the hot spot well above it. (Both faces of the shell contribute, so
-// these are lower than they would be for a single surface.)
+// Both faces contribute. Restrained gains retain the sheared gas detail instead
+// of turning the entire disk into a white bloom halo.
 export const DISK_GAIN = {
-  ring: 1.3,
-  hotSpot: 1.9,
-  innerGlow: 0.3,
+  ring: 0.55,
+  hotSpot: 0.65,
+  innerGlow: 0.1,
 } as const;
 
 // Shader materials take their uniforms object by assignment rather than by cloning, so each
@@ -84,7 +83,8 @@ export const AccretionDisk_Shader = {
       // outer edges are what make this read as a ring rather than a filled disc.
       float inner = smoothstep(uInner - 0.16, uInner + 0.04, r);
       float outer = 1.0 - smoothstep(uOuter - 0.22, uOuter, r);
-      float band = exp(-pow((r - uBand) / uBandWidth, 2.0));
+      float flowingBand = uBand + .06 * sin(angle * 3. - uTime * .25);
+      float band = exp(-pow((r - flowingBand) / uBandWidth, 2.0));
       float ring = inner * outer * (0.4 + 0.9 * band);
 
       // Doppler beaming: the side of the disk sweeping toward the viewer is brighter. Real
@@ -93,7 +93,7 @@ export const AccretionDisk_Shader = {
       float beam = 0.7 + 0.55 * cos(angle - 0.5);
 
       // Azimuthal structure: sheared streaks that rotate with the material.
-      float streak = 0.86 + 0.14 * sin(angle * 9.0 + uTime * 1.7 + r * 5.0);
+      float streak = 0.65 + 0.35 * sin(angle * 5.0 - uTime * .5 + r * 24.0);
 
       // Hot spot where the stream from Mira A lands.
       float dAngle = angle - uImpactAngle;
@@ -105,7 +105,7 @@ export const AccretionDisk_Shader = {
       color += uColor * uInnerGlow * exp(-max(r - uInner, 0.0) * 6.0) * smoothstep(0.12, uInner, r);
       color += uHotColor * spot * uHotGain;
 
-      float alpha = clamp(ring * beam * 0.8 + spot * 0.95, 0.0, 1.0) * uOpacity;
+      float alpha = clamp(ring * beam * 0.48 + spot * 0.35, 0.0, 1.0) * uOpacity;
 
       gl_FragColor = vec4(color, alpha);
     }

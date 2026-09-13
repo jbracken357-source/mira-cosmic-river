@@ -17,7 +17,7 @@ export const CINEMATIC = {
 export const CAMERA = {
   // Phase 1: Tight on the binary stars
   CLOSE: {
-    position: [6, 2, 8] as [number, number, number],
+    position: [8, 3, 13] as [number, number, number],
     lookAt: [0, 0, 0] as [number, number, number],
     fov: 35,
   },
@@ -29,25 +29,46 @@ export const CAMERA = {
   },
   // Phase 3: Far back, tail dominates
   FAR: {
-    position: [5, 8, 30] as [number, number, number],
-    lookAt: [0, 2, -8] as [number, number, number],
-    fov: 55,
+    position: [8, 8, 30] as [number, number, number],
+    lookAt: [-3, 1, 5] as [number, number, number],
+    fov: 50,
   },
   // Exploration: closer angle that keeps tail in frame
   EXPLORE: {
-    position: [10, 5, 18] as [number, number, number],
-    lookAt: [-2, 1, 2] as [number, number, number],
+    position: [8, 7, 28] as [number, number, number],
+    lookAt: [-3, 1, 5] as [number, number, number],
     fov: 45,
   },
   // Idle hold, not explore framing
   CLOSING: {
-    position: [7.5, 3.2, 12] as [number, number, number],
-    lookAt: [0, 0.3, 0] as [number, number, number],
-    fov: 38,
+    position: [8, 10, 34] as [number, number, number],
+    lookAt: [-4, 0, 6] as [number, number, number],
+    fov: 48,
   },
   // FOV range during pull-back
   FOV_START: 35,
-  FOV_END: 55,
+  FOV_END: 50,
+} as const;
+
+// The same space is composed diagonally in portrait, giving the river room below
+// the pair instead of simply cutting the sides off the desktop composition.
+export const PORTRAIT_CAMERA = {
+  ...CAMERA,
+  EXPLORE: {
+    position: [8, 9, 28] as [number, number, number],
+    lookAt: [-2, -3, 6] as [number, number, number],
+    fov: 45,
+  },
+  FAR: {
+    position: [8, 9, 32] as [number, number, number],
+    lookAt: [-2, -3, 6] as [number, number, number],
+    fov: 50,
+  },
+  CLOSING: {
+    position: [8, 11, 34] as [number, number, number],
+    lookAt: [-2, -4, 6] as [number, number, number],
+    fov: 48,
+  },
 } as const;
 
 // Transition durations

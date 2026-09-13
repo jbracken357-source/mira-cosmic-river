@@ -89,7 +89,7 @@ export default function RiverVeil({ opacityRef, readyRef, length, reduceMotion }
   useEffect(() => {
     let active = true;
     readyRef.current = false;
-    const texture = new THREE.TextureLoader().load(`${import.meta.env.BASE_URL}materials/river-density-v1.png`, (loaded) => {
+    const texture = new THREE.TextureLoader().load(`${import.meta.env.BASE_URL}materials/river-density-v1.webp`, (loaded) => {
       if (!active) return;
       loaded.colorSpace = THREE.NoColorSpace; // Grayscale density, not display RGB.
       for (const { material } of layers) {

@@ -13,7 +13,7 @@ try {
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
     await page.addInitScript(() => localStorage.setItem('mira:seen-opening', '1'));
-    if (mode === 'fallback') await page.route('**/materials/river-density-v1.png', route => route.fulfill({ status: 404, body: '' }));
+    if (mode === 'fallback') await page.route('**/materials/*.webp', route => route.fulfill({ status: 404, body: '' }));
     await page.goto(`http://127.0.0.1:5186/?epoch=2026-09-12${mode === 'fallback' ? '&quality=low' : ''}`, { waitUntil: 'networkidle' });
     await page.getByTestId('explore-ui').waitFor();
     if (mode === 'rotated') {
@@ -32,7 +32,12 @@ try {
       const { _roots } = await import('/node_modules/.vite/deps/@react-three_fiber.js');
       const state = _roots.get(document.querySelector('canvas')).store.getState();
       const veil = state.scene.getObjectByName('river-veil');
+      let surfaceReady = 0;
+      state.scene.traverse(object => {
+        if (object.material?.uniforms?.uSurfaceReady) surfaceReady = object.material.uniforms.uSurfaceReady.value;
+      });
       return {
+        surfaceReady,
         layers: veil.children.length,
         imageReady: veil.children.map(mesh => mesh.material.uniforms.uReady.value),
         opacity: veil.children.map(mesh => mesh.material.uniforms.uOpacity.value),

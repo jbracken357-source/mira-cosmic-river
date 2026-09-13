@@ -1,16 +1,16 @@
 import { useRef, useState } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls as DreiOrbitControls } from '@react-three/drei';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import { useReducedMotion } from 'framer-motion';
 import { useBinaryStar } from '../../hooks';
-import { COLORS, PHYSICS, calculateOrbitalPosition, CINEMATIC, CAMERA, TRANSITIONS, TRANSLATIONS, resolveQualityTier } from '../../constants';
+import { COLORS, PHYSICS, calculateOrbitalPosition, CINEMATIC, CAMERA as LANDSCAPE_CAMERA, TRANSITIONS, TRANSLATIONS, resolveQualityTier } from '../../constants';
+import { PORTRAIT_CAMERA } from '../../constants/animation';
 import * as THREE from 'three';
 import type { StarName } from '../UI/InfoCards';
 import MiraA from './MiraA';
 import MiraB from './MiraB';
 import MiraTail from './MiraTail';
-import OrbitRing from './OrbitRing';
 import MaterialStream from './MaterialStream';
 import StarField from './StarField';
 import GlowShell from './GlowShell';
@@ -26,14 +26,14 @@ const LOD = {
     sphereSegments: 32,
     bloomLevels: 2,
     tailParticles: 3000,
-    streamParticles: PHYSICS.STREAM.particleCount,
+    streamParticles: 300,
   },
   desktop: {
     starCount: 5000,
     sphereSegments: 64,
     bloomLevels: 4,
     tailParticles: 10000,
-    streamParticles: PHYSICS.STREAM.particleCount,
+    streamParticles: 600,
   },
   // Software-rendered environments (headless CI, very weak devices)
   low: {
@@ -41,7 +41,7 @@ const LOD = {
     sphereSegments: 16,
     bloomLevels: 1,
     tailParticles: 300,
-    streamParticles: 300,
+    streamParticles: 150,
   },
 } as const;
 
@@ -66,6 +66,8 @@ function SceneContent({
   onSelectStar: (star: StarName | null) => void;
   reduceMotion: boolean;
 }) {
+  const portrait = useThree(state => state.size.height > state.size.width);
+  const CAMERA = portrait ? PORTRAIT_CAMERA : LANDSCAPE_CAMERA;
   const timeSpeed = useBinaryStar((state) => state.parameters.timeSpeed);
   const cinematicPhase = useBinaryStar((state) => state.cinematicPhase);
   const epilogueVisible = useBinaryStar((state) => state.epilogueVisible);
@@ -90,6 +92,7 @@ function SceneContent({
   const closingArmed = useRef(false);
   const closingLook = useRef(new THREE.Vector3());
   const previousAspect = useRef(1);
+  const previousPortrait = useRef(portrait);
 
   const positionsRef = useRef({
     primary: [0, 0, 0] as [number, number, number],
@@ -101,6 +104,11 @@ function SceneContent({
   // Main loop: cinematic + orbital animation
   useFrame((state, delta) => {
     const camera = state.camera as THREE.PerspectiveCamera;
+    if (previousPortrait.current !== portrait) {
+      exploreAppliedRef.current = false;
+      closingArmed.current = false;
+      previousPortrait.current = portrait;
+    }
     if (camera.aspect !== previousAspect.current) {
       // Undo the old portrait expansion, then apply the new aspect (including rotation).
       camera.fov = fittedFov(camera.fov, camera.aspect, previousAspect.current);
@@ -139,6 +147,9 @@ function SceneContent({
               CAMERA.EXPLORE.lookAt[1],
               CAMERA.EXPLORE.lookAt[2],
             );
+          } else {
+            const lookAt = reduceMotion ? CAMERA.EXPLORE.lookAt : CAMERA.FAR.lookAt;
+            orbitControlsRef.current.target.set(...lookAt);
           }
           orbitControlsRef.current.enabled = true;
           cinematicStartRef.current = 0;
@@ -284,7 +295,7 @@ function SceneContent({
     }
 
     // Orbital mechanics (always running)
-    timeRef.current += delta * timeSpeed;
+    if (!reduceMotion && !document.hidden) timeRef.current += Math.min(delta, .05) * timeSpeed * .08;
     const newPositions = calculateOrbitalPosition(timeRef.current, PHYSICS.ORBIT);
     positionsRef.current = {
       primary: newPositions.primary,
@@ -302,6 +313,7 @@ function SceneContent({
   // Tail opacity is computed in useFrame and stored in tailOpacityRef
   return (
     <>
+      <group rotation-z={portrait ? Math.PI / 3 : 0}>
       {/* Custom twinkling star field */}
       <StarField count={lod.starCount} />
 
@@ -347,13 +359,6 @@ function SceneContent({
         <sphereGeometry args={[PHYSICS.MIRA_B.radius * 2, 16, 16]} />
         <meshBasicMaterial visible={false} side={THREE.DoubleSide} />
       </mesh>
-
-      {/* Orbit ring */}
-      <OrbitRing
-        semiMajorAxis={PHYSICS.ORBIT.semiMajorAxis}
-        eccentricity={PHYSICS.ORBIT.eccentricity}
-        inclination={PHYSICS.ORBIT.inclination}
-      />
 
       {/* Always-visible material stream */}
       <MaterialStream
@@ -406,6 +411,7 @@ function SceneContent({
         <meshBasicMaterial visible={false} />
       </mesh>
 
+      </group>
       {/* Orbit controls (disabled during cinematic) */}
       <DreiOrbitControls
         ref={orbitControlsRef}
@@ -450,6 +456,7 @@ function PostProcessing() {
 }
 
 export default function Scene({ onSelectStar }: SceneProps) {
+  const CAMERA = window.innerHeight > window.innerWidth ? PORTRAIT_CAMERA : LANDSCAPE_CAMERA;
   const tier = resolveQualityTier();
   const lowQuality = tier === 'low';
   const reduceMotion = Boolean(useReducedMotion());

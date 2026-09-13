@@ -36,7 +36,7 @@ test.describe('Mobile first-class', () => {
 
     // Direct entry must not wait out the 15s sequence.
     await page.waitForTimeout(2500);
-    await expect(page.getByText(/300 light-years from Earth/)).toHaveCount(0);
+    await expect(page.getByText(/在浩瀚宇宙里，我们遇见彼此|In all this vastness, we found each other/)).toHaveCount(0);
     await expect(page.getByTestId('explore-ui')).toBeVisible();
   });
 

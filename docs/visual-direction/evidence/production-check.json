@@ -1,0 +1,14 @@
+{
+  "errors": [],
+  "assets": [
+    {
+      "url": "http://127.0.0.1:5187/materials/river-density-v1.webp",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:5187/materials/surface-density-v1.webp",
+      "status": 200
+    }
+  ],
+  "horizontalOverflow": false
+}

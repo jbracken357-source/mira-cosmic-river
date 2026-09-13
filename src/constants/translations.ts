@@ -4,9 +4,9 @@
 export const TRANSLATIONS = {
   en: {
     // Cinematic opening (3 text fades)
-    cinematic1: '300 light-years from Earth, two stars have been dancing for billions of years.',
-    cinematic2: 'She leaves a trail 13 light-years long. 200 times the size of our solar system. The longest stellar tail ever observed.',
-    cinematic3: 'Mira. Named for the Latin word for "wonderful." Like you.',
+    cinematic1: 'In all this vastness, we found each other.',
+    cinematic2: 'Drawn together. Moving onward.',
+    cinematic3: 'Behind us, a river of light.',
 
     // Title and subtitle
     title: 'Mira',
@@ -42,9 +42,9 @@ export const TRANSLATIONS = {
   },
   ch: {
     // Cinematic opening (3 text fades)
-    cinematic1: '距离地球300光年，两颗星星已经共舞了数十亿年。',
-    cinematic2: '她留下了一条13光年长的尾巴——太阳系的200倍大。这是人类观测到的最长的恒星尾巴。',
-    cinematic3: 'Mira。拉丁语意为"奇妙"。就像你一样。',
+    cinematic1: '在浩瀚宇宙里，我们遇见彼此。',
+    cinematic2: '彼此牵引，一起走向更远。',
+    cinematic3: '走过的路，留成一条光河。',
 
     // Title and subtitle
     title: 'Mira',
