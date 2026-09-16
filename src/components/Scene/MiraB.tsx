@@ -73,11 +73,11 @@ const miraBShaderMaterial = {
 // collapses to a smear. A ninth of a pi keeps the ring an unmistakable ellipse from the
 // angles the camera actually reaches.
 const DISK_TILT = Math.PI / 9;
-// Outer radius of the disk, in white dwarf radii. Far enough out that the ring clears the
+// Outer radius of the disk, in white dwarf radii. Far enough out that the arcs clear the
 // star's own bloom — a disk you cannot see past the star is not a disk.
-const DISK_SCALE = 5.5;
+const DISK_SCALE = 4.8;
 // The disk is a puff, not a mathematical plane: the camera's azimuth is unrestricted, and a
-// flat ring is exactly edge-on at two points of every revolution, where it degenerates into a
+// flat band is exactly edge-on at two points of every revolution, where it degenerates into a
 // one-pixel bar. About a sixth of the radius as vertical thickness means the worst case is still
 // a lens with a readable height to it. Real disks flared like this are just as thin.
 const DISK_THICKNESS = 0.16;

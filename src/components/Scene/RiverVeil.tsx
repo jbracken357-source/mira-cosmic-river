@@ -28,20 +28,34 @@ const fragmentShader = `
   uniform float uOpacity;
   uniform float uReady;
   uniform float uLayer;
+  uniform float uAccent;
+  uniform vec2 uUvScale;
+  uniform vec2 uUvOffset;
   uniform vec3 uColor;
   varying vec2 vUv;
   void main() {
-    vec2 uv = vUv;
+    vec2 uv = (vUv - .5) * uUvScale + .5 + uUvOffset;
     uv.y += sin(uv.x * 12. + uTime * .16 + uLayer) * .016;
     uv.x += sin(uTime * .08 + uLayer) * .012;
-    float density = texture2D(uMap, uv).r;
+    float primary = texture2D(uMap, uv).r;
+    vec2 secondaryUv = uv * vec2(.73, 1.31) + vec2(uLayer * .137, uLayer * .071);
+    float secondary = texture2D(uMap, secondaryUv).r;
+    float density = primary * .68 + secondary * .32;
+
+    // A long, gently wandering lane makes the brightest material follow the tail instead
+    // of tracing every closed eddy in the source image as a luminous ring.
+    float laneCenter = .5 + sin(vUv.x * 8. + uLayer * 1.7 + uTime * .1) * .12;
+    float lane = exp(-pow((vUv.y - laneCenter) / .19, 2.));
+    float volume = smoothstep(.08, .78, density);
+    float filament = smoothstep(.42, .88, density) * lane;
     float edge = smoothstep(0., .08, vUv.x) * (1. - smoothstep(.94, 1., vUv.x));
     edge *= smoothstep(0., .12, vUv.y) * (1. - smoothstep(.88, 1., vUv.y));
-    gl_FragColor = vec4(uColor, pow(density, 1.15) * edge * uOpacity * uReady);
+    float alpha = mix(volume * .56, filament * .8, uAccent);
+    gl_FragColor = vec4(uColor, alpha * edge * uOpacity * uReady);
   }
 `;
 
-function createLayer(length: number, index: number, count: number) {
+function createLayer(length: number, index: number, count: number, accent: boolean) {
   const geometry = new THREE.PlaneGeometry(1, 1, 64, 1);
   const positions = geometry.attributes.position;
   const uv = geometry.attributes.uv;
@@ -52,13 +66,13 @@ function createLayer(length: number, index: number, count: number) {
     const t = 1 - uv.getX(i); // The density image is narrow on the right.
     const wave = t * Math.PI * .8;
     const curl = t * 5 + index * .7;
-    positions.setXYZ(i, -t * length * .6,
-      Math.sin(wave) * 2 + Math.sin(curl) * t * .45 + offset * t * .45,
-      t * length * .5 + offset * t * .85);
-    tangents.set([-length * .6,
+    positions.setXYZ(i, -t * length * .56,
+      Math.sin(wave) * 2.2 + Math.sin(curl) * t * .55 + offset * t * .62,
+      t * length * .62 + offset * t * 1.05);
+    tangents.set([-length * .56,
       Math.cos(wave) * Math.PI * 1.6 + (.45 * Math.sin(curl) + 2.25 * t * Math.cos(curl)) + offset * .45,
-      length * .5 + offset * .85], i * 3);
-    sides[i] = (uv.getY(i) - .5) * (5 + t * 4);
+      length * .62 + offset * 1.05], i * 3);
+    sides[i] = (uv.getY(i) - .5) * (accent ? 5.5 + t * 5 : 7 + t * 7);
   }
   geometry.setAttribute('aTangent', new THREE.BufferAttribute(tangents, 3));
   geometry.setAttribute('aSide', new THREE.BufferAttribute(sides, 1));
@@ -66,11 +80,16 @@ function createLayer(length: number, index: number, count: number) {
     uniforms: {
       uMap: { value: null }, uReady: { value: 0 }, uTime: { value: 0 },
       uOpacity: { value: 0 }, uLayer: { value: index },
-      uColor: { value: new THREE.Color(index % 2 === 0 ? '#9caddc' : '#ead2ae') },
+      uAccent: { value: accent ? 1 : 0 },
+      uUvScale: { value: new THREE.Vector2(1.03 + index * .17, .92 + (index % 3) * .21) },
+      uUvOffset: { value: new THREE.Vector2(index * .193, index * .117) },
+      uColor: { value: new THREE.Color(accent
+        ? (index % 2 === 0 ? '#e7d0ae' : '#bac9f2')
+        : (index % 2 === 0 ? '#65769d' : '#8a745f')) },
     },
     vertexShader, fragmentShader,
     transparent: true, depthWrite: false, side: THREE.DoubleSide,
-    blending: THREE.AdditiveBlending,
+    blending: accent ? THREE.AdditiveBlending : THREE.NormalBlending,
   });
   return { geometry, material };
 }
@@ -83,8 +102,12 @@ export default function RiverVeil({ opacityRef, readyRef, length, reduceMotion }
 }) {
   const tier = resolveQualityTier();
   const groupRef = useRef<THREE.Group>(null);
-  const count = tier === 'low' ? 2 : tier === 'mid' ? 3 : 5;
-  const layers = useMemo(() => Array.from({ length: count }, (_, i) => createLayer(length, i, count)), [length, count]);
+  const volumeCount = tier === 'low' ? 2 : tier === 'mid' ? 4 : 7;
+  const accentCount = tier === 'low' ? 0 : tier === 'mid' ? 1 : 2;
+  const count = volumeCount + accentCount;
+  const layers = useMemo(() => Array.from({ length: count }, (_, i) => (
+    createLayer(length, i, count, i >= volumeCount)
+  )), [length, count, volumeCount]);
 
   useEffect(() => {
     let active = true;
@@ -92,6 +115,8 @@ export default function RiverVeil({ opacityRef, readyRef, length, reduceMotion }
     const texture = new THREE.TextureLoader().load(`${import.meta.env.BASE_URL}materials/river-density-v1.webp`, (loaded) => {
       if (!active) return;
       loaded.colorSpace = THREE.NoColorSpace; // Grayscale density, not display RGB.
+      loaded.wrapS = THREE.RepeatWrapping;
+      loaded.wrapT = THREE.RepeatWrapping;
       for (const { material } of layers) {
         material.uniforms.uMap.value = loaded;
         material.uniforms.uReady.value = 1;
@@ -117,7 +142,8 @@ export default function RiverVeil({ opacityRef, readyRef, length, reduceMotion }
     for (const child of groupRef.current?.children ?? []) {
       const material = (child as THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMaterial>).material;
       if (!reduceMotion && !document.hidden) material.uniforms.uTime.value += Math.min(delta, .05);
-      material.uniforms.uOpacity.value = opacityRef.current * 2 / count;
+      const isAccent = material.uniforms.uAccent.value === 1;
+      material.uniforms.uOpacity.value = opacityRef.current * (isAccent ? 1.05 : 1.55) / count;
     }
   });
 

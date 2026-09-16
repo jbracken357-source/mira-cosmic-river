@@ -1,5 +1,5 @@
 // Accretion disk shader for Mira B (white dwarf)
-// A glowing ring with a hot spot where the matter stream impacts.
+// Broken, glowing accretion arcs with a hot spot where the matter stream impacts.
 //
 // The ring is described in normalised radius (0 at the star, 1 at the disk's outer edge), so the
 // geometry is a unit sphere squeezed into the disk's shape and the mesh scale decides how big
@@ -9,8 +9,8 @@ import * as THREE from 'three';
 import { COLORS } from '../constants/colors';
 
 // Where the bright band sits and how wide the annulus is. Fractions of the disk's outer radius.
-// The ring is deliberately thin against its own radius: a fat donut hugging the star reads as a
-// glowing ball, not as a disk, however bright it is.
+// The radial band stays thin, while its azimuthal arc is deliberately incomplete so it reads as
+// flowing matter rather than a diagram-like orbit.
 export const DISK_SHAPE = {
   inner: 0.5, // inner edge of the ring
   outer: 1.0, // outer edge of the ring
@@ -21,7 +21,7 @@ export const DISK_SHAPE = {
 // Both faces contribute. Restrained gains retain the sheared gas detail instead
 // of turning the entire disk into a white bloom halo.
 export const DISK_GAIN = {
-  ring: 0.55,
+  ring: 0.46,
   hotSpot: 0.65,
   innerGlow: 0.1,
 } as const;
@@ -87,6 +87,16 @@ export const AccretionDisk_Shader = {
       float band = exp(-pow((r - flowingBand) / uBandWidth, 2.0));
       float ring = inner * outer * (0.4 + 0.9 * band);
 
+      // The incoming material illuminates two broad, incomplete arcs. Keeping only a trace
+      // around the rest of the orbit avoids the diagram-like pale circle that previously
+      // competed with the two stars.
+      float impactDelta = atan(sin(angle - uImpactAngle), cos(angle - uImpactAngle));
+      float wakeDelta = atan(sin(angle - uImpactAngle - 2.35), cos(angle - uImpactAngle - 2.35));
+      float impactArc = exp(-pow(impactDelta / 1.0, 2.0));
+      float wakeArc = .42 * exp(-pow(wakeDelta / .72, 2.0));
+      float arc = .08 + .92 * clamp(impactArc + wakeArc, 0.0, 1.0);
+      ring *= arc;
+
       // Doppler beaming: the side of the disk sweeping toward the viewer is brighter. Real
       // accretion disks are asymmetric for exactly this reason, and it stops the ring from
       // reading as a perfect sticker.
@@ -96,13 +106,11 @@ export const AccretionDisk_Shader = {
       float streak = 0.65 + 0.35 * sin(angle * 5.0 - uTime * .5 + r * 24.0);
 
       // Hot spot where the stream from Mira A lands.
-      float dAngle = angle - uImpactAngle;
-      dAngle = atan(sin(dAngle), cos(dAngle));
-      float spot = exp(-pow(dAngle / 0.42, 2.0)) * exp(-pow((r - 0.85) / 0.26, 2.0));
+      float spot = exp(-pow(impactDelta / 0.42, 2.0)) * exp(-pow((r - 0.85) / 0.26, 2.0));
 
       vec3 color = uColor * ring * beam * streak * uRingGain;
       // Inner glow stays outside the hole, or the ring's centre fills in and it reads as a disc.
-      color += uColor * uInnerGlow * exp(-max(r - uInner, 0.0) * 6.0) * smoothstep(0.12, uInner, r);
+      color += uColor * uInnerGlow * arc * exp(-max(r - uInner, 0.0) * 6.0) * smoothstep(0.12, uInner, r);
       color += uHotColor * spot * uHotGain;
 
       float alpha = clamp(ring * beam * 0.48 + spot * 0.35, 0.0, 1.0) * uOpacity;
