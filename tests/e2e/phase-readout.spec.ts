@@ -41,23 +41,29 @@ async function openMiraACard(page: Page, epochMs: number) {
   expect(box).toBeTruthy();
   // The loading veil lifts when the Canvas is created; under software rendering the
   // scene graph commits later than the explore UI, so a click before this lands on
-  // nothing instead of the star.
+  // nothing instead of the star. The pose attribute is written at the end of the
+  // first completed frame, which proves the click targets are mounted.
   await expect(page.getByTestId('loading')).toHaveCount(0);
+  await expect(canvas).toHaveAttribute('data-camera-pose', /.+/, { timeout: 30000 });
 
   const card = page.getByTestId('info-card');
   // Software rendering can stall past the first click; retry until the raycast
-  // lands on Mira A instead of asserting on a single attempt.
+  // lands on Mira A instead of asserting on a single attempt. The budget is generous
+  // because the whole suite shares one software-rendered browser and late specs run
+  // hot — the assertion itself is unchanged.
   await expect(async () => {
     await canvas.click({
       position: { x: box!.width * 0.6, y: box!.height * 0.5 },
     });
-    await expect(card).toBeVisible({ timeout: 3000 });
-  }).toPass({ timeout: 30000 });
+    await expect(card).toBeVisible({ timeout: 5000 });
+  }).toPass({ timeout: 60000 });
   return card.locator('[data-phase-days-to-max]');
 }
 
 test.describe('Phase readout', () => {
+  // Two card openings on one page, each with its own retry budget under software rendering.
   test('Mira A card readout differs at two pinned moments', async ({ page }) => {
+    test.setTimeout(180000);
     const atMaximum = await openMiraACard(page, MIRA_MAXIMUM_EPOCH_MS);
     const maxDays = await atMaximum.getAttribute('data-phase-days-to-max');
     await expect(atMaximum).toContainText('正处于最亮');

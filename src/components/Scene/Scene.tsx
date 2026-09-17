@@ -417,6 +417,15 @@ function SceneContent({
     const secondary = newPositions.secondary;
     miraBGroupRef.current?.position.set(secondary[0], secondary[1], secondary[2]);
     miraBTargetRef.current?.position.set(secondary[0], secondary[1], secondary[2]);
+
+    // Dev-only e2e observability (same gate as ?epoch=): the camera pose as a coarse
+    // attribute, written imperatively so it never re-renders React. Rounded to a
+    // tenth of a unit — enough to tell a drag apart from the main view.
+    if (!import.meta.env.PROD) {
+      const el = state.gl.domElement;
+      const pose = `${camera.position.x.toFixed(1)},${camera.position.y.toFixed(1)},${camera.position.z.toFixed(1)}`;
+      if (el.dataset.cameraPose !== pose) el.dataset.cameraPose = pose;
+    }
   });
 
   // Tail opacity is computed in useFrame and stored in tailOpacityRef

@@ -62,6 +62,9 @@ test.describe('Mira Cosmic River - E2E Tests', () => {
     const box = await canvas.boundingBox();
     expect(box).toBeTruthy();
     await expect(page.getByTestId('loading')).toHaveCount(0);
+    // Written at the end of the first completed frame: proves the click targets are
+    // mounted, which the veil lifting alone does not.
+    await expect(canvas).toHaveAttribute('data-camera-pose', /.+/, { timeout: 30000 });
 
     // Skip lands at CAMERA.EXPLORE, which looks left of origin, so Mira A sits right of centre.
     await canvas.click({
