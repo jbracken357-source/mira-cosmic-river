@@ -1,8 +1,12 @@
 // Mira Tail Particle Shader - The hero shader
 // 10,000+ particles forming a 13-light-year UV tail behind Mira A
 // Mouse-reactive ripples, soft particles, warm pearl-to-blue gradient
+//
+// Star-light response mirrors the pure math in src/lib/riverLighting.ts (unit-tested there);
+// keep the falloff and shadow-floor formulas in step with it.
 
 import * as THREE from 'three';
+import { MIRA_A_REACH, MIRA_B_REACH, MIRA_B_GAIN, RIVER_SHADOW_FLOOR } from '../lib/riverLighting';
 
 export const TailVertexShader = `
   uniform float uTime;
@@ -10,6 +14,8 @@ export const TailVertexShader = `
   uniform vec2 uMouse;
   uniform float uMouseInfluence;
   uniform float uParticleSize;
+  uniform vec3 uMiraBPos;
+  uniform vec3 uReach;  // x: Mira A reach, y: Mira B reach, z: Mira B gain
 
   attribute float aSeed;
   attribute float aSize;
@@ -19,6 +25,9 @@ export const TailVertexShader = `
   varying float vLength;
   varying float vSeed;
   varying float vAlpha;
+  varying float vLight;   // combined light from the pair (riverLight)
+  varying float vLightA;  // Mira A alone — drives the local gold accent
+  varying float vLightB;  // Mira B alone — drives the cool pool around the companion
 
   // Simplex-like noise (simplified for performance)
   vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
@@ -68,6 +77,12 @@ export const TailVertexShader = `
     return 42.0 * dot(m * m, vec4(dot(p0, x0), dot(p1, x1), dot(p2, x2), dot(p3, x3)));
   }
 
+  // Mirrors starLightFalloff in src/lib/riverLighting.ts.
+  float starLightFalloff(float dist, float reach) {
+    float x = dist / reach;
+    return 1.0 / (1.0 + x * x);
+  }
+
   void main() {
     vLength = aLength;
     vSeed = aSeed;
@@ -87,8 +102,15 @@ export const TailVertexShader = `
     pos.y += ny;
     pos.z += nz;
 
+    // Star light, computed on the displaced world position so the lit pool sits on the
+    // stars even as the noise stirs the river. Mira A never leaves the origin.
+    vec4 worldPos = modelMatrix * vec4(pos, 1.0);
+    vLightA = starLightFalloff(length(worldPos.xyz), uReach.x);
+    vLightB = starLightFalloff(distance(worldPos.xyz, uMiraBPos), uReach.y);
+    vLight = min(1.0, vLightA + uReach.z * vLightB);
+
     // Mouse-reactive gravitational ripple
-    vec4 screenPos = modelViewMatrix * vec4(pos, 1.0);
+    vec4 screenPos = viewMatrix * worldPos;
     vec2 screenXY = screenPos.xy / -screenPos.z;
     float distToMouse = distance(screenXY, uMouse);
     float ripple = sin(distToMouse * 12.0 - uTime * 3.0) * exp(-distToMouse * 2.0);
@@ -112,10 +134,18 @@ export const TailFragmentShader = `
   uniform vec3 uColorNear;
   uniform vec3 uColorMid;
   uniform vec3 uColorFar;
+  uniform vec3 uColorGold;   // pearl gold — local to Mira A's full light
+  uniform vec3 uColorCool;   // white-dwarf blue — local to Mira B's pool
+  uniform float uShadowFloor;
+  uniform float uSkyGain;
+  uniform float uSkyWarmth;
 
   varying float vLength;
   varying float vSeed;
   varying float vAlpha;
+  varying float vLight;
+  varying float vLightA;
+  varying float vLightB;
 
   void main() {
     // Circular particle
@@ -124,23 +154,42 @@ export const TailFragmentShader = `
 
     float circle = exp(-dist * dist * 24.0) * (1.0 - smoothstep(0.3, 0.5, dist));
 
-    // Color gradient: warm pearl → muted violet → blue
+    // Color gradient: pearl at the star, quickly into muted violet, then blue. The warm
+    // segment is deliberately short — the palette's gold stays local to the star light,
+    // the river body is blue-violet.
     vec3 color;
-    if (vLength < 0.5) {
-      color = mix(uColorNear, uColorMid, vLength * 2.0);
+    if (vLength < 0.3) {
+      color = mix(uColorNear, uColorMid, vLength / 0.3);
     } else {
-      color = mix(uColorMid, uColorFar, (vLength - 0.5) * 2.0);
+      color = mix(uColorMid, uColorFar, (vLength - 0.3) / 0.7);
     }
 
     // Subtle per-particle brightness variation
     float brightness = 0.85 + 0.15 * sin(vSeed * 6.2831);
     color *= brightness;
 
+    // Lit near the stars, falling into structured (not black) shadow down the tail.
+    // Mirrors riverBrightness in src/lib/riverLighting.ts.
+    float level = uShadowFloor + (1.0 - uShadowFloor) * vLight;
+    vec3 shadowTint = vec3(0.55, 0.62, 1.0); // shadow cools toward saturated blue-violet
+    color *= level * mix(shadowTint, vec3(1.0), vLight);
+
+    // Gold accents stay local to the primary; the companion adds a cool pool of its own.
+    color = mix(color, uColorGold, 0.5 * vLightA * vLightA * (0.7 + uSkyWarmth));
+    color = mix(color, uColorCool, vLightB * 0.45);
+
+    // Real-time binding: the pulsation bends brightness and warmth, never switches off.
+    // Half-strength warmth on the points: full warmth greys the violet into mud.
+    color *= uSkyGain;
+    color = mix(color, color * vec3(1.06, 0.96, 0.84), uSkyWarmth * 0.5);
+
     // Core glow: brighter near center of each particle
     float coreGlow = pow(circle, 1.5) * 0.4;
-    color += coreGlow * vec3(1.0, 0.9, 0.8);
+    color += coreGlow * vec3(1.0, 0.9, 0.8) * level;
 
     gl_FragColor = vec4(color, vAlpha * circle);
+    #include <tonemapping_fragment>
+    #include <colorspace_fragment>
   }
 `;
 
@@ -156,6 +205,13 @@ export function createTailMaterial(): THREE.ShaderMaterial {
       uColorNear: { value: new THREE.Color('#e3bd8b') },
       uColorMid: { value: new THREE.Color('#a99ccc') },
       uColorFar: { value: new THREE.Color('#789ac2') },
+      uColorGold: { value: new THREE.Color('#f2d8a8') },
+      uColorCool: { value: new THREE.Color('#dbe6ff') },
+      uMiraBPos: { value: new THREE.Vector3(0, 0, 0) },
+      uReach: { value: new THREE.Vector3(MIRA_A_REACH, MIRA_B_REACH, MIRA_B_GAIN) },
+      uShadowFloor: { value: RIVER_SHADOW_FLOOR },
+      uSkyGain: { value: 1 },
+      uSkyWarmth: { value: 0 },
     },
     vertexShader: TailVertexShader,
     fragmentShader: TailFragmentShader,

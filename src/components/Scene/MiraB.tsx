@@ -8,6 +8,7 @@ import type { OrbitPositions } from '../../types';
 import GlowShell from './GlowShell';
 import type { MutableRefObject } from 'react';
 import { useReducedMotion } from 'framer-motion';
+import { advanceTime } from '../../lib/captureMode';
 
 interface MiraBProps {
   position: [number, number, number];
@@ -96,7 +97,7 @@ export default function MiraB({ position, radius, segments = 64, positionsRef }:
   const diskRadius = radius * DISK_SCALE;
 
   useFrame((_, delta) => {
-    if (!reduceMotion && !document.hidden) timeRef.current += Math.min(delta, .05);
+    timeRef.current = advanceTime(timeRef.current, delta, { reduceMotion });
     const time = timeRef.current;
 
     if (materialRef.current) {

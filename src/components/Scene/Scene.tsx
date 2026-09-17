@@ -6,6 +6,7 @@ import { useReducedMotion } from 'framer-motion';
 import { useBinaryStar } from '../../hooks';
 import { COLORS, PHYSICS, calculateOrbitalPosition, CINEMATIC, CAMERA as LANDSCAPE_CAMERA, TRANSITIONS, TRANSLATIONS, resolveQualityTier } from '../../constants';
 import { PORTRAIT_CAMERA } from '../../constants/animation';
+import { advanceTime, captureMode, resolveCapturePose } from '../../lib/captureMode';
 import * as THREE from 'three';
 import type { StarName } from '../UI/InfoCards';
 import MiraA from './MiraA';
@@ -76,6 +77,7 @@ function SceneContent({
   const setIntroComplete = useBinaryStar((state) => state.setIntroComplete);
   const tier = resolveQualityTier();
   const lod = tier === 'low' ? LOD.low : tier === 'mid' ? LOD.mobile : LOD.desktop;
+  const capture = captureMode();
 
   const timeRef = useRef(0);
   const cinematicStartRef = useRef(0);
@@ -294,8 +296,22 @@ function SceneContent({
       }
     }
 
+    // Capture mode parks the camera at the requested pose every frame — after the explore
+    // hand-off above and after OrbitControls' own update — so nothing can drift between runs.
+    if (capture.active && introComplete) {
+      const pose = resolveCapturePose(capture.camera, CAMERA.EXPLORE);
+      camera.position.set(pose.position[0], pose.position[1], pose.position[2]);
+      camera.fov = fittedFov(pose.fov, camera.aspect);
+      camera.updateProjectionMatrix();
+      camera.lookAt(pose.lookAt[0], pose.lookAt[1], pose.lookAt[2]);
+      if (orbitControlsRef.current) {
+        orbitControlsRef.current.target.set(pose.lookAt[0], pose.lookAt[1], pose.lookAt[2]);
+        orbitControlsRef.current.enabled = false;
+      }
+    }
+
     // Orbital mechanics (always running)
-    if (!reduceMotion && !document.hidden) timeRef.current += Math.min(delta, .05) * timeSpeed * .08;
+    timeRef.current = advanceTime(timeRef.current, delta, { reduceMotion, scale: timeSpeed * .08 });
     const newPositions = calculateOrbitalPosition(timeRef.current, PHYSICS.ORBIT);
     positionsRef.current = {
       primary: newPositions.primary,
@@ -373,6 +389,7 @@ function SceneContent({
           opacityRef={tailOpacityRef}
           particleCount={lod.tailParticles}
           tailLength={PHYSICS.TAIL.length}
+          miraBRef={miraBGroupRef}
         />
       </group>
       {/* Invisible click target for tail card */}
@@ -420,9 +437,9 @@ function SceneContent({
         enableZoom
         minDistance={5}
         maxDistance={40}
-        autoRotate={!epilogueVisible && !reduceMotion}
+        autoRotate={!capture.active && !epilogueVisible && !reduceMotion}
         autoRotateSpeed={0.3}
-        enableDamping
+        enableDamping={!capture.active}
         dampingFactor={0.05}
         touches={{
           ONE: THREE.TOUCH.ROTATE,

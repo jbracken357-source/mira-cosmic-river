@@ -1,14 +1,20 @@
 import { useEffect, useRef, useMemo } from 'react';
+import type { MutableRefObject } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { createTailMaterial } from '../../shaders/tail';
 import { useReducedMotion } from 'framer-motion';
 import RiverVeil from './RiverVeil';
+import { advanceTime, captureMode } from '../../lib/captureMode';
+import { skyRiverGain, tailBaseOpacity } from '../../lib/riverLighting';
+import type { SkyRiverCoupling } from '../../lib/riverLighting';
+import { useBinaryStar } from '../../hooks';
 
 interface MiraTailProps {
   opacityRef: React.MutableRefObject<number>;
   particleCount?: number;
   tailLength?: number;
+  miraBRef: MutableRefObject<THREE.Group | null>;
 }
 
 // Generate tail particle positions - curved stream behind Mira A
@@ -57,10 +63,16 @@ export default function MiraTail({
   opacityRef,
   particleCount = 10000,
   tailLength = 25,
+  miraBRef,
 }: MiraTailProps) {
   const textureReadyRef = useRef(false);
   const pointsRef = useRef<THREE.Points<THREE.BufferGeometry, THREE.ShaderMaterial>>(null);
+  const bWorldPos = useRef(new THREE.Vector3());
   const reduceMotion = Boolean(useReducedMotion());
+  const capture = captureMode();
+  const skyBrightness = useBinaryStar((state) => state.sky.brightness);
+  const skyColorShift = useBinaryStar((state) => state.sky.colorShift);
+  const sky = useMemo<SkyRiverCoupling>(() => skyRiverGain(skyBrightness, skyColorShift), [skyBrightness, skyColorShift]);
 
   const geometry = useMemo(() => {
     const { positions, seeds, sizes, lengths, spreads } =
@@ -97,19 +109,23 @@ export default function MiraTail({
     // Update the material actually mounted on the points (the old ref was never bound).
     const mat = pointsRef.current?.material;
     if (!mat) return;
-    if (!reduceMotion && !document.hidden) mat.uniforms.uTime.value += Math.min(delta, .05);
-    const particleOpacity = textureReadyRef.current
-      ? .09 * Math.min(1, 600 / particleCount)
-      : .6 * Math.min(1, Math.sqrt(300 / particleCount));
-    mat.uniforms.uOpacity.value = opacityRef.current * particleOpacity;
+    mat.uniforms.uTime.value = advanceTime(mat.uniforms.uTime.value, delta, { reduceMotion });
+    mat.uniforms.uOpacity.value = opacityRef.current * tailBaseOpacity(textureReadyRef.current, particleCount);
+    mat.uniforms.uSkyGain.value = sky.gain;
+    mat.uniforms.uSkyWarmth.value = sky.warmth;
+    if (miraBRef.current) {
+      miraBRef.current.getWorldPosition(bWorldPos.current);
+      mat.uniforms.uMiraBPos.value.copy(bWorldPos.current);
+    }
     mat.uniforms.uMouse.value.copy(mouseRef.current);
-    mat.uniforms.uMouseInfluence.value = reduceMotion ? 0 : .3;
+    // Capture mode zeroes the ripple along with every other time-varying input.
+    mat.uniforms.uMouseInfluence.value = reduceMotion || capture.active ? 0 : .3;
   });
 
   return (
     <group>
       <points ref={pointsRef} geometry={geometry} material={material} raycast={() => {}} />
-      <RiverVeil opacityRef={opacityRef} readyRef={textureReadyRef} length={tailLength} reduceMotion={reduceMotion} />
+      <RiverVeil opacityRef={opacityRef} readyRef={textureReadyRef} length={tailLength} reduceMotion={reduceMotion} miraBRef={miraBRef} sky={sky} />
     </group>
   );
 }

@@ -9,6 +9,7 @@ import {
 } from '../../shaders/miraA';
 import { COLORS } from '../../constants';
 import { useBinaryStar } from '../../hooks';
+import { advanceTime } from '../../lib/captureMode';
 import GlowShell from './GlowShell';
 
 interface MiraAProps {
@@ -55,7 +56,9 @@ export default function MiraA({ position, radius, turbulence, segments = 64 }: M
   }, []);
 
   useFrame((_, delta) => {
-    if (!reduceMotion && !document.hidden) timeRef.current += Math.min(delta, .05);
+    // Capture mode parks the phase at CAPTURE_TIME; the same value also freezes the
+    // surface rotation below.
+    timeRef.current = advanceTime(timeRef.current, delta, { reduceMotion });
     const time = timeRef.current;
 
     if (materialRef.current) {

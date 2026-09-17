@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { SKY_SPECTRAL } from '../../constants/colors';
 import { useBinaryStar } from '../../hooks';
+import { captureClock } from '../../lib/captureMode';
 
 interface StarFieldProps {
   count?: number;
@@ -122,7 +123,8 @@ export default function StarField({ count = 5000 }: StarFieldProps) {
 
   useFrame((state) => {
     if (materialRef.current) {
-      materialRef.current.uniforms.uTime.value = state.clock.elapsedTime;
+      // Capture mode freezes the twinkle at one fixed phase instead of the wall clock.
+      materialRef.current.uniforms.uTime.value = captureClock(state.clock.elapsedTime);
       // Low quality has no bloom, so the field carries the sky envelope.
       materialRef.current.uniforms.uSky.value = 0.35 + 0.65 * brightness;
     }
@@ -195,5 +197,7 @@ const fragmentShader = `
     vec3 finalColor = vColor * vBright * (0.9 + 0.35 * core);
 
     gl_FragColor = vec4(finalColor, halo);
+    #include <tonemapping_fragment>
+    #include <colorspace_fragment>
   }
 `;

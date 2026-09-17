@@ -3,13 +3,23 @@ import type { MutableRefObject } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { resolveQualityTier } from '../../constants';
+import { advanceTime } from '../../lib/captureMode';
+import {
+  MIRA_A_REACH,
+  MIRA_B_REACH,
+  MIRA_B_GAIN,
+  veilLayerWeight,
+} from '../../lib/riverLighting';
+import type { SkyRiverCoupling } from '../../lib/riverLighting';
 
 const vertexShader = `
   attribute vec3 aTangent;
   attribute float aSide;
   varying vec2 vUv;
+  varying vec3 vWorldPos;
   void main() {
     vUv = uv;
+    vWorldPos = (modelMatrix * vec4(position, 1.)).xyz;
     vec4 center = modelViewMatrix * vec4(position, 1.);
     vec3 tangent = normalize(mat3(modelViewMatrix) * aTangent);
     vec3 side = cross(normalize(-center.xyz), tangent);
@@ -32,7 +42,20 @@ const fragmentShader = `
   uniform vec2 uUvScale;
   uniform vec2 uUvOffset;
   uniform vec3 uColor;
+  uniform vec3 uMiraBPos;
+  uniform vec3 uReach;  // x: Mira A reach, y: Mira B reach, z: Mira B gain
+  uniform vec3 uColorGold;
+  uniform float uSkyGain;
+  uniform float uSkyWarmth;
   varying vec2 vUv;
+  varying vec3 vWorldPos;
+
+  // Mirrors starLightFalloff in src/lib/riverLighting.ts.
+  float starLightFalloff(float dist, float reach) {
+    float x = dist / reach;
+    return 1.0 / (1.0 + x * x);
+  }
+
   void main() {
     vec2 uv = (vUv - .5) * uUvScale + .5 + uUvOffset;
     uv.y += sin(uv.x * 12. + uTime * .16 + uLayer) * .016;
@@ -50,8 +73,25 @@ const fragmentShader = `
     float filament = smoothstep(.42, .88, density) * lane;
     float edge = smoothstep(0., .08, vUv.x) * (1. - smoothstep(.94, 1., vUv.x));
     edge *= smoothstep(0., .12, vUv.y) * (1. - smoothstep(.88, 1., vUv.y));
-    float alpha = mix(volume * .56, filament * .8, uAccent);
-    gl_FragColor = vec4(uColor, alpha * edge * uOpacity * uReady);
+
+    // Lit near the stars, easing into cool (not black) shadow down the tail.
+    float lightA = starLightFalloff(length(vWorldPos), uReach.x);
+    float lightB = starLightFalloff(distance(vWorldPos, uMiraBPos), uReach.y);
+    float light = min(1., lightA + uReach.z * lightB);
+    // Mirrors veilLightResponse in src/lib/riverLighting.ts: the alpha-blended veil keeps
+    // three quarters of its body in shadow; the multiplicative floor suits only additives.
+    float level = .75 + .6 * light;
+    vec3 color = uColor * level * mix(vec3(.82, .86, 1.05), vec3(1.), light);
+    color = mix(color, uColorGold, 0.5 * lightA * lightA * (uAccent * .8 + .2) * (.7 + uSkyWarmth));
+    color *= uSkyGain;
+    color = mix(color, color * vec3(1.06, .96, .84), uSkyWarmth);
+
+    float alpha = mix(volume * .62, filament * .95, uAccent);
+    // The lit pool reads denser as well as brighter; shadow thins but never vanishes.
+    alpha *= mix(.85, 1.15, light);
+    gl_FragColor = vec4(color, alpha * edge * uOpacity * uReady);
+    #include <tonemapping_fragment>
+    #include <colorspace_fragment>
   }
 `;
 
@@ -85,7 +125,12 @@ function createLayer(length: number, index: number, count: number, accent: boole
       uUvOffset: { value: new THREE.Vector2(index * .193, index * .117) },
       uColor: { value: new THREE.Color(accent
         ? (index % 2 === 0 ? '#e7d0ae' : '#bac9f2')
-        : (index % 2 === 0 ? '#65769d' : '#8a745f')) },
+        : (index % 2 === 0 ? '#5f6f9e' : '#76689c')) },
+      uMiraBPos: { value: new THREE.Vector3(0, 0, 0) },
+      uReach: { value: new THREE.Vector3(MIRA_A_REACH, MIRA_B_REACH, MIRA_B_GAIN) },
+      uColorGold: { value: new THREE.Color('#f2d8a8') },
+      uSkyGain: { value: 1 },
+      uSkyWarmth: { value: 0 },
     },
     vertexShader, fragmentShader,
     transparent: true, depthWrite: false, side: THREE.DoubleSide,
@@ -94,14 +139,17 @@ function createLayer(length: number, index: number, count: number, accent: boole
   return { geometry, material };
 }
 
-export default function RiverVeil({ opacityRef, readyRef, length, reduceMotion }: {
+export default function RiverVeil({ opacityRef, readyRef, length, reduceMotion, miraBRef, sky }: {
   opacityRef: MutableRefObject<number>;
   readyRef: MutableRefObject<boolean>;
   length: number;
   reduceMotion: boolean;
+  miraBRef: MutableRefObject<THREE.Group | null>;
+  sky: SkyRiverCoupling;
 }) {
   const tier = resolveQualityTier();
   const groupRef = useRef<THREE.Group>(null);
+  const bWorldPos = useRef(new THREE.Vector3());
   const volumeCount = tier === 'low' ? 2 : tier === 'mid' ? 4 : 7;
   const accentCount = tier === 'low' ? 0 : tier === 'mid' ? 1 : 2;
   const count = volumeCount + accentCount;
@@ -139,11 +187,15 @@ export default function RiverVeil({ opacityRef, readyRef, length, reduceMotion }
   }, [layers, readyRef]);
 
   useFrame((_, delta) => {
-    for (const child of groupRef.current?.children ?? []) {
+    if (miraBRef.current) miraBRef.current.getWorldPosition(bWorldPos.current);
+    for (const [i, child] of (groupRef.current?.children ?? []).entries()) {
       const material = (child as THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMaterial>).material;
-      if (!reduceMotion && !document.hidden) material.uniforms.uTime.value += Math.min(delta, .05);
+      material.uniforms.uTime.value = advanceTime(material.uniforms.uTime.value, delta, { reduceMotion });
       const isAccent = material.uniforms.uAccent.value === 1;
-      material.uniforms.uOpacity.value = opacityRef.current * (isAccent ? 1.05 : 1.55) / count;
+      material.uniforms.uOpacity.value = opacityRef.current * veilLayerWeight(i, count, isAccent) / count;
+      material.uniforms.uMiraBPos.value.copy(bWorldPos.current);
+      material.uniforms.uSkyGain.value = sky.gain;
+      material.uniforms.uSkyWarmth.value = sky.warmth;
     }
   });
 
