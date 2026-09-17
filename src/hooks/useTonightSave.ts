@@ -14,6 +14,7 @@
 import { create } from 'zustand';
 import {
   fitExportSize,
+  fitTonightFontSize,
   formatTonightDate,
   initialTonightSaveState,
   tonightFilename,
@@ -67,6 +68,9 @@ interface TonightSaveStore {
 
 let machine: TonightSaveState = initialTonightSaveState();
 let snapshot: TonightSnapshot | null = null;
+// The snapshot serial counter lives here (the machine is pure and receives it as an
+// event payload): identity only ever moves forward, even across close/reopen.
+let nextSnapshotSerial = 1;
 // Dev-only e2e seam (same gate as ?epoch=): forces the next compose to fail so the
 // failure/retry path is reachable on demand.
 let failNextExport = false;
@@ -137,16 +141,15 @@ function captureNow() {
     takenAt: new Date(),
     language: useBinaryStar.getState().language,
   };
-  dispatch('captured');
+  dispatch({ type: 'captured', serial: nextSnapshotSerial++ });
   void refreshPreview();
 }
 
 // Compose the snapshot plus the enabled overlays on an offscreen 2D canvas. Pure
 // scene pixels in, PNG out; the live canvas is never touched.
-async function compose(on: TonightOverlays): Promise<HTMLCanvasElement> {
-  if (!snapshot) throw new Error('no snapshot to compose');
-  const image = await loadImage(snapshot.dataUrl);
-  const size = fitExportSize(snapshot.width, snapshot.height);
+async function compose(snap: TonightSnapshot, on: TonightOverlays): Promise<HTMLCanvasElement> {
+  const image = await loadImage(snap.dataUrl);
+  const size = fitExportSize(snap.width, snap.height);
   const canvas = document.createElement('canvas');
   canvas.width = size.width;
   canvas.height = size.height;
@@ -157,16 +160,23 @@ async function compose(on: TonightOverlays): Promise<HTMLCanvasElement> {
   if (on.date || on.phrase) {
     const minEdge = Math.min(size.width, size.height);
     const margin = Math.max(12, Math.round(minEdge * 0.045));
-    const fontSize = Math.max(14, Math.round(minEdge * 0.032));
+    const fontOf = (fontSize: number) =>
+      `300 ${fontSize}px Inter, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif`;
+    const lines: string[] = [];
+    if (on.phrase) lines.push(tonightPhrase(snap.language));
+    if (on.date) lines.push(formatTonightDate(snap.takenAt, snap.language));
+    // Measured, never guessed: the pure policy (lib/tonightSave) shrinks until every
+    // line provably fits inside the margins, in both languages.
+    const fontSize = fitTonightFontSize(lines, size, (line, at) => {
+      ctx.font = fontOf(at);
+      return ctx.measureText(line).width;
+    });
     const lineHeight = Math.round(fontSize * 1.5);
-    ctx.font = `300 ${fontSize}px Inter, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif`;
+    ctx.font = fontOf(fontSize);
     ctx.textBaseline = 'alphabetic';
     ctx.fillStyle = 'rgba(255, 255, 255, 0.82)';
     ctx.shadowColor = 'rgba(0, 0, 0, 0.65)';
     ctx.shadowBlur = Math.round(fontSize * 0.5);
-    const lines: string[] = [];
-    if (on.phrase) lines.push(tonightPhrase(snapshot.language));
-    if (on.date) lines.push(formatTonightDate(snapshot.takenAt, snapshot.language));
     lines.forEach((line, index) => {
       ctx.fillText(line, margin, size.height - margin - (lines.length - 1 - index) * lineHeight);
     });
@@ -184,15 +194,19 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 }
 
 async function refreshPreview() {
+  const serial = machine.snapshot;
+  const snap = snapshot;
+  if (serial === null || !snap) return;
   try {
-    const canvas = await compose(machine.overlays);
-    // The flow may have closed (or re-captured) while the image decoded; only a
-    // preview that still belongs to the live snapshot may be shown.
-    if (machine.snapshot === null || !snapshot) return;
+    const canvas = await compose(snap, machine.overlays);
+    // A decode can outlive the flow it started in: a close/reopen (or a fresh
+    // capture) moves the serial, and a stale compose must never replace the preview
+    // of the snapshot the viewer is actually looking at.
+    if (machine.snapshot !== serial) return;
     useTonightSave.setState({ previewUrl: canvas.toDataURL('image/png') });
   } catch {
     // A failed preview compose is not a save failure: the raw frame still shows.
-    if (snapshot) useTonightSave.setState({ previewUrl: snapshot.dataUrl });
+    if (machine.snapshot === serial) useTonightSave.setState({ previewUrl: snap.dataUrl });
   }
 }
 
@@ -203,36 +217,63 @@ function toBlob(canvas: HTMLCanvasElement): Promise<Blob> {
 }
 
 async function exportNow() {
+  const snap = snapshot;
+  if (!snap) return; // the machine only exports with a locked snapshot
+  // Gesture discipline (mobile): exportNow is invoked synchronously from the press,
+  // but the blob only exists after async compose — a window.open issued THEN can be
+  // killed by Safari's popup blocker. So when the download-attribute path is
+  // unavailable, the fallback window opens NOW (blank, inside the gesture) and is
+  // navigated to the blob URL once ready. The download path itself stays as-is.
+  const needsPopup = !('download' in document.createElement('a'));
+  const popup = needsPopup ? window.open('about:blank', '_blank') : null;
+  if (needsPopup && popup === null) {
+    // The browser refused even the in-gesture window: fail honestly, retryable.
+    dispatch('export-failed');
+    return;
+  }
   try {
     if (failNextExport) {
       failNextExport = false;
       throw new Error('injected export failure');
     }
-    const canvas = await compose(machine.overlays);
+    const canvas = await compose(snap, machine.overlays);
     // Closed mid-export: the machine already discarded; deliver nothing.
-    if (machine.phase !== 'exporting') return;
+    if (machine.phase !== 'exporting') {
+      popup?.close();
+      return;
+    }
     const blob = await toBlob(canvas);
-    if (machine.phase !== 'exporting') return;
-    deliver(blob, tonightFilename(snapshot!.takenAt));
+    if (machine.phase !== 'exporting') {
+      popup?.close();
+      return;
+    }
+    deliver(blob, tonightFilename(snap.takenAt), popup);
     dispatch('exported');
   } catch {
+    popup?.close();
     dispatch('export-failed');
   }
 }
 
 // Hand the viewer the file. The download attribute is the path every current
-// browser (mobile included) supports; where it is genuinely absent (old embedded
-// WebViews) the image opens in a new tab so the system save/share sheet can take
-// over — either way the viewer leaves with the actual pixels, not a success toast.
-function deliver(blob: Blob, filename: string) {
+// browser (mobile included) supports. Where it is genuinely absent (old embedded
+// WebViews) the caller has already opened a blank tab inside the press gesture, and
+// this navigates it to the image so the system save/share sheet can take over; a
+// tab the viewer closed in the meantime is an honest export failure, not a silent
+// success. Either way the viewer leaves with the actual pixels, not a success toast.
+function deliver(blob: Blob, filename: string, popup: Window | null) {
   const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  if ('download' in anchor) {
+  if (popup) {
+    if (popup.closed) {
+      URL.revokeObjectURL(url);
+      throw new Error('the viewer closed the preview tab before the file was ready');
+    }
+    popup.location.href = url;
+  } else {
+    const anchor = document.createElement('a');
+    anchor.href = url;
     anchor.download = filename;
     anchor.click();
-  } else {
-    window.open(url, '_blank');
   }
   // The blob must outlive the navigation/download hand-off; release it later.
   window.setTimeout(() => URL.revokeObjectURL(url), 60_000);

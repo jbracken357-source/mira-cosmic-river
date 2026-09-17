@@ -80,6 +80,27 @@ export function tonightPhrase(language: Language): string {
   return TRANSLATIONS[language].tonightPhrase;
 }
 
+// Overlay text fit. The compose path measures with a real 2D context; the policy —
+// ideal size from the frame's short edge, shrink until every line fits inside the
+// margins, never below the floor — lives here so both languages are provably inside
+// the frame without a canvas.
+export const TONIGHT_TEXT_MIN_SIZE = 10;
+
+export function fitTonightFontSize(
+  lines: string[],
+  frame: { width: number; height: number },
+  measure: (line: string, fontSize: number) => number,
+): number {
+  const minEdge = Math.min(frame.width, frame.height);
+  const margin = Math.max(12, Math.round(minEdge * 0.045));
+  const available = Math.max(1, frame.width - 2 * margin);
+  const ideal = Math.max(14, Math.round(minEdge * 0.032));
+  for (let size = ideal; size > TONIGHT_TEXT_MIN_SIZE; size -= 1) {
+    if (lines.every((line) => measure(line, size) <= available)) return size;
+  }
+  return TONIGHT_TEXT_MIN_SIZE;
+}
+
 export type TonightSavePhase = 'idle' | 'capturing' | 'preview' | 'exporting' | 'success' | 'failed';
 
 // Why the flow failed: 'capture' (no frame could be taken), 'context-lost' (the
@@ -94,9 +115,10 @@ export interface TonightOverlays {
 
 export interface TonightSaveState {
   phase: TonightSavePhase;
-  // Serial of the locked snapshot (the pixels live in the shell). Null until the
-  // first capture of this save action lands; increments on every fresh capture so
-  // "same snapshot" vs "new snapshot" is testable without pixels.
+  // Serial of the locked snapshot (the pixels live in the shell, which also owns
+  // the counter). Null until the first capture of this save action lands; a fresh
+  // capture always carries a new serial so "same snapshot" vs "new snapshot" is
+  // testable without pixels.
   snapshot: number | null;
   overlays: TonightOverlays;
   failure: TonightSaveFailure | null;
@@ -104,7 +126,9 @@ export interface TonightSaveState {
 
 export type TonightSaveEvent =
   | 'open'
-  | 'captured'
+  // The serial is supplied by the shell (it owns the counter): the machine stays
+  // pure and identity only ever moves forward, even across close/reopen.
+  | { type: 'captured'; serial: number }
   | 'capture-failed'
   | 'context-lost'
   | 'toggle-date'
@@ -138,12 +162,9 @@ function silent(state: TonightSaveState, patch: Partial<TonightSaveState> = {}):
   return { state: { ...state, ...patch }, effects: [] };
 }
 
-// The serial counter lives outside the state so a close (which blanks the snapshot)
-// cannot reuse a number: snapshot identity only ever moves forward.
-let nextSnapshotSerial = 1;
-
 export function transition(state: TonightSaveState, event: TonightSaveEvent): TonightSaveTransition {
-  switch (event) {
+  const type = typeof event === 'string' ? event : event.type;
+  switch (type) {
     case 'open':
       // Only a genuinely closed flow opens; every other press is already inside
       // this save action and must not stack work.
@@ -154,8 +175,8 @@ export function transition(state: TonightSaveState, event: TonightSaveEvent): To
       };
 
     case 'captured':
-      if (state.phase !== 'capturing') return silent(state);
-      return silent(state, { phase: 'preview', snapshot: nextSnapshotSerial++, failure: null });
+      if (state.phase !== 'capturing' || typeof event === 'string') return silent(state);
+      return silent(state, { phase: 'preview', snapshot: event.serial, failure: null });
 
     case 'capture-failed':
     case 'context-lost':

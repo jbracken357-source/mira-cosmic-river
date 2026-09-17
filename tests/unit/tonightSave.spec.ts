@@ -1,7 +1,9 @@
 import { test, expect } from '@playwright/test';
 import {
   TONIGHT_EXPORT_LONG_EDGE,
+  TONIGHT_TEXT_MIN_SIZE,
   fitExportSize,
+  fitTonightFontSize,
   formatTonightDate,
   initialTonightSaveState,
   tonightFilename,
@@ -19,10 +21,11 @@ function effectTypes(state: TonightSaveState, event: Parameters<typeof transitio
   return transition(state, event).effects.map((effect) => effect.type);
 }
 
-// Walk the happy path: idle -> capturing -> preview.
-function inPreview(): TonightSaveState {
+// Walk the happy path: idle -> capturing -> preview. Serials are explicit (the
+// shell owns the counter), so tests stay order-independent.
+function inPreview(serial = 1): TonightSaveState {
   const capturing = transition(initialTonightSaveState(), 'open').state;
-  return transition(capturing, 'captured').state;
+  return transition(capturing, { type: 'captured', serial }).state;
 }
 
 test.describe('export sizing', () => {
@@ -98,6 +101,46 @@ test.describe('fixed phrase', () => {
   });
 });
 
+test.describe('overlay text fit', () => {
+  // Fake measure: proportional width, so tests never touch a canvas.
+  const measure = (widthPerUnit: number) => (line: string, fontSize: number) =>
+    line.length * fontSize * widthPerUnit;
+
+  test('short lines keep the ideal size for the frame', () => {
+    const size = fitTonightFontSize(['彼此牵引，共同前行'], { width: 1280, height: 720 }, measure(0.6));
+    expect(size).toBe(Math.max(14, Math.round(720 * 0.032)));
+  });
+
+  test('a long line shrinks until it fits inside the margins', () => {
+    const frame = { width: 1280, height: 720 };
+    const size = fitTonightFontSize(['x'.repeat(100)], frame, measure(1));
+    const margin = Math.max(12, Math.round(720 * 0.045));
+    expect(size).toBeLessThan(Math.round(720 * 0.032));
+    expect(size).toBeGreaterThan(TONIGHT_TEXT_MIN_SIZE);
+    expect(100 * size * 1).toBeLessThanOrEqual(frame.width - 2 * margin);
+  });
+
+  test('every line must fit, not just the longest-looking one', () => {
+    const frame = { width: 800, height: 800 };
+    const lines = ['short', 'a much longer overlay line that must also fit'];
+    const size = fitTonightFontSize(lines, frame, measure(0.6));
+    const margin = Math.max(12, Math.round(800 * 0.045));
+    for (const line of lines) {
+      expect(line.length * size * 0.6).toBeLessThanOrEqual(frame.width - 2 * margin);
+    }
+  });
+
+  test('a narrow portrait frame never goes below the floor', () => {
+    const size = fitTonightFontSize(['x'.repeat(10_000)], { width: 200, height: 800 }, measure(1));
+    expect(size).toBe(TONIGHT_TEXT_MIN_SIZE);
+  });
+
+  test('no lines means no shrink', () => {
+    const size = fitTonightFontSize([], { width: 390, height: 844 }, measure(1));
+    expect(size).toBe(Math.max(14, Math.round(390 * 0.032)));
+  });
+});
+
 test.describe('save flow state machine', () => {
   test('opening from idle captures immediately and starts with a clean slate', () => {
     const { state, effects } = transition(initialTonightSaveState(), 'open');
@@ -109,11 +152,11 @@ test.describe('save flow state machine', () => {
     expect(effects).toEqual([{ type: 'capture' }]);
   });
 
-  test('a successful capture lands in preview with the snapshot locked', () => {
+  test('a successful capture lands in preview with the supplied serial locked', () => {
     const capturing = transition(initialTonightSaveState(), 'open').state;
-    const { state, effects } = transition(capturing, 'captured');
+    const { state, effects } = transition(capturing, { type: 'captured', serial: 7 });
     expect(state.phase).toBe('preview');
-    expect(state.snapshot).not.toBeNull();
+    expect(state.snapshot).toBe(7);
     expect(effects).toEqual([]);
   });
 
@@ -195,10 +238,10 @@ test.describe('save flow state machine', () => {
 
     const reopened = transition(closed.state, 'open');
     expect(reopened.effects).toEqual([{ type: 'capture' }]);
-    const second = transition(reopened.state, 'captured');
+    const second = transition(reopened.state, { type: 'captured', serial: 99 });
     // A new save action, a new snapshot.
     expect(second.state.snapshot).not.toBe(first);
-    expect(second.state.snapshot).not.toBeNull();
+    expect(second.state.snapshot).toBe(99);
   });
 
   test('closing mid-export discards and never reports success afterwards', () => {
