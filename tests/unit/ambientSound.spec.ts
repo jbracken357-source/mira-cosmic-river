@@ -4,6 +4,7 @@ import {
   initialAmbientState,
   loadAmbientPreference,
   persistAmbientPreference,
+  primaryAction,
   transition,
   distanceTone,
 } from '../../src/lib/ambientPreference';
@@ -170,11 +171,41 @@ test.describe('ambient sound state machine', () => {
     expect(transition(denied.state, 'retry').effects).toEqual([{ type: 'start' }]);
   });
 
+  test('a start landing while backgrounded suspends at once and waits for the return', () => {
+    // The race: toggle-on, tab hides before AudioContext.resume() resolves.
+    const enabling = transition(OFF, 'toggle-on').state;
+    const hidden = transition(enabling, 'hidden').state;
+    expect(hidden.phase).toBe('enabling');
+    expect(hidden.backgrounded).toBe(true);
+
+    const started = transition(hidden, 'started');
+    expect(started.state.phase).toBe('playing');
+    expect(started.state.backgrounded).toBe(true);
+    expect(started.state.resumeOnReturn).toBe(true);
+    // Sound must not play in the background — suspend immediately.
+    expect(started.effects).toEqual([{ type: 'suspend' }]);
+
+    // The legitimate foreground return resumes it.
+    const visible = transition(started.state, 'visible');
+    expect(visible.effects).toEqual([{ type: 'resume' }]);
+    expect(visible.state.phase).toBe('playing');
+  });
+
   test('turning off mid-start stops whatever exists', () => {
     const enabling = transition(OFF, 'toggle-on').state;
     const { state, effects } = transition(enabling, 'toggle-off');
     expect(state.phase).toBe('off');
     expect(effects).toEqual([{ type: 'stop' }, { type: 'remember', on: false }]);
+  });
+});
+
+test.describe('primary action routing', () => {
+  test('the toggle press means one thing per phase, decided in one place', () => {
+    expect(primaryAction('off')).toBe('toggle-on');
+    expect(primaryAction('pending-gesture')).toBe('gesture');
+    expect(primaryAction('failed')).toBe('retry');
+    expect(primaryAction('enabling')).toBe('toggle-off');
+    expect(primaryAction('playing')).toBe('toggle-off');
   });
 });
 

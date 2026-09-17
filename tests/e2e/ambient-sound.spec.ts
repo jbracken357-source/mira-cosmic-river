@@ -109,6 +109,8 @@ test.describe('Ambient sound', () => {
     await toggle(page).click();
     await expect(wrapper(page)).toHaveAttribute('data-ambient-state', 'failed');
     await expect(toggle(page)).toContainText(/重试|Retry/);
+    // Failed is not "pressed": the sound is not on and does not claim to be.
+    await expect(toggle(page)).toHaveAttribute('aria-pressed', 'false');
     // Visuals never blocked: the frame loop is still writing poses.
     const pose = await page.locator('canvas').getAttribute('data-camera-pose');
     expect(pose).toBeTruthy();
@@ -161,6 +163,37 @@ test.describe('Ambient sound', () => {
     });
     await expect.poll(() => probe(page).then((p) => p.state), { timeout: 8000 }).toBe('running');
     await expect(wrapper(page)).toHaveAttribute('data-ambient-state', 'playing');
+  });
+
+  test('a start that lands while backgrounded stays suspended until the return', async ({ page }) => {
+    await gotoExplore(page);
+
+    // The race: the toggle's gesture starts the graph, and the tab hides before
+    // AudioContext.resume() settles. Whether 'started' lands before or after the
+    // hide, the context must end suspended — never sounding in the background.
+    const hide = () =>
+      page.evaluate(() => {
+        Object.defineProperty(document, 'hidden', { get: () => true, configurable: true });
+        Object.defineProperty(document, 'visibilityState', { get: () => 'hidden', configurable: true });
+        document.dispatchEvent(new Event('visibilitychange'));
+      });
+    const show = () =>
+      page.evaluate(() => {
+        Object.defineProperty(document, 'hidden', { get: () => false, configurable: true });
+        Object.defineProperty(document, 'visibilityState', { get: () => 'visible', configurable: true });
+        document.dispatchEvent(new Event('visibilitychange'));
+      });
+
+    await toggle(page).click();
+    await hide();
+    await expect(wrapper(page)).toHaveAttribute('data-ambient-state', 'playing');
+    await expect.poll(() => probe(page).then((p) => p.state), { timeout: 8000 }).toBe('suspended');
+
+    // The legitimate foreground return resumes it — no catch-up, no stacking.
+    await show();
+    await expect.poll(() => probe(page).then((p) => p.state), { timeout: 8000 }).toBe('running');
+    await expect(wrapper(page)).toHaveAttribute('data-ambient-state', 'playing');
+    expect((await probe(page)).live).toBe(1);
   });
 
   test('the toggle is reachable during the full cinematic and stays gesture-gated', async ({ page }) => {

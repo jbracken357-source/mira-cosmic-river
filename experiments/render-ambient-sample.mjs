@@ -48,9 +48,8 @@ try {
   await page.goto(server.baseUrl);
   // Render through the app's own module so the sample cannot drift from what ships.
   const samples = await page.evaluate(async ({ seconds, sampleRate }) => {
-    const { createAmbientGraph } = await import('/src/lib/ambientGraph.ts');
+    const { AMBIENT_BASE_LEVEL, createAmbientGraph } = await import('/src/lib/ambientGraph.ts');
     const { distanceTone } = await import('/src/lib/ambientPreference.ts');
-    const { AMBIENT_BASE_LEVEL } = await import('/src/lib/ambientGraph.ts');
     const context = new OfflineAudioContext(1, seconds * sampleRate, sampleRate);
     const graph = createAmbientGraph(context);
     graph.start();

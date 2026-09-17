@@ -2,8 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { Scene } from './components/Scene';
 import { CinematicOverlay, InfoCards, ClosingMessage, MilestoneHint } from './components/UI';
 import type { StarName } from './components/UI/InfoCards';
-import { hasFoundTail, persistFoundTail, useBinaryStar, useIntentionalInput } from './hooks';
-import { initAmbientSound, useAmbientSound } from './hooks/useAmbientSound';
+import { hasFoundTail, persistFoundTail, useBinaryStar, useIntentionalInput, initAmbientSound, useAmbientSound } from './hooks';
 import './App.css';
 
 export default function App() {

@@ -16,7 +16,7 @@
 //   off              --gesture-->     off               (explicit off never auto-resumes)
 //   pending-gesture  --gesture-->     enabling          [start]
 //   pending-gesture  --toggle-off-->  off               [remember off]
-//   enabling         --started-->     playing
+//   enabling         --started-->     playing           (backgrounded: [suspend] + resumeOnReturn)
 //   enabling         --start-denied-> failed (denied)
 //   enabling         --start-error--> failed (error)
 //   enabling         --toggle-off-->  off               [stop, remember off]
@@ -146,6 +146,15 @@ export function transition(state: AmbientSoundState, event: AmbientEvent): Ambie
 
     case 'started':
       if (state.phase === 'enabling') {
+        // Landing while the tab is hidden: the graph must not sound in the
+        // background. Suspend it immediately and mark it for the legitimate
+        // foreground resume.
+        if (state.backgrounded) {
+          return {
+            state: { ...state, phase: 'playing', failure: null, resumeOnReturn: true },
+            effects: [{ type: 'suspend' }],
+          };
+        }
         return silent(state, { phase: 'playing', failure: null });
       }
       return silent(state);
@@ -188,10 +197,34 @@ export function transition(state: AmbientSoundState, event: AmbientEvent): Ambie
   }
 }
 
-// Distance binding (克制): camera distance to the origin maps to a barely-there
-// tone shift — closer is a touch brighter and louder, farther darker and quieter.
-// The range matches the OrbitControls zoom limits in Scene.tsx.
+// The one routing table for the toggle's primary action: what the button press
+// means in each phase. Lives here so the shell and the UI can never diverge.
+export function primaryAction(phase: AmbientPhase): AmbientEvent {
+  switch (phase) {
+    case 'off':
+      return 'toggle-on';
+    case 'pending-gesture':
+      return 'gesture';
+    case 'failed':
+      return 'retry';
+    default:
+      return 'toggle-off';
+  }
+}
+
+// Distance binding (克制): camera distance to the orbit target maps to a
+// barely-there tone shift — closer is a touch brighter and louder, farther
+// darker and quieter. The range matches the OrbitControls zoom limits in
+// Scene.tsx.
 export const AMBIENT_DISTANCE_RANGE = { min: 5, max: 40 } as const;
+
+// The barely-there endpoints of the distance mapping.
+export const AMBIENT_TONE = {
+  nearGain: 1.0,
+  farGain: 0.82,
+  nearCutoffHz: 760,
+  farCutoffHz: 380,
+} as const;
 
 export interface AmbientTone {
   gain: number; // multiplier on the master level
@@ -202,7 +235,7 @@ export function distanceTone(distance: number): AmbientTone {
   const { min, max } = AMBIENT_DISTANCE_RANGE;
   const t = Math.min(1, Math.max(0, (distance - min) / (max - min)));
   return {
-    gain: 1.0 + (0.82 - 1.0) * t,
-    cutoffHz: 760 + (380 - 760) * t,
+    gain: AMBIENT_TONE.nearGain + (AMBIENT_TONE.farGain - AMBIENT_TONE.nearGain) * t,
+    cutoffHz: AMBIENT_TONE.nearCutoffHz + (AMBIENT_TONE.farCutoffHz - AMBIENT_TONE.nearCutoffHz) * t,
   };
 }

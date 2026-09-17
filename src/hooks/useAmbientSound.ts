@@ -19,18 +19,19 @@ import {
   initialAmbientState,
   loadAmbientPreference,
   persistAmbientPreference,
+  primaryAction,
   transition,
 } from '../lib/ambientPreference';
-import type { AmbientEvent, AmbientFailure, AmbientPhase } from '../lib/ambientPreference';
+import type { AmbientEffect, AmbientEvent, AmbientFailure, AmbientPhase } from '../lib/ambientPreference';
 import { AMBIENT_BASE_LEVEL, createAmbientGraph } from '../lib/ambientGraph';
 import type { AmbientGraph } from '../lib/ambientGraph';
 
 const FADE_SECONDS = 0.8;
 const TONE_POLL_MS = 400;
 
-// Camera distance to the origin, written imperatively from Scene's useFrame
-// (same pattern as data-camera-pose: a plain write, no React churn). The tone
-// poll below reads it a few times a second.
+// Camera distance to the orbit target (the honest 观看距离), written
+// imperatively from Scene's useFrame (same pattern as data-camera-pose: a plain
+// write, no React churn). The tone poll below reads it a few times a second.
 export const ambientSpace = { distance: 20 };
 
 interface AmbientSoundStore {
@@ -63,13 +64,7 @@ function syncProbe() {
 export const useAmbientSound = create<AmbientSoundStore>(() => ({
   phase: machine.phase,
   failure: null,
-  toggle: () => {
-    const { phase } = machine;
-    if (phase === 'off') dispatch('toggle-on');
-    else if (phase === 'pending-gesture') dispatch('gesture');
-    else if (phase === 'failed') dispatch('retry');
-    else dispatch('toggle-off');
-  },
+  toggle: () => dispatch(primaryAction(machine.phase)),
   retry: () => dispatch('retry'),
 }));
 
@@ -93,13 +88,18 @@ function teardownGraph() {
   syncProbe();
 }
 
-function applyTone() {
+// The one fade-in: apply the distance tone and ease the master toward the level.
+// Callers decide WHEN this is allowed (playing and, where background is possible,
+// not backgrounded); the fade itself is spelled out once.
+function fadeInGraph() {
   if (!graph || !audioContext) return;
   const tone = distanceTone(ambientSpace.distance);
   graph.setTone(tone);
-  if (machine.phase === 'playing' && !machine.backgrounded) {
-    graph.master.gain.setTargetAtTime(AMBIENT_BASE_LEVEL * tone.gain, audioContext.currentTime, FADE_SECONDS / 3);
-  }
+  graph.master.gain.setTargetAtTime(AMBIENT_BASE_LEVEL * tone.gain, audioContext.currentTime, FADE_SECONDS / 3);
+}
+
+function applyTone() {
+  if (machine.phase === 'playing' && !machine.backgrounded) fadeInGraph();
 }
 
 async function startGraph() {
@@ -119,11 +119,9 @@ async function startGraph() {
     if (machine.phase !== 'enabling' || !graph || !audioContext) return;
     dispatch('started');
     const settled = machine;
-    if (settled.phase === 'playing' && graph && audioContext) {
-      const tone = distanceTone(ambientSpace.distance);
-      graph.setTone(tone);
-      graph.master.gain.setTargetAtTime(AMBIENT_BASE_LEVEL * tone.gain, audioContext.currentTime, FADE_SECONDS / 3);
-    }
+    // Backgrounded starts must stay silent — the machine already emitted
+    // 'suspend' for this landing; do not fade in over it.
+    if (settled.phase === 'playing' && !settled.backgrounded) fadeInGraph();
   } catch (error) {
     teardownGraph();
     const denied = error instanceof DOMException && error.name === 'NotAllowedError';
@@ -131,7 +129,7 @@ async function startGraph() {
   }
 }
 
-function applyEffect(effect: { type: string; on?: boolean }) {
+function applyEffect(effect: AmbientEffect) {
   switch (effect.type) {
     case 'start':
       void startGraph();
@@ -161,10 +159,8 @@ function applyEffect(effect: { type: string; on?: boolean }) {
       context
         .resume()
         .then(() => {
-          if (machine.phase === 'playing' && graph) {
-            const tone = distanceTone(ambientSpace.distance);
-            graph.master.gain.setTargetAtTime(AMBIENT_BASE_LEVEL * tone.gain, context.currentTime, FADE_SECONDS / 3);
-          }
+          // 'resume' only ever fires on a visible return; playing is enough.
+          if (machine.phase === 'playing') fadeInGraph();
         })
         .catch((error: unknown) => {
           const denied = error instanceof DOMException && error.name === 'NotAllowedError';
@@ -173,7 +169,7 @@ function applyEffect(effect: { type: string; on?: boolean }) {
       break;
     }
     case 'remember':
-      persistAmbientPreference(Boolean(effect.on));
+      persistAmbientPreference(effect.on);
       break;
   }
 }

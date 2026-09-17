@@ -1,5 +1,4 @@
-import { useBinaryStar } from '../../hooks';
-import { useAmbientSound } from '../../hooks/useAmbientSound';
+import { useBinaryStar, useAmbientSound } from '../../hooks';
 import { TRANSLATIONS } from '../../constants/translations';
 
 // 环境音 toggle (#22): a quiet header button, present in the explore header and
@@ -23,7 +22,7 @@ export default function AmbientToggle() {
       data-testid="ambient-toggle"
       data-ambient-toggle
       data-ambient-phase={phase}
-      aria-pressed={phase !== 'off'}
+      aria-pressed={phase !== 'off' && phase !== 'failed'}
       onClick={toggle}
       className={`pointer-events-auto min-h-11 min-w-11 inline-flex items-center justify-center gap-2 text-xs font-extralight tracking-widest uppercase transition-colors ${
         phase === 'playing' ? 'text-white/55 hover:text-white/75' : 'text-white/30 hover:text-white/60'
