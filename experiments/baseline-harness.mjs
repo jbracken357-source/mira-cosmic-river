@@ -91,28 +91,27 @@ const FREEZE_CSS = `
 async function sceneResourcesReady(page) {
   // Best effort: inspect the mounted scene the same way capture-integration.mjs does.
   // Falls back to a plain wait when the vite dep bundle is not where we expect it.
-  try {
-    await page.waitForFunction(async () => {
-      const { _roots } = await import('/node_modules/.vite/deps/@react-three_fiber.js');
-      const state = _roots.get(document.querySelector('canvas'))?.store.getState();
-      if (!state) return false;
-      const veil = state.scene.getObjectByName('river-veil');
-      if (!veil || veil.children.some((mesh) => mesh.material.uniforms.uReady.value !== 1)) {
-        return false;
+  const probe = () => page.waitForFunction(async () => {
+    const { _roots } = await import('/node_modules/.vite/deps/@react-three_fiber.js');
+    const state = _roots.get(document.querySelector('canvas'))?.store.getState();
+    if (!state) return false;
+    const veil = state.scene.getObjectByName('river-veil');
+    if (!veil || veil.children.some((mesh) => mesh.material.uniforms.uReady.value !== 1)) {
+      return false;
+    }
+    let surfaceReady = 0;
+    state.scene.traverse((object) => {
+      if (object.material?.uniforms?.uSurfaceReady) {
+        surfaceReady = object.material.uniforms.uSurfaceReady.value;
       }
-      let surfaceReady = 0;
-      state.scene.traverse((object) => {
-        if (object.material?.uniforms?.uSurfaceReady) {
-          surfaceReady = object.material.uniforms.uSurfaceReady.value;
-        }
-      });
-      return surfaceReady === 1;
-    }, null, { timeout: 10_000 });
-    return true;
-  } catch {
-    await page.waitForTimeout(1500);
-    return false;
-  }
+    });
+    return surfaceReady === 1;
+  }, null, { timeout: 10_000 }).then(() => true, () => false);
+  if (await probe()) return true;
+  // On a loaded machine the first paint (shader compile, texture upload) can outlast the
+  // first probe; give it one more chance before declaring the textures missing.
+  await page.waitForTimeout(1500);
+  return probe();
 }
 
 async function readCameraPose(page) {
