@@ -49,7 +49,7 @@ export default function TonightSave() {
           data-tonight-phase={phase}
           role="dialog"
           aria-label={t.tonightSave}
-          className="pointer-events-auto absolute bottom-24 left-1/2 -translate-x-1/2 z-50 w-[min(92vw,26rem)] backdrop-blur-md bg-black/55 border border-white/10 rounded-xl p-4 flex flex-col gap-3"
+          className="pointer-events-auto fixed bottom-24 left-1/2 -translate-x-1/2 z-50 w-[min(92vw,26rem)] backdrop-blur-md bg-black/55 border border-white/10 rounded-xl p-4 flex flex-col gap-3"
         >
           {previewUrl && (
             <img
