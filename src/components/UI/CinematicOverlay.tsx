@@ -1,5 +1,5 @@
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import { useBinaryStar, useMobile } from '../../hooks';
+import { useBinaryStar, useMobile, useEntryReadiness } from '../../hooks';
 import { TRANSLATIONS } from '../../constants/translations';
 import { CINEMATIC, TRANSITIONS } from '../../constants/animation';
 import type { StarName } from './InfoCards';
@@ -29,8 +29,16 @@ export default function CinematicOverlay({
     useBinaryStar.getState().setIntroComplete(true);
   };
 
+  // While the entry gate is still waiting on materials (#24), the opening has
+  // not started: the loading still alone holds the screen.
+  const entryGate = useEntryReadiness((state) => state.gate);
+
   if (introComplete) {
     return <ExploreUI onSelectStar={onSelectStar} />;
+  }
+
+  if (entryGate === 'waiting') {
+    return null;
   }
 
   return (
