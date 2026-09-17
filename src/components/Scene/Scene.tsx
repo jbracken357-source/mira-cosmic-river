@@ -181,6 +181,7 @@ function SceneContent({
   const previousPortrait = useRef(portrait);
   const miraAScreenRef = useRef(new THREE.Vector3());
   const ambientLookRef = useRef(new THREE.Vector3());
+  const firstFrameMarkedRef = useRef(false);
 
   const positionsRef = useRef({
     primary: [0, 0, 0] as [number, number, number],
@@ -463,6 +464,14 @@ function SceneContent({
       const miraA = `${(((miraAScreenRef.current.x + 1) / 2) * 100).toFixed(2)},${(((1 - miraAScreenRef.current.y) / 2) * 100).toFixed(2)}`;
       if (el.dataset.miraAScreen !== miraA) el.dataset.miraAScreen = miraA;
     }
+
+    // The cold-start probe fires at the first COMPLETED frame — not at context
+    // creation — so the number means "first presentable picture" (#24, SPEC 真实
+    // 时间、加载与运行).
+    if (!firstFrameMarkedRef.current) {
+      firstFrameMarkedRef.current = true;
+      noteEntryMark(state.gl.domElement, 'firstFrameMs');
+    }
   });
 
   // Tail opacity is computed in useFrame and stored in tailOpacityRef
@@ -615,18 +624,20 @@ function PostProcessing() {
   );
 }
 
-// The first presentable frame, measured from navigation start (#24 cold-start
-// record). A window probe and a data attribute keep it readable from e2e and
-// from the devtools; the console line stays dev-only.
-function noteFirstPresentableFrame(canvas: HTMLCanvasElement) {
-  const firstFrameMs = Math.round(performance.now());
+// Cold-start record (#24), two measurement points from navigation start:
+// contextCreatedMs (the canvas context exists) and firstFrameMs (the first
+// completed frame — the same moment data-camera-pose lands, i.e. the first
+// presentable picture). A window probe and data attributes keep both readable
+// from e2e and the devtools; the console line stays dev-only.
+function noteEntryMark(canvas: HTMLCanvasElement, key: 'contextCreatedMs' | 'firstFrameMs') {
+  const ms = Math.round(performance.now());
   (window as unknown as Record<string, unknown>).__miraEntry = {
     ...((window as unknown as Record<string, unknown>).__miraEntry as object | undefined),
-    firstFrameMs,
+    [key]: ms,
   };
-  canvas.dataset.entryFirstFrameMs = String(firstFrameMs);
-  if (!import.meta.env.PROD) {
-    console.info(`[mira] first presentable frame ${firstFrameMs}ms after navigation start`);
+  canvas.dataset[key === 'firstFrameMs' ? 'entryFirstFrameMs' : 'entryContextMs'] = String(ms);
+  if (key === 'firstFrameMs' && !import.meta.env.PROD) {
+    console.info(`[mira] first presentable frame ${ms}ms after navigation start`);
   }
 }
 
@@ -697,7 +708,7 @@ export default function Scene({ onSelectStar }: SceneProps) {
       onCreated={(state) => {
         setCanvasReady(true);
         setGlCanvas(state.gl.domElement);
-        noteFirstPresentableFrame(state.gl.domElement);
+        noteEntryMark(state.gl.domElement, 'contextCreatedMs');
       }}
       camera={{
         position: startInExplore ? CAMERA.EXPLORE.position : CAMERA.CLOSE.position,

@@ -5,12 +5,14 @@
 // Serves the PRODUCTION build (vite preview — real bundle, real parse cost) and
 // loads it cold in N fresh browser contexts. Per run it records, from
 // performance navigation/resource timing plus the app's own probe
-// (window.__miraEntry.firstFrameMs, written at Canvas onCreated):
+// (window.__miraEntry, written by src/components/Scene/Scene.tsx):
 //
 //   responseEnd          HTML fully arrived
 //   mainJsMs             download + ... of the main bundle (resource timing)
 //   domContentLoaded     parse + module eval done enough for DCL
-//   firstFrameMs         navigation start -> first presentable WebGL frame
+//   contextCreatedMs     navigation start -> WebGL context created (onCreated)
+//   firstFrameMs         navigation start -> first COMPLETED frame (the first
+//                        presentable picture; the SPEC-relevant point)
 //
 // The verdict line feeds the SPEC decision "测量冷启动和解析后再拆分加载":
 // splitting the bundle is justified only if these numbers say the monolith is
@@ -68,6 +70,7 @@ try {
         .sort((a, b) => b.transferSize - a.transferSize)[0];
       return {
         firstFrameMs: window.__miraEntry.firstFrameMs,
+        contextCreatedMs: window.__miraEntry.contextCreatedMs,
         responseEnd: Math.round(nav.responseEnd),
         domContentLoaded: Math.round(nav.domContentLoadedEventEnd),
         loadEvent: Math.round(nav.loadEventEnd),
@@ -88,6 +91,7 @@ const median = (values) => [...values].sort((a, b) => a - b)[Math.floor(values.l
 const summary = {
   runs: RUNS,
   firstFrameMs: median(runs.map((r) => r.firstFrameMs)),
+  contextCreatedMs: median(runs.map((r) => r.contextCreatedMs)),
   responseEnd: median(runs.map((r) => r.responseEnd)),
   domContentLoaded: median(runs.map((r) => r.domContentLoaded)),
   loadEvent: median(runs.map((r) => r.loadEvent)),
