@@ -7,6 +7,17 @@
 
 import * as THREE from 'three';
 import { COLORS } from '../constants/colors';
+import {
+  DISK_ARC_TRACE,
+  IMPACT_ARC_WIDTH,
+  WAKE_ARC_OFFSET,
+  WAKE_ARC_WIDTH,
+  WAKE_ARC_GAIN,
+  ARC_CLUMP_FLOOR,
+  HOT_SPOT_ANGLE_WIDTH,
+  HOT_SPOT_RADIUS,
+  HOT_SPOT_RADIAL_WIDTH,
+} from '../lib/binaryLighting';
 
 // Where the bright band sits and how wide the annulus is. Fractions of the disk's outer radius.
 // The radial band stays thin, while its azimuthal arc is deliberately incomplete so it reads as
@@ -75,6 +86,10 @@ export const AccretionDisk_Shader = {
 
     varying vec3 vPosition;
 
+    // Mirrors wrapAngle and gaussFalloff in src/lib/binaryLighting.ts.
+    float wrapAngle(float a) { return atan(sin(a), cos(a)); }
+    float gaussFalloff(float x, float width) { float q = x / width; return exp(-q * q); }
+
     void main() {
       float r = length(vPosition.xz);
       float angle = atan(vPosition.z, vPosition.x);
@@ -87,14 +102,14 @@ export const AccretionDisk_Shader = {
       float band = exp(-pow((r - flowingBand) / uBandWidth, 2.0));
       float ring = inner * outer * (0.4 + 0.9 * band);
 
-      // The incoming material illuminates two broad, incomplete arcs. Keeping only a trace
-      // around the rest of the orbit avoids the diagram-like pale circle that previously
-      // competed with the two stars.
-      float impactDelta = atan(sin(angle - uImpactAngle), cos(angle - uImpactAngle));
-      float wakeDelta = atan(sin(angle - uImpactAngle - 2.35), cos(angle - uImpactAngle - 2.35));
-      float impactArc = exp(-pow(impactDelta / 1.0, 2.0));
-      float wakeArc = .42 * exp(-pow(wakeDelta / .72, 2.0));
-      float arc = .08 + .92 * clamp(impactArc + wakeArc, 0.0, 1.0);
+      // Mirrors arcEnvelope in src/lib/binaryLighting.ts: two broad, incomplete arcs over a
+      // faint dust trace — the inflow lights its landing region, and the rest of the orbit
+      // never closes into a diagram-like circle.
+      float impactArc = gaussFalloff(wrapAngle(angle - uImpactAngle), ${IMPACT_ARC_WIDTH});
+      float wakeArc = ${WAKE_ARC_GAIN} * gaussFalloff(wrapAngle(angle - uImpactAngle - ${WAKE_ARC_OFFSET}), ${WAKE_ARC_WIDTH});
+      float arc = ${DISK_ARC_TRACE} + ${1 - DISK_ARC_TRACE} * clamp(impactArc + wakeArc, 0.0, 1.0);
+      // Mirrors arcClump: inside the arcs the gas breaks into intermittent clumps.
+      arc *= ${ARC_CLUMP_FLOOR} + ${1 - ARC_CLUMP_FLOOR} * smoothstep(.2, .8, (.5 + .5 * sin(angle * 3. + 1.7 + uTime * .22)) * (.5 + .5 * sin(angle * 7. - uTime * .9)));
       ring *= arc;
 
       // Doppler beaming: the side of the disk sweeping toward the viewer is brighter. Real
@@ -105,8 +120,9 @@ export const AccretionDisk_Shader = {
       // Azimuthal structure: sheared streaks that rotate with the material.
       float streak = 0.65 + 0.35 * sin(angle * 5.0 - uTime * .5 + r * 24.0);
 
-      // Hot spot where the stream from Mira A lands.
-      float spot = exp(-pow(impactDelta / 0.42, 2.0)) * exp(-pow((r - 0.85) / 0.26, 2.0));
+      // Mirrors hotSpotProfile in src/lib/binaryLighting.ts: the hot spot sits where the
+      // stream from Mira A lands.
+      float spot = gaussFalloff(wrapAngle(angle - uImpactAngle), ${HOT_SPOT_ANGLE_WIDTH}) * gaussFalloff(r - ${HOT_SPOT_RADIUS}, ${HOT_SPOT_RADIAL_WIDTH});
 
       vec3 color = uColor * ring * beam * streak * uRingGain;
       // Inner glow stays outside the hole, or the ring's centre fills in and it reads as a disc.
