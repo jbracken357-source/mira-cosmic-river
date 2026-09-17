@@ -1,4 +1,4 @@
-import { COLORS, ENTRY_STILL, TRANSLATIONS } from '../../constants';
+import { ENTRY_STILL, ENTRY_STILL_BACKDROP, TRANSLATIONS } from '../../constants';
 import { useBinaryStar } from '../../hooks';
 
 // The static fallback (#24): shown when WebGL is unavailable or the context is
@@ -15,12 +15,7 @@ export default function SceneFallback({ reason }: { reason: 'webgl-unavailable' 
       data-fallback-reason={reason}
       data-still-source={ENTRY_STILL.version}
       className="fixed inset-0 z-20 flex items-center justify-center select-none"
-      style={{
-        background: COLORS.DEEP_SPACE,
-        backgroundImage: `url(${import.meta.env.BASE_URL}${ENTRY_STILL.src})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-      }}
+      style={ENTRY_STILL_BACKDROP}
     >
       <div className="absolute inset-0 bg-black/55" />
       <div className="relative flex flex-col items-center gap-4 px-8 text-center max-w-md">

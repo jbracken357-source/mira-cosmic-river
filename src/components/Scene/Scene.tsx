@@ -4,7 +4,7 @@ import { OrbitControls as DreiOrbitControls } from '@react-three/drei';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import { useReducedMotion } from 'framer-motion';
 import { useBinaryStar, ambientSpace, tonightFrame, useEntryReadiness } from '../../hooks';
-import { COLORS, PHYSICS, calculateOrbitalPosition, CINEMATIC, CAMERA as LANDSCAPE_CAMERA, TRANSITIONS, TRANSLATIONS, resolveQualityTier, ENTRY_STILL } from '../../constants';
+import { COLORS, PHYSICS, calculateOrbitalPosition, CINEMATIC, CAMERA as LANDSCAPE_CAMERA, TRANSITIONS, TRANSLATIONS, resolveQualityTier, ENTRY_STILL, ENTRY_STILL_BACKDROP } from '../../constants';
 import { PORTRAIT_CAMERA } from '../../constants/animation';
 import { MATERIALS_TIMEOUT_MS, gateAllowsCinematic } from '../../lib/entryReadiness';
 import { advanceTime, captureMode, resolveCapturePose } from '../../lib/captureMode';
@@ -691,12 +691,7 @@ export default function Scene({ onSelectStar }: SceneProps) {
           data-testid="loading"
           data-still-source={ENTRY_STILL.version}
           className="fixed inset-0 z-[5] flex items-center justify-center pointer-events-none select-none"
-          style={{
-            background: COLORS.DEEP_SPACE,
-            backgroundImage: `url(${import.meta.env.BASE_URL}${ENTRY_STILL.src})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-          }}
+          style={ENTRY_STILL_BACKDROP}
         >
           <div className="absolute inset-0 bg-black/60" />
           <p className="relative text-white/35 text-sm font-extralight italic tracking-[0.25em]">
