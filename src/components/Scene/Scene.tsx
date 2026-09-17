@@ -7,6 +7,7 @@ import { useBinaryStar } from '../../hooks';
 import { COLORS, PHYSICS, calculateOrbitalPosition, CINEMATIC, CAMERA as LANDSCAPE_CAMERA, TRANSITIONS, TRANSLATIONS, resolveQualityTier } from '../../constants';
 import { PORTRAIT_CAMERA } from '../../constants/animation';
 import { advanceTime, captureMode, resolveCapturePose } from '../../lib/captureMode';
+import { collectViewerHolds, idleTiming, resolveViewerControl } from '../../lib/viewerControl';
 import * as THREE from 'three';
 import type { StarName } from '../UI/InfoCards';
 import MiraA from './MiraA';
@@ -60,6 +61,56 @@ function fittedFov(fov: number, aspect: number, fromAspect = 1) {
   return THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(fov) / 2) * scale));
 }
 
+type OrbitControlsImpl = React.ElementRef<typeof DreiOrbitControls>;
+
+interface FlightPose {
+  position: readonly [number, number, number];
+  lookAt: readonly [number, number, number];
+  fov: number;
+}
+
+interface FlightOrigin {
+  pos: THREE.Vector3;
+  look: THREE.Vector3;
+  fov: number;
+}
+
+// Place the camera (and its orbit target) exactly on a pose: the explore landing,
+// the reduced-motion return, and the capture pin all share this.
+function applyPose(camera: THREE.PerspectiveCamera, controls: OrbitControlsImpl | null, pose: FlightPose) {
+  camera.position.set(pose.position[0], pose.position[1], pose.position[2]);
+  camera.fov = fittedFov(pose.fov, camera.aspect);
+  camera.updateProjectionMatrix();
+  camera.lookAt(pose.lookAt[0], pose.lookAt[1], pose.lookAt[2]);
+  if (controls) controls.target.set(pose.lookAt[0], pose.lookAt[1], pose.lookAt[2]);
+}
+
+// Ease the camera from a captured origin toward a pose. The return-to-view and
+// closing flights share this so neither re-spells the lerp triplets.
+function blendFlight(
+  camera: THREE.PerspectiveCamera,
+  controls: OrbitControlsImpl | null,
+  from: FlightOrigin,
+  to: FlightPose,
+  k: number,
+  lookScratch: THREE.Vector3,
+) {
+  camera.position.set(
+    THREE.MathUtils.lerp(from.pos.x, to.position[0], k),
+    THREE.MathUtils.lerp(from.pos.y, to.position[1], k),
+    THREE.MathUtils.lerp(from.pos.z, to.position[2], k),
+  );
+  camera.fov = THREE.MathUtils.lerp(from.fov, fittedFov(to.fov, camera.aspect), k);
+  camera.updateProjectionMatrix();
+  lookScratch.set(
+    THREE.MathUtils.lerp(from.look.x, to.lookAt[0], k),
+    THREE.MathUtils.lerp(from.look.y, to.lookAt[1], k),
+    THREE.MathUtils.lerp(from.look.z, to.lookAt[2], k),
+  );
+  camera.lookAt(lookScratch);
+  if (controls) controls.target.copy(lookScratch);
+}
+
 function SceneContent({
   onSelectStar,
   reduceMotion,
@@ -71,7 +122,6 @@ function SceneContent({
   const CAMERA = portrait ? PORTRAIT_CAMERA : LANDSCAPE_CAMERA;
   const timeSpeed = useBinaryStar((state) => state.parameters.timeSpeed);
   const cinematicPhase = useBinaryStar((state) => state.cinematicPhase);
-  const epilogueVisible = useBinaryStar((state) => state.epilogueVisible);
   const setCinematicPhase = useBinaryStar((state) => state.setCinematicPhase);
   const setCinematicTime = useBinaryStar((state) => state.setCinematicTime);
   const setIntroComplete = useBinaryStar((state) => state.setIntroComplete);
@@ -93,8 +143,20 @@ function SceneContent({
   const closingBlend = useRef(0);
   const closingArmed = useRef(false);
   const closingLook = useRef(new THREE.Vector3());
+  const returnHandledRef = useRef(0);
+  // A flight is cancelled by fresh intentional input, detected by the input sequence:
+  // the flight restamps the idle clock every frame, so timestamps alone cannot tell
+  // "the viewer acted" apart from "the flight held the clock".
+  const returnArmedSeq = useRef(0);
+  const returnArmed = useRef(false);
+  const returnBlend = useRef(0);
+  const returnFromPos = useRef(new THREE.Vector3());
+  const returnFromLook = useRef(new THREE.Vector3());
+  const returnFromFov = useRef<number>(CAMERA.EXPLORE.fov);
+  const returnLook = useRef(new THREE.Vector3());
   const previousAspect = useRef(1);
   const previousPortrait = useRef(portrait);
+  const miraAScreenRef = useRef(new THREE.Vector3());
 
   const positionsRef = useRef({
     primary: [0, 0, 0] as [number, number, number],
@@ -109,6 +171,7 @@ function SceneContent({
     if (previousPortrait.current !== portrait) {
       exploreAppliedRef.current = false;
       closingArmed.current = false;
+      returnArmed.current = false;
       previousPortrait.current = portrait;
     }
     if (camera.aspect !== previousAspect.current) {
@@ -118,44 +181,79 @@ function SceneContent({
       camera.updateProjectionMatrix();
       previousAspect.current = camera.aspect;
     }
-    const { introComplete, cinematicPhase } = useBinaryStar.getState();
+    const store = useBinaryStar.getState();
+
+    // Viewer control, decided once per frame from the shared intentional-input clock.
+    // While a hold is active the clock keeps restarting, so its release starts the
+    // 30s/60s count from zero instead of cashing in time spent reading or away. An
+    // armed return flight holds the clock too — it is the camera's own business, and
+    // this way it cannot land in an already-expired idle count.
+    const control = resolveViewerControl(
+      Date.now(),
+      store.lastIntentionalInputAt,
+      collectViewerHolds(store, reduceMotion),
+      idleTiming(),
+    );
+    if (control.holdsIdle || returnArmed.current) store.restampIdleClock();
+    store.setAutoCamera(control.autoCamera);
+    if (orbitControlsRef.current) {
+      // Driven per frame rather than by prop: the 3s ramp is a continuous value, and
+      // the epilogue hands rotation off instead of snapping it.
+      orbitControlsRef.current.autoRotate = control.autoRotateSpeed > 0;
+      orbitControlsRef.current.autoRotateSpeed = control.autoRotateSpeed;
+    }
+    const { introComplete, cinematicPhase, epilogueVisible } = store;
 
     if (introComplete) {
-      const { epilogueVisible } = useBinaryStar.getState();
       if (!exploreAppliedRef.current) {
         // Return visits and early skip share the explore framing. A finished opening
         // keeps the sequence-end camera.
         const landExplore =
           cinematicStartRef.current === 0 ||
           cinematicElapsedRef.current < CINEMATIC.EXPLORE_MODE;
-        if (landExplore) {
-          camera.position.set(
-            CAMERA.EXPLORE.position[0],
-            CAMERA.EXPLORE.position[1],
-            CAMERA.EXPLORE.position[2],
-          );
-          camera.fov = fittedFov(CAMERA.EXPLORE.fov, camera.aspect);
-          camera.updateProjectionMatrix();
-          camera.lookAt(
-            CAMERA.EXPLORE.lookAt[0],
-            CAMERA.EXPLORE.lookAt[1],
-            CAMERA.EXPLORE.lookAt[2],
-          );
-        }
+        if (landExplore) applyPose(camera, orbitControlsRef.current, CAMERA.EXPLORE);
         if (orbitControlsRef.current) {
-          if (landExplore) {
-            orbitControlsRef.current.target.set(
-              CAMERA.EXPLORE.lookAt[0],
-              CAMERA.EXPLORE.lookAt[1],
-              CAMERA.EXPLORE.lookAt[2],
-            );
-          } else {
+          if (!landExplore) {
             const lookAt = reduceMotion ? CAMERA.EXPLORE.lookAt : CAMERA.FAR.lookAt;
             orbitControlsRef.current.target.set(...lookAt);
           }
           orbitControlsRef.current.enabled = true;
           cinematicStartRef.current = 0;
           exploreAppliedRef.current = true;
+        }
+      }
+      // Return to the main view: a deliberate action, eased back to the explore
+      // framing. Reduced motion places the camera instantly — never a forced flight.
+      if (store.returnToExploreAt > returnHandledRef.current) {
+        returnHandledRef.current = store.returnToExploreAt;
+        if (reduceMotion) {
+          applyPose(camera, orbitControlsRef.current, CAMERA.EXPLORE);
+        } else {
+          returnFromPos.current.copy(camera.position);
+          if (orbitControlsRef.current) returnFromLook.current.copy(orbitControlsRef.current.target);
+          else returnFromLook.current.set(CAMERA.EXPLORE.lookAt[0], CAMERA.EXPLORE.lookAt[1], CAMERA.EXPLORE.lookAt[2]);
+          returnFromFov.current = camera.fov;
+          returnBlend.current = 0;
+          returnArmedSeq.current = store.inputSeq;
+          returnArmed.current = true;
+        }
+      }
+      if (returnArmed.current) {
+        // The epilogue or a fresh intentional input takes the camera back at once.
+        if (store.epilogueVisible || store.inputSeq !== returnArmedSeq.current) {
+          returnArmed.current = false;
+        } else {
+          returnBlend.current = Math.min(1, returnBlend.current + delta / TRANSITIONS.RETURN_CAMERA);
+          const k = easeInOutCubic(returnBlend.current);
+          blendFlight(
+            camera,
+            orbitControlsRef.current,
+            { pos: returnFromPos.current, look: returnFromLook.current, fov: returnFromFov.current },
+            CAMERA.EXPLORE,
+            k,
+            returnLook.current,
+          );
+          if (returnBlend.current >= 1) returnArmed.current = false;
         }
       }
       if (epilogueVisible && !reduceMotion) {
@@ -177,20 +275,14 @@ function SceneContent({
         if (controls) controls.enabled = false;
         closingBlend.current = Math.min(1, closingBlend.current + delta / TRANSITIONS.CLOSING_CAMERA);
         const k = easeInOutCubic(closingBlend.current);
-        camera.position.set(
-          THREE.MathUtils.lerp(closingFromPos.current.x, CAMERA.CLOSING.position[0], k),
-          THREE.MathUtils.lerp(closingFromPos.current.y, CAMERA.CLOSING.position[1], k),
-          THREE.MathUtils.lerp(closingFromPos.current.z, CAMERA.CLOSING.position[2], k),
+        blendFlight(
+          camera,
+          controls,
+          { pos: closingFromPos.current, look: closingFromLook.current, fov: closingFromFov.current },
+          CAMERA.CLOSING,
+          k,
+          closingLook.current,
         );
-        camera.fov = THREE.MathUtils.lerp(closingFromFov.current, fittedFov(CAMERA.CLOSING.fov, camera.aspect), k);
-        camera.updateProjectionMatrix();
-        closingLook.current.set(
-          THREE.MathUtils.lerp(closingFromLook.current.x, CAMERA.CLOSING.lookAt[0], k),
-          THREE.MathUtils.lerp(closingFromLook.current.y, CAMERA.CLOSING.lookAt[1], k),
-          THREE.MathUtils.lerp(closingFromLook.current.z, CAMERA.CLOSING.lookAt[2], k),
-        );
-        camera.lookAt(closingLook.current);
-        if (controls) controls.target.copy(closingLook.current);
       } else if (closingArmed.current) {
         closingArmed.current = false;
         closingBlend.current = 0;
@@ -200,6 +292,7 @@ function SceneContent({
     } else {
       exploreAppliedRef.current = false;
       closingArmed.current = false;
+      returnArmed.current = false;
       if (orbitControlsRef.current) {
         orbitControlsRef.current.enabled = false;
       }
@@ -222,18 +315,7 @@ function SceneContent({
         }
 
         if (reduceMotion) {
-          camera.position.set(
-            CAMERA.EXPLORE.position[0],
-            CAMERA.EXPLORE.position[1],
-            CAMERA.EXPLORE.position[2],
-          );
-          camera.fov = fittedFov(CAMERA.EXPLORE.fov, camera.aspect);
-          camera.updateProjectionMatrix();
-          camera.lookAt(
-            CAMERA.EXPLORE.lookAt[0],
-            CAMERA.EXPLORE.lookAt[1],
-            CAMERA.EXPLORE.lookAt[2],
-          );
+          applyPose(camera, null, CAMERA.EXPLORE);
         } else {
           let camPos: [number, number, number];
           let camFov: number;
@@ -300,18 +382,17 @@ function SceneContent({
     // hand-off above and after OrbitControls' own update — so nothing can drift between runs.
     if (capture.active && introComplete) {
       const pose = resolveCapturePose(capture.camera, CAMERA.EXPLORE);
-      camera.position.set(pose.position[0], pose.position[1], pose.position[2]);
-      camera.fov = fittedFov(pose.fov, camera.aspect);
-      camera.updateProjectionMatrix();
-      camera.lookAt(pose.lookAt[0], pose.lookAt[1], pose.lookAt[2]);
+      applyPose(camera, orbitControlsRef.current, pose);
       if (orbitControlsRef.current) {
-        orbitControlsRef.current.target.set(pose.lookAt[0], pose.lookAt[1], pose.lookAt[2]);
         orbitControlsRef.current.enabled = false;
       }
     }
 
-    // Orbital mechanics (always running)
-    timeRef.current = advanceTime(timeRef.current, delta, { reduceMotion, scale: timeSpeed * .08 });
+    // Orbital mechanics (always running unless the viewer paused the scene)
+    timeRef.current = advanceTime(timeRef.current, delta, {
+      reduceMotion,
+      scale: timeSpeed * .08,
+    });
     const newPositions = calculateOrbitalPosition(timeRef.current, PHYSICS.ORBIT);
     positionsRef.current = {
       primary: newPositions.primary,
@@ -324,6 +405,20 @@ function SceneContent({
     const secondary = newPositions.secondary;
     miraBGroupRef.current?.position.set(secondary[0], secondary[1], secondary[2]);
     miraBTargetRef.current?.position.set(secondary[0], secondary[1], secondary[2]);
+
+    // Dev-only e2e observability (same gate as ?epoch=): the camera pose as a coarse
+    // attribute, written imperatively so it never re-renders React. Rounded to a
+    // tenth of a unit — enough to tell a drag apart from the main view. Mira A's
+    // projected screen position lets specs click the star where it actually is
+    // instead of a hardcoded canvas fraction.
+    if (!import.meta.env.PROD) {
+      const el = state.gl.domElement;
+      const pose = `${camera.position.x.toFixed(1)},${camera.position.y.toFixed(1)},${camera.position.z.toFixed(1)}`;
+      if (el.dataset.cameraPose !== pose) el.dataset.cameraPose = pose;
+      miraAScreenRef.current.set(0, 0, 0).project(camera);
+      const miraA = `${(((miraAScreenRef.current.x + 1) / 2) * 100).toFixed(2)},${(((1 - miraAScreenRef.current.y) / 2) * 100).toFixed(2)}`;
+      if (el.dataset.miraAScreen !== miraA) el.dataset.miraAScreen = miraA;
+    }
   });
 
   // Tail opacity is computed in useFrame and stored in tailOpacityRef
@@ -429,16 +524,20 @@ function SceneContent({
       </mesh>
 
       </group>
-      {/* Orbit controls (disabled during cinematic) */}
+      {/* Orbit controls (disabled during cinematic). autoRotate is driven per frame by
+          the viewer-control rules above; starting a drag is intentional input and
+          interrupts the auto camera and the epilogue in the same event. */}
       <DreiOrbitControls
         ref={orbitControlsRef}
+        onStart={() => {
+          returnArmed.current = false;
+          useBinaryStar.getState().noteIntentionalInput();
+        }}
         enablePan={false}
         enableRotate
         enableZoom
         minDistance={5}
         maxDistance={40}
-        autoRotate={!capture.active && !epilogueVisible && !reduceMotion}
-        autoRotateSpeed={0.3}
         enableDamping={!capture.active}
         dampingFactor={0.05}
         touches={{

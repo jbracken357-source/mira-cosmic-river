@@ -2,18 +2,20 @@ import { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { useBinaryStar } from '../../hooks';
 import { TRANSLATIONS } from '../../constants/translations';
-import { TRANSITIONS } from '../../constants/animation';
+import { collectViewerHolds, idleTiming, resolveViewerControl } from '../../lib/viewerControl';
 
-const IDLE_THRESHOLD = 60; // seconds before closing message appears
-
+// The epilogue: allowed after the shared idle clock crosses its threshold, dismissed
+// by the first intentional input. The 1s poll only detects the threshold crossing;
+// dismissal is event-driven through the store (noteIntentionalInput clears
+// epilogueVisible immediately, and the text below renders only while it holds).
 export default function ClosingMessage() {
   const language = useBinaryStar((state) => state.language);
   const introComplete = useBinaryStar((state) => state.introComplete);
+  const epilogueVisible = useBinaryStar((state) => state.epilogueVisible);
   const t = TRANSLATIONS[language];
   const reduceMotion = Boolean(useReducedMotion());
 
   const [isVisible, setIsVisible] = useState(false);
-  const lastActivityRef = useRef(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   if (!introComplete && isVisible) setIsVisible(false);
@@ -24,53 +26,40 @@ export default function ClosingMessage() {
       return;
     }
 
-    // Idle is measured from the moment exploration starts, not from module load
-    lastActivityRef.current = Date.now();
+    // Idle is measured from the moment exploration starts, not from module load.
+    useBinaryStar.getState().restampIdleClock();
 
     const checkIdle = () => {
-      const elapsed = (Date.now() - lastActivityRef.current) / 1000;
-      const camera = elapsed >= IDLE_THRESHOLD - TRANSITIONS.CLOSING_CAMERA;
-      const text = elapsed >= IDLE_THRESHOLD;
-      const { epilogueVisible, setEpilogueVisible } = useBinaryStar.getState();
-      if (epilogueVisible !== camera) setEpilogueVisible(camera);
-      setIsVisible(text);
+      const state = useBinaryStar.getState();
+      const control = resolveViewerControl(
+        Date.now(),
+        state.lastIntentionalInputAt,
+        collectViewerHolds(state, reduceMotion),
+        idleTiming(),
+      );
+      // The flag covers camera or text: under reduced motion there is no closing
+      // flight, but the epilogue line is still allowed at the 60s mark.
+      const epilogueActive = control.epilogueCamera || control.epilogueText;
+      if (state.epilogueVisible !== epilogueActive) {
+        state.setEpilogueVisible(epilogueActive);
+      }
+      setIsVisible(control.epilogueText);
     };
 
     intervalRef.current = setInterval(checkIdle, 1000);
 
-    // Activity only records a timestamp. Setting state here re-rendered the whole tree
-    // on every pointer move, which stalled input delivery (clicks went unacknowledged).
-    // The 1s tick above is what decides visibility, so the message still clears within
-    // a second of the viewer coming back.
-    const markActivity = () => {
-      lastActivityRef.current = Date.now();
-    };
-
-    window.addEventListener('mousemove', markActivity);
-    window.addEventListener('click', markActivity);
-    window.addEventListener('pointerdown', markActivity);
-    window.addEventListener('wheel', markActivity, { passive: true });
-    window.addEventListener('touchstart', markActivity);
-    window.addEventListener('keydown', markActivity);
-
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
-      window.removeEventListener('mousemove', markActivity);
-      window.removeEventListener('click', markActivity);
-      window.removeEventListener('pointerdown', markActivity);
-      window.removeEventListener('wheel', markActivity);
-      window.removeEventListener('touchstart', markActivity);
-      window.removeEventListener('keydown', markActivity);
       useBinaryStar.getState().setEpilogueVisible(false);
     };
-  }, [introComplete]);
+  }, [introComplete, reduceMotion]);
 
   // Unmount rather than playing the 2s exit fade — replay must not leave the epilogue over the opening.
   if (!introComplete) return null;
 
   return (
     <AnimatePresence>
-      {isVisible && (
+      {isVisible && epilogueVisible && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -79,6 +68,7 @@ export default function ClosingMessage() {
           className="absolute inset-0 flex items-center justify-center z-30 pointer-events-none pl-[max(2rem,env(safe-area-inset-left))] pr-[max(2rem,env(safe-area-inset-right))]"
         >
           <p
+            data-testid="epilogue-text"
             className="text-white/50 text-lg md:text-2xl italic max-w-lg px-8 text-center leading-relaxed"
             style={{ fontFamily: "'Caveat', 'Cinzel', serif", textShadow: '0 2px 12px #000' }}
           >

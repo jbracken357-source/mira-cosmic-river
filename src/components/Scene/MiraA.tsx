@@ -57,7 +57,7 @@ export default function MiraA({ position, radius, turbulence, segments = 64 }: M
 
   useFrame((_, delta) => {
     // Capture mode parks the phase at CAPTURE_TIME; the same value also freezes the
-    // surface rotation below.
+    // surface rotation below. A manual pause holds the phase where it is.
     timeRef.current = advanceTime(timeRef.current, delta, { reduceMotion });
     const time = timeRef.current;
 
