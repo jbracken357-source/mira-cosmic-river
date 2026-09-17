@@ -60,6 +60,15 @@ export const TRANSLATIONS = {
     tonightSceneLost: 'The scene is restoring — save again once it returns',
     tonightClose: 'Close',
 
+    // Static fallback (#24): WebGL unavailable or the context lost. Honest copy —
+    // the recorded still never poses as the live, explorable scene.
+    sceneUnavailableTitle: 'Tonight’s sky can’t open right now',
+    sceneUnavailableBody: 'This device or browser can’t run the 3D scene. What you see is a recorded still of Mira — not the live scene, and not explorable.',
+    sceneLostTitle: 'The scene went dark for a moment',
+    sceneLostBody: 'The graphics connection was lost. A recorded still of Mira is holding the place — not the live scene, and not explorable.',
+    sceneRetry: 'Retry',
+    stillCaption: 'Recorded still · scene version {version}',
+
     // Closing message
     closingMessage: 'We are made of starstuff. And my starstuff chose yours.',
   },
@@ -119,6 +128,14 @@ export const TRANSLATIONS = {
     tonightFailed: '这次没能存下，今晚的画面还在',
     tonightSceneLost: '画面正在恢复，等它回来后再保存',
     tonightClose: '关闭',
+
+    // 静态后备（#24）：WebGL 不可用或 context 中断。如实文案——记录的静帧绝不冒充可探索的实时画面。
+    sceneUnavailableTitle: '今晚的星空暂时进不去',
+    sceneUnavailableBody: '这台设备或浏览器暂时无法运行三维场景。你看到的是一张此前记录的 Mira 静帧——不是实时画面，也不能探索。',
+    sceneLostTitle: '画面暂时暗了下来',
+    sceneLostBody: '图形连接中断了。中断期间由一张此前记录的 Mira 静帧守着——不是实时画面，也不能探索。',
+    sceneRetry: '重试',
+    stillCaption: '记录的静帧 · 场景版本 {version}',
 
     // Closing message
     closingMessage: '我们都是星尘。而我的星尘，选择了你的。',
