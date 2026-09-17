@@ -3,6 +3,7 @@ import { useBinaryStar, useMobile } from '../../hooks';
 import { TRANSLATIONS } from '../../constants/translations';
 import { CINEMATIC, TRANSITIONS } from '../../constants/animation';
 import type { StarName } from './InfoCards';
+import AmbientToggle from './AmbientToggle';
 
 // Cinematic overlay: 15-second opening text sequence
 export default function CinematicOverlay({
@@ -37,7 +38,8 @@ export default function CinematicOverlay({
       className="relative z-10 flex h-dvh w-full pointer-events-none select-none overflow-hidden"
     >
       {/* Skip button */}
-      <div className="absolute top-[max(1rem,env(safe-area-inset-top))] right-[max(1rem,env(safe-area-inset-right))] pointer-events-auto z-50">
+      <div className="absolute top-[max(1rem,env(safe-area-inset-top))] right-[max(1rem,env(safe-area-inset-right))] pointer-events-auto z-50 flex items-center gap-4">
+        <AmbientToggle />
         <button
           data-testid="skip-cinematic"
           onClick={handleSkip}
@@ -134,6 +136,7 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
           >
             {t.returnToView}
           </button>
+          <AmbientToggle />
           <button
             data-testid="pause-toggle"
             aria-pressed={!isPlaying}

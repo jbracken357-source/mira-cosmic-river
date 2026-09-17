@@ -23,6 +23,14 @@
 - https://www.solarsystemscope.com/textures/
 - https://www.eso.org/public/copyright/
 
+## 环境音（2026-09-17，#22）
+
+环境音为原创程序化合成（WebAudio 振荡器 + 程序化生成噪声 + LFO，见
+`src/lib/ambientGraph.ts`），不含音频文件，不含第三方受版权保护的素材，无旁白
+与歌词；项目可自由使用、修改与再生成。试听材料与生成方式：
+`../design-audit-2026-09-17/evidence/ambient-sample.wav`（同目录
+`ambient-sample.md` 记录生成命令与声音设计）。
+
 ## 检查复现
 
 在项目根启动 `npm run dev -- --host 127.0.0.1 --port 5186 --strictPort`，随后运行：

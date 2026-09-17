@@ -3,7 +3,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls as DreiOrbitControls } from '@react-three/drei';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import { useReducedMotion } from 'framer-motion';
-import { useBinaryStar } from '../../hooks';
+import { useBinaryStar, ambientSpace } from '../../hooks';
 import { COLORS, PHYSICS, calculateOrbitalPosition, CINEMATIC, CAMERA as LANDSCAPE_CAMERA, TRANSITIONS, TRANSLATIONS, resolveQualityTier } from '../../constants';
 import { PORTRAIT_CAMERA } from '../../constants/animation';
 import { advanceTime, captureMode, resolveCapturePose } from '../../lib/captureMode';
@@ -157,6 +157,7 @@ function SceneContent({
   const previousAspect = useRef(1);
   const previousPortrait = useRef(portrait);
   const miraAScreenRef = useRef(new THREE.Vector3());
+  const ambientLookRef = useRef(new THREE.Vector3());
 
   const positionsRef = useRef({
     primary: [0, 0, 0] as [number, number, number],
@@ -405,6 +406,14 @@ function SceneContent({
     const secondary = newPositions.secondary;
     miraBGroupRef.current?.position.set(secondary[0], secondary[1], secondary[2]);
     miraBTargetRef.current?.position.set(secondary[0], secondary[1], secondary[2]);
+
+    // Ambient sound (#22): the distance to the orbit target (pan is disabled, so
+    // the target is the fixed look-at) feeds the barely-there tone shift. A plain
+    // write, never a store update — the sound shell polls it a few times a second,
+    // so this never re-renders React.
+    ambientSpace.distance = camera.position.distanceTo(
+      orbitControlsRef.current?.target ?? ambientLookRef.current.set(...CAMERA.EXPLORE.lookAt),
+    );
 
     // Dev-only e2e observability (same gate as ?epoch=): the camera pose as a coarse
     // attribute, written imperatively so it never re-renders React. Rounded to a
