@@ -31,6 +31,10 @@ interface BinaryStarStore extends StarSystemState {
   restampIdleClock: () => void;
   cardOpen: boolean;
   setCardOpen: (open: boolean) => void;
+  // 今晚的 Mira (#23): the save flow holds the idle takeover while open, the same
+  // way reading a card does — the auto camera must never reframe a locked snapshot.
+  tonightSaveOpen: boolean;
+  setTonightSaveOpen: (open: boolean) => void;
   autoCamera: AutoCameraState;
   setAutoCamera: (state: AutoCameraState) => void;
   returnToExploreAt: number;
@@ -91,6 +95,7 @@ export const useBinaryStar = create<BinaryStarStore>((set, get) => ({
   lastIntentionalInputAt: Date.now(),
   inputSeq: 0,
   cardOpen: false,
+  tonightSaveOpen: false,
   autoCamera: 'off',
   returnToExploreAt: 0,
   parameters: defaultParameters,
@@ -123,6 +128,7 @@ export const useBinaryStar = create<BinaryStarStore>((set, get) => ({
   // dismissing anything.
   restampIdleClock: () => set({ lastIntentionalInputAt: Date.now() }),
   setCardOpen: (cardOpen) => set({ cardOpen }),
+  setTonightSaveOpen: (tonightSaveOpen) => set({ tonightSaveOpen }),
   setAutoCamera: (autoCamera) => {
     if (get().autoCamera !== autoCamera) set({ autoCamera });
   },

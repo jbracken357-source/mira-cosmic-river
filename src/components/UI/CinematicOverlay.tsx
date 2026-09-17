@@ -4,6 +4,7 @@ import { TRANSLATIONS } from '../../constants/translations';
 import { CINEMATIC, TRANSITIONS } from '../../constants/animation';
 import type { StarName } from './InfoCards';
 import AmbientToggle from './AmbientToggle';
+import TonightSave from './TonightSave';
 
 // Cinematic overlay: 15-second opening text sequence
 export default function CinematicOverlay({
@@ -136,6 +137,7 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
           >
             {t.returnToView}
           </button>
+          <TonightSave />
           <AmbientToggle />
           <button
             data-testid="pause-toggle"

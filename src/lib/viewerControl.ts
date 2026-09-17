@@ -6,11 +6,11 @@
 // epilogue (the closing camera leads the text by TRANSITIONS.CLOSING_CAMERA).
 //
 // Priority, highest first: capture mode > full cinematic > manual pause >
-// background / reading a card > free exploration. While any hold is active
-// (`holdsIdle`) the caller restamps the clock, so the idle run restarts from zero
-// when the hold ends instead of triggering a backlog takeover. Ticket #23 adds its
-// saving hold as one more flag on ViewerHolds and one line in collectViewerHolds —
-// no rule changes.
+// background / reading a card / saving tonight's frame > free exploration. While
+// any hold is active (`holdsIdle`) the caller restamps the clock, so the idle run
+// restarts from zero when the hold ends instead of triggering a backlog takeover.
+// Ticket #23 adds its saving hold as one more flag on ViewerHolds and one line in
+// collectViewerHolds — no rule changes.
 //
 // Reduced motion is not a hold: it suppresses the idle CAMERA takeover (no auto
 // drift, no closing flight) but the idle clock keeps counting and the epilogue text
@@ -41,6 +41,7 @@ export interface ViewerHolds {
   manualPause: boolean;
   background: boolean;
   readingCard: boolean;
+  saving: boolean;
   reduceMotion: boolean;
 }
 
@@ -52,6 +53,7 @@ export type ViewerControlReason =
   | 'manual-pause'
   | 'background'
   | 'reading-card'
+  | 'saving'
   | 'reduced-motion'
   | 'epilogue'
   | 'idle';
@@ -93,6 +95,7 @@ export function resolveViewerControl(
   if (holds.manualPause) return held('manual-pause');
   if (holds.background) return held('background');
   if (holds.readingCard) return held('reading-card');
+  if (holds.saving) return held('saving');
 
   const idleMs = Math.max(0, now - lastIntentionalInputAt);
   const epilogueText = idleMs >= timing.epilogueMs;
@@ -147,7 +150,7 @@ export function resolveViewerControl(
 // Snapshot the current holds from the store fields plus the environment. Adding a
 // hold (saving, #23) means one flag here and one line below.
 export function collectViewerHolds(
-  state: { introComplete: boolean; isPlaying: boolean; cardOpen: boolean },
+  state: { introComplete: boolean; isPlaying: boolean; cardOpen: boolean; tonightSaveOpen: boolean },
   reduceMotion: boolean,
 ): ViewerHolds {
   return {
@@ -156,6 +159,7 @@ export function collectViewerHolds(
     manualPause: !state.isPlaying,
     background: typeof document !== 'undefined' ? document.hidden : false,
     readingCard: state.cardOpen,
+    saving: state.tonightSaveOpen,
     reduceMotion,
   };
 }

@@ -16,6 +16,7 @@ const FREE: ViewerHolds = {
   manualPause: false,
   background: false,
   readingCard: false,
+  saving: false,
   reduceMotion: false,
 };
 
@@ -129,6 +130,7 @@ test.describe('suppression holds', () => {
     ['manual pause', { manualPause: true }, 'manual-pause'],
     ['background', { background: true }, 'background'],
     ['reading a card', { readingCard: true }, 'reading-card'],
+    ['saving tonight\'s frame', { saving: true }, 'saving'],
   ];
 
   for (const [name, hold, reason] of HOLD_CASES) {
@@ -152,6 +154,7 @@ test.describe('suppression holds', () => {
       manualPause: true,
       background: true,
       readingCard: true,
+      saving: true,
       reduceMotion: true,
     });
     expect(control.reason).toBe('capture');

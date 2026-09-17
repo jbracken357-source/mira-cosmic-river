@@ -1,9 +1,9 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls as DreiOrbitControls } from '@react-three/drei';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import { useReducedMotion } from 'framer-motion';
-import { useBinaryStar, ambientSpace } from '../../hooks';
+import { useBinaryStar, ambientSpace, tonightFrame } from '../../hooks';
 import { COLORS, PHYSICS, calculateOrbitalPosition, CINEMATIC, CAMERA as LANDSCAPE_CAMERA, TRANSITIONS, TRANSLATIONS, resolveQualityTier } from '../../constants';
 import { PORTRAIT_CAMERA } from '../../constants/animation';
 import { advanceTime, captureMode, resolveCapturePose } from '../../lib/captureMode';
@@ -128,6 +128,28 @@ function SceneContent({
   const tier = resolveQualityTier();
   const lod = tier === 'low' ? LOD.low : tier === 'mid' ? LOD.mobile : LOD.desktop;
   const capture = captureMode();
+
+  // 今晚的 Mira (#23) bridge: the save flow presses capture synchronously inside
+  // the viewer's click. preserveDrawingBuffer stays off, so the read must happen in
+  // the same task as a forced render — advance() runs one real frame (the composer's
+  // bloom included) and toDataURL reads it back immediately. A lost context is
+  // reported honestly instead of returning a blank or stale frame.
+  const gl = useThree((state) => state.gl);
+  const advance = useThree((state) => state.advance);
+  useEffect(() => {
+    tonightFrame.capture = () => {
+      if (gl.getContext().isContextLost()) return 'context-lost';
+      advance(performance.now());
+      return {
+        dataUrl: gl.domElement.toDataURL('image/png'),
+        width: gl.domElement.width,
+        height: gl.domElement.height,
+      };
+    };
+    return () => {
+      tonightFrame.capture = null;
+    };
+  }, [gl, advance]);
 
   const timeRef = useRef(0);
   const cinematicStartRef = useRef(0);

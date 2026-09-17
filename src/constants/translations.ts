@@ -46,6 +46,20 @@ export const TRANSLATIONS = {
     ambientStarting: 'Starting ambient sound…',
     ambientRetry: 'Retry ambient sound',
 
+    // 今晚的 Mira (#23): the fixed companionship phrase and the save flow's honest
+    // states — a lost scene is never passed off as a live capture
+    tonightSave: 'Tonight\'s Mira',
+    tonightPhrase: 'Drawn to each other, travelling together',
+    tonightAddDate: 'Add the date',
+    tonightAddPhrase: 'Add the phrase',
+    tonightDownload: 'Save image',
+    tonightSaving: 'Saving…',
+    tonightSaved: 'Tonight\'s Mira is saved',
+    tonightRetry: 'Retry saving',
+    tonightFailed: 'Saving failed — tonight\'s frame is still here',
+    tonightSceneLost: 'The scene is restoring — save again once it returns',
+    tonightClose: 'Close',
+
     // Closing message
     closingMessage: 'We are made of starstuff. And my starstuff chose yours.',
   },
@@ -92,6 +106,19 @@ export const TRANSLATIONS = {
     ambientTapToStart: '点按开启环境音',
     ambientStarting: '正在开启环境音…',
     ambientRetry: '重试环境音',
+
+    // 今晚的 Mira（#23）：固定的相伴短句与如实状态——画面未恢复时绝不冒充实时截图
+    tonightSave: '今晚的 Mira',
+    tonightPhrase: '彼此牵引，共同前行',
+    tonightAddDate: '附上日期',
+    tonightAddPhrase: '附上短句',
+    tonightDownload: '保存图片',
+    tonightSaving: '正在保存…',
+    tonightSaved: '已存好今晚的 Mira',
+    tonightRetry: '重试保存',
+    tonightFailed: '这次没能存下，今晚的画面还在',
+    tonightSceneLost: '画面正在恢复，等它回来后再保存',
+    tonightClose: '关闭',
 
     // Closing message
     closingMessage: '我们都是星尘。而我的星尘，选择了你的。',
