@@ -74,6 +74,7 @@ export default function CinematicOverlay({
             animate={{ opacity: 1 }}
             transition={{ duration: finalFade }}
             className="absolute top-1/3 left-6 md:left-12 pointer-events-none select-none"
+            style={{ textShadow: '0 2px 12px #000' }}
           >
             <h1 className="font-display text-5xl md:text-7xl lg:text-8xl font-light text-white/90 tracking-wider">
               Mira

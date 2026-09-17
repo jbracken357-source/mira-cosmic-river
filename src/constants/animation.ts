@@ -39,10 +39,11 @@ export const CAMERA = {
     lookAt: [-3, 1, 5] as [number, number, number],
     fov: 45,
   },
-  // Idle hold, not explore framing
+  // Idle hold, not explore framing. The look-at biases left so the pair drifts
+  // right of the centered epilogue line instead of sitting under it.
   CLOSING: {
     position: [8, 10, 34] as [number, number, number],
-    lookAt: [-4, 0, 6] as [number, number, number],
+    lookAt: [-8, 1, 6] as [number, number, number],
     fov: 48,
   },
   // FOV range during pull-back
@@ -66,7 +67,7 @@ export const PORTRAIT_CAMERA = {
   },
   CLOSING: {
     position: [8, 11, 34] as [number, number, number],
-    lookAt: [-2, -4, 6] as [number, number, number],
+    lookAt: [-7, -5, 6] as [number, number, number],
     fov: 48,
   },
 } as const;

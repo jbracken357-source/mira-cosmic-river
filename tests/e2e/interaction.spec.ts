@@ -35,6 +35,12 @@ test.describe('Interaction pack', () => {
     await expect(page.getByTestId('tail-found')).toBeVisible();
     expect(await page.evaluate((key) => localStorage.getItem(key), FOUND_KEY)).toBe('1');
 
+    // The card must lay out as a card, not a one-character-wide column. Guards the
+    // desktop max-w classes resolving to the container scale (20rem+), not the
+    // 0.25rem-ish custom spacing tokens that once shadowed them.
+    const cardWidth = await page.getByTestId('info-card').evaluate((el) => el.getBoundingClientRect().width);
+    expect(cardWidth).toBeGreaterThan(300);
+
     // Same session, second open must not repeat the line.
     await page.getByTestId('info-card').getByRole('button').click();
     await expect(page.getByTestId('info-card')).toBeHidden();

@@ -151,7 +151,7 @@ export default function InfoCards({ selectedStar, onSelectStar, showTailFound }:
       className={
         isMobile
           ? 'relative z-20 flex justify-center pointer-events-none text-white/45 text-sm italic font-extralight tracking-wide px-4 py-2'
-          : 'absolute bottom-20 left-0 right-0 z-20 flex justify-center pointer-events-none text-white/45 text-sm italic font-extralight tracking-wide'
+          : 'absolute bottom-28 left-0 right-0 z-20 flex justify-center pointer-events-none text-white/45 text-sm italic font-extralight tracking-wide'
       }
     >
       {t.tailFound}
