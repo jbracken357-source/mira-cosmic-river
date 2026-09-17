@@ -3,6 +3,7 @@ import type { MutableRefObject } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { resolveQualityTier } from '../../constants';
+import { useEntryReadiness } from '../../hooks';
 import { advanceTime } from '../../lib/captureMode';
 import {
   MIRA_A_REACH,
@@ -170,9 +171,15 @@ export default function RiverVeil({ opacityRef, readyRef, length, reduceMotion, 
         material.uniforms.uReady.value = 1;
       }
       readyRef.current = true;
+      useEntryReadiness.getState().noteMaterial('river', 'ready');
     }, undefined, () => {
-      // Keep the procedural tail alive when the optional image is unavailable.
-      if (active) readyRef.current = false;
+      // Keep the procedural tail alive when the optional image is unavailable —
+      // and tell the gate, so the opening may start on the fallback path. Only
+      // the live instance reports: a StrictMode-discarded load must not settle
+      // the gate ahead of the remounted one.
+      if (!active) return;
+      useEntryReadiness.getState().noteMaterial('river', 'failed');
+      readyRef.current = false;
     });
     return () => {
       active = false;

@@ -8,7 +8,7 @@ import {
   MIRA_A_PULSE_AMPLITUDE,
 } from '../../shaders/miraA';
 import { COLORS } from '../../constants';
-import { useBinaryStar } from '../../hooks';
+import { useBinaryStar, useEntryReadiness } from '../../hooks';
 import { advanceTime } from '../../lib/captureMode';
 import GlowShell from './GlowShell';
 
@@ -35,7 +35,13 @@ export default function MiraA({ position, radius, turbulence, segments = 64 }: M
       loaded.colorSpace = THREE.NoColorSpace;
       materialRef.current.uniforms.uSurfaceMap.value = loaded;
       materialRef.current.uniforms.uSurfaceReady.value = 1;
-    }, undefined, () => { /* Procedural convection remains visible without the map. */ });
+      useEntryReadiness.getState().noteMaterial('surface', 'ready');
+    }, undefined, () => {
+      // Procedural convection remains visible without the map — the live
+      // instance reports it so the entry gate can start on the fallback path.
+      if (!active) return;
+      useEntryReadiness.getState().noteMaterial('surface', 'failed');
+    });
     return () => {
       active = false;
       texture.dispose();
