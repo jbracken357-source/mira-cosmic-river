@@ -79,6 +79,29 @@ export async function startDevServer(port) {
   throw new Error(`dev server did not start within 120s\n${log}`);
 }
 
+// Every baseline page gets the same starting state: direct entry (the full cinematic
+// belongs to the ritual moment, not a baseline) and the device capabilities pinned so
+// the quality tier resolves to "high" on any machine.
+export function baselineInitScript() {
+  localStorage.clear();
+  localStorage.setItem('mira:seen-opening', '1');
+  Object.defineProperty(navigator, 'deviceMemory', { get: () => 8 });
+  Object.defineProperty(navigator, 'hardwareConcurrency', { get: () => 8 });
+}
+
+// Wait until the explore UI is mounted and the milestone hint has finished its
+// self-dismiss cycle. The hint self-dismisses 8s after it arms, and Framer Motion
+// animates it in JS, which the freeze CSS cannot stop — so it must be gone from the
+// DOM before the screenshot, never mid-fade.
+export async function waitForExploreReady(page) {
+  await page.getByTestId('explore-ui').waitFor({ timeout: 30_000 });
+  await page.waitForTimeout(300);
+  const hint = page.getByTestId('milestone-hint');
+  if ((await hint.count()) > 0) {
+    await hint.waitFor({ state: 'detached', timeout: 20_000 }).catch(() => {});
+  }
+}
+
 // Kill animations and transitions (the explore UI has a pulsing dot) so the DOM overlay
 // is as frozen as the WebGL scene.
 const FREEZE_CSS = `
@@ -146,26 +169,10 @@ export async function captureViews({ baseUrl, outDir, views = VIEWS }) {
       const page = await context.newPage();
       const errors = [];
       page.on('pageerror', (error) => errors.push(error.message));
-      await page.addInitScript(() => {
-        localStorage.clear();
-        // Direct entry: the full cinematic belongs to the ritual moment, not a baseline.
-        localStorage.setItem('mira:seen-opening', '1');
-        // Pin the device capabilities the quality tier reads, so the tier is stable
-        // across machines (8/8 resolves to "high").
-        Object.defineProperty(navigator, 'deviceMemory', { get: () => 8 });
-        Object.defineProperty(navigator, 'hardwareConcurrency', { get: () => 8 });
-      });
+      await page.addInitScript(baselineInitScript);
       const url = `${baseUrl}/?capture=1&epoch=${encodeURIComponent(BASELINE_EPOCH)}&cam=${view.cam}`;
       await page.goto(url, { waitUntil: 'networkidle' });
-      await page.getByTestId('explore-ui').waitFor({ timeout: 30_000 });
-      // The milestone hint self-dismisses 8s after it arms. Framer Motion animates it in
-      // JS, which the freeze CSS cannot stop, so wait it out whenever it shows: the hint
-      // must be gone from the DOM before the screenshot, never mid-fade.
-      await page.waitForTimeout(300);
-      const hint = page.getByTestId('milestone-hint');
-      if ((await hint.count()) > 0) {
-        await hint.waitFor({ state: 'detached', timeout: 20_000 }).catch(() => {});
-      }
+      await waitForExploreReady(page);
       await page.addStyleTag({ content: FREEZE_CSS });
       const texturesReady = await sceneResourcesReady(page);
       // Let the first frozen frames settle (bloom chain warm-up, font swap).
