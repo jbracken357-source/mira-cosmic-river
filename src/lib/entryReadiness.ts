@@ -87,7 +87,11 @@ export function detectWebGLSupport(): 'available' | 'unavailable' {
   if (typeof window === 'undefined') return 'available';
   return probeWebGLSupport(() => {
     const canvas = document.createElement('canvas');
-    return canvas.getContext('webgl2') ?? canvas.getContext('webgl');
+    const context = canvas.getContext('webgl2') ?? canvas.getContext('webgl');
+    // The probe is throwaway: lose it at once so it never counts against the
+    // browser's small live-context budget before the real canvas asks for one.
+    context?.getExtension('WEBGL_lose_context')?.loseContext();
+    return context;
   });
 }
 
