@@ -1,10 +1,10 @@
 # 09：桌面优先的稳定画质与后台运行
 
-状态：待拆分确认，尚未发布。发布后为 ready-for-agent；有阻塞边时不可提前领取。
+状态：已发布为 GitHub issue #26（ready-for-agent）；有阻塞边时不可提前领取。
 
 ## Parent
 
-本轮《Mira 全范围打磨》Spec，发布后填写真实链接。
+#18（总 Spec）。
 
 ## What to build
 
@@ -20,5 +20,5 @@
 
 ## Blocked by
 
-- 本轮任务 01（发布后替换为原生 blocking 关系和真实 issue 链接）
+- #19（01 光河）
 

@@ -1,10 +1,10 @@
 # 12：观看者美术确认与 iPhone 基础验收
 
-状态：待拆分确认，尚未发布。发布后为 ready-for-human，需观看者完成。
+状态：已发布为 GitHub issue #30（ready-for-human），需观看者完成。
 
 ## Parent
 
-本轮《Mira 全范围打磨》Spec，发布后填写真实链接。
+#18（总 Spec）。
 
 ## What to build
 
@@ -20,5 +20,5 @@
 
 ## Blocked by
 
-- 本轮任务 11（发布后替换为原生 blocking 关系和真实 issue 链接）
+- #29（11 集成收口）
 

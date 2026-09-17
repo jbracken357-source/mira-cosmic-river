@@ -1,10 +1,10 @@
 # 01：光河在主视角形成可信体积
 
-状态：待拆分确认，尚未发布。发布后为 ready-for-agent；有阻塞边时不可提前领取。
+状态：已发布为 GitHub issue #19（ready-for-agent）；有阻塞边时不可提前领取。
 
 ## Parent
 
-本轮《Mira 全范围打磨》Spec，发布后填写真实链接。
+#18（总 Spec）。
 
 ## What to build
 
