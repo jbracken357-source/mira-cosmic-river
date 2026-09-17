@@ -220,16 +220,28 @@ test.describe('Tonight\'s Mira save flow', () => {
     await page.evaluate(() => {
       const canvas = document.querySelector('canvas');
       const gl = (canvas?.getContext('webgl2') ?? canvas?.getContext('webgl')) as
-        | (WebGLRenderingContext & { getExtension(name: 'WEBGL_lose_context'): { loseContext(): void } | null })
+        | (WebGLRenderingContext & { getExtension(name: 'WEBGL_lose_context'): { loseContext(): void; restoreContext(): void } | null })
         | null;
-      gl?.getExtension('WEBGL_lose_context')?.loseContext();
+      const ext = gl?.getExtension('WEBGL_lose_context') ?? null;
+      (window as unknown as Record<string, unknown>).__miraLoseContext = ext;
+      ext?.loseContext();
     });
 
-    await page.getByTestId('tonight-save').click();
-    const panel = page.getByTestId('tonight-panel');
-    await expect(panel).toHaveAttribute('data-tonight-phase', 'failed');
-    // The honest restore-first message (zh default), and no preview posing as live.
-    await expect(page.getByTestId('tonight-failure')).toHaveText('画面正在恢复，等它回来后再保存');
+    // Since #24 the loss is answered by the full-screen recorded still: the
+    // viewer is told the scene went dark, and the save flow cannot start over
+    // a lost scene — no panel, no preview posing as a live capture.
+    const fallback = page.getByTestId('scene-fallback');
+    await expect(fallback).toBeVisible();
+    await expect(fallback).toHaveAttribute('data-fallback-reason', 'context-lost');
+    await expect(page.getByTestId('tonight-panel')).toHaveCount(0);
     await expect(page.getByTestId('tonight-preview')).toHaveCount(0);
+
+    // After the context restores, the fallback lifts and the same save flow
+    // works on the recovered scene — the loss was a pause, not a broken page.
+    await page.evaluate(() => {
+      (window as unknown as Record<string, { restoreContext(): void }>).__miraLoseContext.restoreContext();
+    });
+    await expect(fallback).toHaveCount(0);
+    await openSaveFlow(page);
   });
 });

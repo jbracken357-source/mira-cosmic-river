@@ -1,9 +1,26 @@
-import { useState, useCallback, useEffect } from 'react';
+import { Component, useState, useCallback, useEffect } from 'react';
+import type { ReactNode } from 'react';
 import { Scene } from './components/Scene';
-import { CinematicOverlay, InfoCards, ClosingMessage, MilestoneHint } from './components/UI';
+import { CinematicOverlay, InfoCards, ClosingMessage, MilestoneHint, SceneFallback } from './components/UI';
 import type { StarName } from './components/UI/InfoCards';
-import { hasFoundTail, persistFoundTail, useBinaryStar, useIntentionalInput, initAmbientSound, useAmbientSound } from './hooks';
+import { hasFoundTail, persistFoundTail, useBinaryStar, useEntryReadiness, useIntentionalInput, initAmbientSound, useAmbientSound } from './hooks';
 import './App.css';
+
+// If the canvas dies during creation (the probe passed but the real context
+// still failed), the whole entry degrades to the static fallback instead of a
+// white page.
+class SceneBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  componentDidCatch() {
+    useEntryReadiness.getState().noteSceneAccess('create-failed');
+  }
+  render() {
+    return this.state.failed ? null : this.props.children;
+  }
+}
 
 export default function App() {
   const [selectedStar, setSelectedStar] = useState<StarName | null>(null);
@@ -35,6 +52,8 @@ export default function App() {
   const autoCamera = useBinaryStar((state) => state.autoCamera);
   const epilogueVisible = useBinaryStar((state) => state.epilogueVisible);
   const ambientPhase = useAmbientSound((state) => state.phase);
+  const entryGate = useEntryReadiness((state) => state.gate);
+  const sceneAccess = useEntryReadiness((state) => state.sceneAccess);
   if (!introComplete && selectedStar !== null) setSelectedStar(null);
   if (!introComplete && showTailFound) setShowTailFound(false);
 
@@ -44,9 +63,15 @@ export default function App() {
     if (!introComplete) useBinaryStar.getState().setCardOpen(false);
   }, [introComplete]);
 
+  const sceneAvailable = sceneAccess !== 'unavailable';
+
   return (
     <>
-      <Scene onSelectStar={handleSelectStar} />
+      {sceneAvailable && (
+        <SceneBoundary>
+          <Scene onSelectStar={handleSelectStar} />
+        </SceneBoundary>
+      )}
       <div
         // Which sky the viewer opened into, readable without sampling pixels.
         data-sky-phase={sky.pulsationPhase.toFixed(4)}
@@ -55,19 +80,27 @@ export default function App() {
         // Viewer-control observability for e2e: who owns the camera right now.
         data-auto-camera={autoCamera}
         data-epilogue={epilogueVisible ? 'true' : 'false'}
+        // Entry readiness (#24): what the cinematic gate is waiting on, if anything.
+        data-entry-gate={entryGate}
         // Ambient sound (#22): the honest phase, dev-only like data-camera-pose.
         {...(!import.meta.env.PROD ? { 'data-ambient-state': ambientPhase } : {})}
         className="relative w-full h-dvh overflow-hidden pointer-events-none"
       >
-        <CinematicOverlay onSelectStar={handleSelectStar} />
-        <InfoCards
-          selectedStar={selectedStar}
-          onSelectStar={handleSelectStar}
-          showTailFound={showTailFound}
-        />
-        <ClosingMessage />
-        <MilestoneHint />
+        {sceneAvailable && (
+          <>
+            <CinematicOverlay onSelectStar={handleSelectStar} />
+            <InfoCards
+              selectedStar={selectedStar}
+              onSelectStar={handleSelectStar}
+              showTailFound={showTailFound}
+            />
+            <ClosingMessage />
+            <MilestoneHint />
+          </>
+        )}
       </div>
+      {!sceneAvailable && <SceneFallback reason="webgl-unavailable" />}
+      {sceneAccess === 'lost' && <SceneFallback reason="context-lost" />}
     </>
   );
 }

@@ -111,7 +111,7 @@ const FREEZE_CSS = `
   }
 `;
 
-async function sceneResourcesReady(page) {
+export async function sceneResourcesReady(page) {
   // Best effort: inspect the mounted scene the same way capture-integration.mjs does.
   // Falls back to a plain wait when the vite dep bundle is not where we expect it.
   const probe = () => page.waitForFunction(async () => {

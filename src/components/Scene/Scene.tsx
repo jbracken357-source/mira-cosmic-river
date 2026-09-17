@@ -3,9 +3,10 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls as DreiOrbitControls } from '@react-three/drei';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import { useReducedMotion } from 'framer-motion';
-import { useBinaryStar, ambientSpace, tonightFrame } from '../../hooks';
-import { COLORS, PHYSICS, calculateOrbitalPosition, CINEMATIC, CAMERA as LANDSCAPE_CAMERA, TRANSITIONS, TRANSLATIONS, resolveQualityTier } from '../../constants';
+import { useBinaryStar, ambientSpace, tonightFrame, useEntryReadiness } from '../../hooks';
+import { COLORS, PHYSICS, calculateOrbitalPosition, CINEMATIC, CAMERA as LANDSCAPE_CAMERA, TRANSITIONS, TRANSLATIONS, resolveQualityTier, ENTRY_STILL, ENTRY_STILL_BACKDROP } from '../../constants';
 import { PORTRAIT_CAMERA } from '../../constants/animation';
+import { MATERIALS_TIMEOUT_MS, gateAllowsCinematic } from '../../lib/entryReadiness';
 import { advanceTime, captureMode, resolveCapturePose } from '../../lib/captureMode';
 import { collectViewerHolds, idleTiming, resolveViewerControl } from '../../lib/viewerControl';
 import * as THREE from 'three';
@@ -180,6 +181,7 @@ function SceneContent({
   const previousPortrait = useRef(portrait);
   const miraAScreenRef = useRef(new THREE.Vector3());
   const ambientLookRef = useRef(new THREE.Vector3());
+  const firstFrameMarkedRef = useRef(false);
 
   const positionsRef = useRef({
     primary: [0, 0, 0] as [number, number, number],
@@ -312,6 +314,18 @@ function SceneContent({
         if (orbitControlsRef.current) orbitControlsRef.current.enabled = true;
       }
       tailOpacityRef.current = 0.85;
+    } else if (!gateAllowsCinematic(useEntryReadiness.getState().gate)) {
+      // The full cinematic waits until the main materials — or the procedural
+      // fallback — can actually be presented (#24). The clock stays at zero and
+      // the loading still holds the screen; a hung load is bounded by the gate
+      // timeout, never by the network's good will.
+      exploreAppliedRef.current = false;
+      closingArmed.current = false;
+      returnArmed.current = false;
+      if (orbitControlsRef.current) {
+        orbitControlsRef.current.enabled = false;
+      }
+      tailOpacityRef.current = 0;
     } else {
       exploreAppliedRef.current = false;
       closingArmed.current = false;
@@ -449,6 +463,14 @@ function SceneContent({
       miraAScreenRef.current.set(0, 0, 0).project(camera);
       const miraA = `${(((miraAScreenRef.current.x + 1) / 2) * 100).toFixed(2)},${(((1 - miraAScreenRef.current.y) / 2) * 100).toFixed(2)}`;
       if (el.dataset.miraAScreen !== miraA) el.dataset.miraAScreen = miraA;
+    }
+
+    // The cold-start probe fires at the first COMPLETED frame — not at context
+    // creation — so the number means "first presentable picture" (#24, SPEC 真实
+    // 时间、加载与运行).
+    if (!firstFrameMarkedRef.current) {
+      firstFrameMarkedRef.current = true;
+      noteEntryMark(state.gl.domElement, 'firstFrameMs');
     }
   });
 
@@ -602,30 +624,87 @@ function PostProcessing() {
   );
 }
 
+// Cold-start record (#24), two measurement points from navigation start:
+// contextCreatedMs (the canvas context exists) and firstFrameMs (the first
+// completed frame — the same moment data-camera-pose lands, i.e. the first
+// presentable picture). A window probe and data attributes keep both readable
+// from e2e and the devtools; the console line stays dev-only.
+function noteEntryMark(canvas: HTMLCanvasElement, key: 'contextCreatedMs' | 'firstFrameMs') {
+  const ms = Math.round(performance.now());
+  (window as unknown as Record<string, unknown>).__miraEntry = {
+    ...((window as unknown as Record<string, unknown>).__miraEntry as object | undefined),
+    [key]: ms,
+  };
+  canvas.dataset[key === 'firstFrameMs' ? 'entryFirstFrameMs' : 'entryContextMs'] = String(ms);
+  if (key === 'firstFrameMs' && !import.meta.env.PROD) {
+    console.info(`[mira] first presentable frame ${ms}ms after navigation start`);
+  }
+}
+
 export default function Scene({ onSelectStar }: SceneProps) {
   const CAMERA = window.innerHeight > window.innerWidth ? PORTRAIT_CAMERA : LANDSCAPE_CAMERA;
   const tier = resolveQualityTier();
   const lowQuality = tier === 'low';
   const reduceMotion = Boolean(useReducedMotion());
   const startInExplore = useBinaryStar.getState().introComplete;
+  const introComplete = useBinaryStar((state) => state.introComplete);
   const [canvasReady, setCanvasReady] = useState(false);
+  const [glCanvas, setGlCanvas] = useState<HTMLCanvasElement | null>(null);
   const language = useBinaryStar((state) => state.language);
+  const gate = useEntryReadiness((state) => state.gate);
+
+  // The gate's hard bound: materials that never answer are declared timed-out
+  // and the opening proceeds on the procedural fallback.
+  useEffect(() => {
+    if (gate !== 'waiting') return;
+    const id = window.setTimeout(() => useEntryReadiness.getState().noteMaterialsTimedOut(), MATERIALS_TIMEOUT_MS);
+    return () => window.clearTimeout(id);
+  }, [gate]);
+
+  // Context lost/restored (#24): one listener pair per canvas element, torn down
+  // with it — a restore re-uses the live tree, so nothing re-registers.
+  useEffect(() => {
+    if (!glCanvas) return;
+    const onLost = (event: Event) => {
+      // preventDefault opts in to restoration; without it no restored event fires.
+      event.preventDefault();
+      useEntryReadiness.getState().noteSceneAccess('context-lost');
+    };
+    const onRestored = () => useEntryReadiness.getState().noteSceneAccess('context-restored');
+    glCanvas.addEventListener('webglcontextlost', onLost);
+    glCanvas.addEventListener('webglcontextrestored', onRestored);
+    return () => {
+      glCanvas.removeEventListener('webglcontextlost', onLost);
+      glCanvas.removeEventListener('webglcontextrestored', onRestored);
+    };
+  }, [glCanvas]);
+
+  // The handoff is explicit: the loading still lifts when the canvas exists, and
+  // — for the full cinematic only — when the gate has opened. Direct entry adds
+  // no waiting ceremony beyond the canvas itself.
+  const veilUp = !canvasReady || (!introComplete && gate === 'waiting');
 
   return (
     <>
-      {!canvasReady && (
+      {veilUp && (
         <div
           data-testid="loading"
+          data-still-source={ENTRY_STILL.version}
           className="fixed inset-0 z-[5] flex items-center justify-center pointer-events-none select-none"
-          style={{ background: COLORS.DEEP_SPACE }}
+          style={ENTRY_STILL_BACKDROP}
         >
-          <p className="text-white/35 text-sm font-extralight italic tracking-[0.25em]">
+          <div className="absolute inset-0 bg-black/60" />
+          <p className="relative text-white/35 text-sm font-extralight italic tracking-[0.25em]">
             {TRANSLATIONS[language].loading}
           </p>
         </div>
       )}
     <Canvas
-      onCreated={() => setCanvasReady(true)}
+      onCreated={(state) => {
+        setCanvasReady(true);
+        setGlCanvas(state.gl.domElement);
+        noteEntryMark(state.gl.domElement, 'contextCreatedMs');
+      }}
       camera={{
         position: startInExplore ? CAMERA.EXPLORE.position : CAMERA.CLOSE.position,
         fov: startInExplore ? CAMERA.EXPLORE.fov : CAMERA.CLOSE.fov,
