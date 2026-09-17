@@ -3,13 +3,14 @@ import type { MutableRefObject } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { resolveQualityTier } from '../../constants';
-import { CAPTURE_TIME, captureMode } from '../../lib/captureMode';
+import { advanceTime } from '../../lib/captureMode';
 import {
   MIRA_A_REACH,
   MIRA_B_REACH,
   MIRA_B_GAIN,
   veilLayerWeight,
 } from '../../lib/riverLighting';
+import type { SkyRiverCoupling } from '../../lib/riverLighting';
 
 const vertexShader = `
   attribute vec3 aTangent;
@@ -144,10 +145,9 @@ export default function RiverVeil({ opacityRef, readyRef, length, reduceMotion, 
   length: number;
   reduceMotion: boolean;
   miraBRef: MutableRefObject<THREE.Group | null>;
-  sky: { gain: number; warmth: number };
+  sky: SkyRiverCoupling;
 }) {
   const tier = resolveQualityTier();
-  const capture = captureMode();
   const groupRef = useRef<THREE.Group>(null);
   const bWorldPos = useRef(new THREE.Vector3());
   const volumeCount = tier === 'low' ? 2 : tier === 'mid' ? 4 : 7;
@@ -190,8 +190,7 @@ export default function RiverVeil({ opacityRef, readyRef, length, reduceMotion, 
     if (miraBRef.current) miraBRef.current.getWorldPosition(bWorldPos.current);
     for (const [i, child] of (groupRef.current?.children ?? []).entries()) {
       const material = (child as THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMaterial>).material;
-      if (capture.active) material.uniforms.uTime.value = CAPTURE_TIME;
-      else if (!reduceMotion && !document.hidden) material.uniforms.uTime.value += Math.min(delta, .05);
+      material.uniforms.uTime.value = advanceTime(material.uniforms.uTime.value, delta, { reduceMotion });
       const isAccent = material.uniforms.uAccent.value === 1;
       material.uniforms.uOpacity.value = opacityRef.current * veilLayerWeight(i, count, isAccent) / count;
       material.uniforms.uMiraBPos.value.copy(bWorldPos.current);

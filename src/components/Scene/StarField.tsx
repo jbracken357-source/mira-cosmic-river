@@ -3,7 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { SKY_SPECTRAL } from '../../constants/colors';
 import { useBinaryStar } from '../../hooks';
-import { CAPTURE_TIME, captureMode } from '../../lib/captureMode';
+import { captureClock } from '../../lib/captureMode';
 
 interface StarFieldProps {
   count?: number;
@@ -58,7 +58,6 @@ const LAYER_LIST = (Object.keys(LAYERS) as LayerName[]).map((name) => ({
 export default function StarField({ count = 5000 }: StarFieldProps) {
   const materialRef = useRef<THREE.ShaderMaterial>(null);
   const brightness = useBinaryStar((state) => state.sky.brightness);
-  const capture = captureMode();
 
   const { geometry } = useMemo(() => {
     const rand = mulberry32(STARFIELD_SEED);
@@ -125,7 +124,7 @@ export default function StarField({ count = 5000 }: StarFieldProps) {
   useFrame((state) => {
     if (materialRef.current) {
       // Capture mode freezes the twinkle at one fixed phase instead of the wall clock.
-      materialRef.current.uniforms.uTime.value = capture.active ? CAPTURE_TIME : state.clock.elapsedTime;
+      materialRef.current.uniforms.uTime.value = captureClock(state.clock.elapsedTime);
       // Low quality has no bloom, so the field carries the sky envelope.
       materialRef.current.uniforms.uSky.value = 0.35 + 0.65 * brightness;
     }

@@ -8,7 +8,7 @@ import type { OrbitPositions } from '../../types';
 import GlowShell from './GlowShell';
 import type { MutableRefObject } from 'react';
 import { useReducedMotion } from 'framer-motion';
-import { CAPTURE_TIME, captureMode } from '../../lib/captureMode';
+import { advanceTime } from '../../lib/captureMode';
 
 interface MiraBProps {
   position: [number, number, number];
@@ -90,7 +90,6 @@ export default function MiraB({ position, radius, segments = 64, positionsRef }:
   const diskMaterialRef = useRef<THREE.ShaderMaterial>(null);
   const timeRef = useRef(0);
   const reduceMotion = Boolean(useReducedMotion());
-  const capture = captureMode();
 
   // White dwarf: hot blue-white (#e0e7ff per product direction)
   const color = useMemo(() => new THREE.Color(COLORS.MIRA_B_CORE), []);
@@ -98,8 +97,7 @@ export default function MiraB({ position, radius, segments = 64, positionsRef }:
   const diskRadius = radius * DISK_SCALE;
 
   useFrame((_, delta) => {
-    if (capture.active) timeRef.current = CAPTURE_TIME;
-    else if (!reduceMotion && !document.hidden) timeRef.current += Math.min(delta, .05);
+    timeRef.current = advanceTime(timeRef.current, delta, { reduceMotion });
     const time = timeRef.current;
 
     if (materialRef.current) {

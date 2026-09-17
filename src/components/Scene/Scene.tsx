@@ -6,7 +6,7 @@ import { useReducedMotion } from 'framer-motion';
 import { useBinaryStar } from '../../hooks';
 import { COLORS, PHYSICS, calculateOrbitalPosition, CINEMATIC, CAMERA as LANDSCAPE_CAMERA, TRANSITIONS, TRANSLATIONS, resolveQualityTier } from '../../constants';
 import { PORTRAIT_CAMERA } from '../../constants/animation';
-import { CAPTURE_TIME, captureMode, resolveCapturePose } from '../../lib/captureMode';
+import { advanceTime, captureMode, resolveCapturePose } from '../../lib/captureMode';
 import * as THREE from 'three';
 import type { StarName } from '../UI/InfoCards';
 import MiraA from './MiraA';
@@ -311,8 +311,7 @@ function SceneContent({
     }
 
     // Orbital mechanics (always running)
-    if (capture.active) timeRef.current = CAPTURE_TIME;
-    else if (!reduceMotion && !document.hidden) timeRef.current += Math.min(delta, .05) * timeSpeed * .08;
+    timeRef.current = advanceTime(timeRef.current, delta, { reduceMotion, scale: timeSpeed * .08 });
     const newPositions = calculateOrbitalPosition(timeRef.current, PHYSICS.ORBIT);
     positionsRef.current = {
       primary: newPositions.primary,

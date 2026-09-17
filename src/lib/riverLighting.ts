@@ -41,11 +41,23 @@ export function riverBrightness(light: number): number {
   return RIVER_SHADOW_FLOOR + (1 - RIVER_SHADOW_FLOOR) * clamp01(light);
 }
 
+// The veil's shadow floor and full-light lift: the alpha-blended ribbons keep three
+// quarters of their body in shadow and gain a third under full light.
+export const VEIL_SHADOW_RETAIN = 0.75;
+export const VEIL_LIGHT_LIFT = 0.6;
+
 // The veil ribbons are alpha-blended over near-black space, so the multiplicative floor that
 // suits the additive tail would crush them to invisible. Their response is gentler: shadow
 // keeps three quarters of the body, full light lifts it by a third.
 export function veilLightResponse(light: number): number {
-  return 0.75 + 0.6 * clamp01(light);
+  return VEIL_SHADOW_RETAIN + VEIL_LIGHT_LIFT * clamp01(light);
+}
+
+// How tonight's sky bends the river: gain scales its brightness, warmth shifts its
+// palette toward the dim red of a faint Mira A.
+export interface SkyRiverCoupling {
+  gain: number;
+  warmth: number;
 }
 
 // Real-time binding to the star clock: the pulsation bends the river's brightness and warmth
@@ -54,7 +66,7 @@ export function veilLightResponse(light: number): number {
 export function skyRiverGain(
   brightness: number,
   colorShift: number,
-): { gain: number; warmth: number } {
+): SkyRiverCoupling {
   return {
     gain: 0.8 + 0.22 * clamp01(brightness),
     warmth: 0.25 * (1 - clamp01(colorShift)),

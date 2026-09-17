@@ -5,8 +5,9 @@ import * as THREE from 'three';
 import { createTailMaterial } from '../../shaders/tail';
 import { useReducedMotion } from 'framer-motion';
 import RiverVeil from './RiverVeil';
-import { CAPTURE_TIME, captureMode } from '../../lib/captureMode';
+import { advanceTime, captureMode } from '../../lib/captureMode';
 import { skyRiverGain, tailBaseOpacity } from '../../lib/riverLighting';
+import type { SkyRiverCoupling } from '../../lib/riverLighting';
 import { useBinaryStar } from '../../hooks';
 
 interface MiraTailProps {
@@ -71,7 +72,7 @@ export default function MiraTail({
   const capture = captureMode();
   const skyBrightness = useBinaryStar((state) => state.sky.brightness);
   const skyColorShift = useBinaryStar((state) => state.sky.colorShift);
-  const sky = useMemo(() => skyRiverGain(skyBrightness, skyColorShift), [skyBrightness, skyColorShift]);
+  const sky = useMemo<SkyRiverCoupling>(() => skyRiverGain(skyBrightness, skyColorShift), [skyBrightness, skyColorShift]);
 
   const geometry = useMemo(() => {
     const { positions, seeds, sizes, lengths, spreads } =
@@ -108,8 +109,7 @@ export default function MiraTail({
     // Update the material actually mounted on the points (the old ref was never bound).
     const mat = pointsRef.current?.material;
     if (!mat) return;
-    if (capture.active) mat.uniforms.uTime.value = CAPTURE_TIME;
-    else if (!reduceMotion && !document.hidden) mat.uniforms.uTime.value += Math.min(delta, .05);
+    mat.uniforms.uTime.value = advanceTime(mat.uniforms.uTime.value, delta, { reduceMotion });
     mat.uniforms.uOpacity.value = opacityRef.current * tailBaseOpacity(textureReadyRef.current, particleCount);
     mat.uniforms.uSkyGain.value = sky.gain;
     mat.uniforms.uSkyWarmth.value = sky.warmth;

@@ -9,7 +9,7 @@
 //   - every time-driven uniform (uTime accumulation, twinkle phases, stream flow, the
 //     decorative orbit) is parked at CAPTURE_TIME, one fixed animation phase;
 //   - OrbitControls auto-rotate and damping switch off, mouse influence drops to zero;
-//   - the full cinematic is skipped — a baseline always starts from direct entry;
+//   - the run starts from direct entry — the full cinematic belongs to the ritual moment;
 //   - `?cam=default|near|az90|az180|az270` parks the camera at a named pose, re-applied
 //     every frame so nothing can drift.
 //
@@ -51,6 +51,26 @@ export function captureMode(): CaptureMode {
     cached = { active, camera };
   }
   return cached;
+}
+
+// Advance one uTime-style accumulator by a frame. Capture mode pins every phase at
+// CAPTURE_TIME; otherwise time accrues only while motion is allowed and the tab is
+// visible, clamped so a background tab's long frame cannot lurch the scene. `scale`
+// covers callers whose clock runs slower than wall time (the orbital mechanics).
+export function advanceTime(
+  current: number,
+  delta: number,
+  { reduceMotion, scale = 1 }: { reduceMotion: boolean; scale?: number },
+): number {
+  if (captureMode().active) return CAPTURE_TIME;
+  if (!reduceMotion && !document.hidden) return current + Math.min(delta, .05) * scale;
+  return current;
+}
+
+// The wall-clock-driven variant (the StarField twinkle reads the shared clock rather
+// than accumulating): capture mode parks it at the same fixed phase.
+export function captureClock(elapsed: number): number {
+  return captureMode().active ? CAPTURE_TIME : elapsed;
 }
 
 // Rotate a camera position around its look-at on the ground plane (Y-up), so the rotated

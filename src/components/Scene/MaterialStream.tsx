@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { COLORS } from '../../constants';
 import type { OrbitPositions } from '../../types';
 import { useReducedMotion } from 'framer-motion';
-import { CAPTURE_TIME, captureMode } from '../../lib/captureMode';
+import { advanceTime } from '../../lib/captureMode';
 
 export type OrbitPositionsRef = MutableRefObject<OrbitPositions>;
 
@@ -29,7 +29,6 @@ export default function MaterialStream({
   const pointsRef = useRef<THREE.Points>(null);
   const timeRef = useRef(0);
   const reduceMotion = Boolean(useReducedMotion());
-  const capture = captureMode();
 
   const { colors, sizes } = useMemo(() => {
     const colorsArr = new Float32Array(particleCount * 3);
@@ -63,8 +62,7 @@ export default function MaterialStream({
     if (!pts) return;
 
     const { primary, secondary } = positionsRef.current;
-    if (capture.active) timeRef.current = CAPTURE_TIME;
-    else if (!reduceMotion && !document.hidden) timeRef.current += Math.min(delta, .05);
+    timeRef.current = advanceTime(timeRef.current, delta, { reduceMotion });
     const dx = secondary[0] - primary[0];
     const dy = secondary[1] - primary[1];
     const dz = secondary[2] - primary[2];

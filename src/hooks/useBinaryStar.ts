@@ -61,8 +61,8 @@ export function persistFoundTail() {
 // The clock is read at load and only carried forward from there, so nothing has to read it
 // during a render.
 const initialSky = currentSkyState();
-// Capture mode skips the full cinematic: a baseline always starts from direct entry, without
-// persisting the seen-opening flag.
+// Capture mode enters via direct entry: a baseline always starts in the explore state,
+// without persisting the seen-opening flag.
 const startInExplore = captureMode().active || hasSeenOpening();
 
 export const useBinaryStar = create<BinaryStarStore>((set) => ({
