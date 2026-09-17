@@ -198,5 +198,7 @@ const fragmentShader = `
     vec3 finalColor = vColor * vBright * (0.9 + 0.35 * core);
 
     gl_FragColor = vec4(finalColor, halo);
+    #include <tonemapping_fragment>
+    #include <colorspace_fragment>
   }
 `;

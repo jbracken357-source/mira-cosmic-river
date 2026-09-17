@@ -7,6 +7,7 @@ import {
   starLightFalloff,
   riverLight,
   riverBrightness,
+  veilLightResponse,
   skyRiverGain,
   goldAccentStrength,
   veilLayerWeight,
@@ -78,6 +79,24 @@ test.describe('river brightness keeps structure in shadow', () => {
       const value = riverBrightness(light);
       expect(value).toBeGreaterThan(previous);
       expect(value).toBeLessThanOrEqual(1);
+      previous = value;
+    }
+  });
+});
+
+test.describe('veil light response', () => {
+  test('shadow keeps most of the body and full light lifts it', () => {
+    // The veil is alpha-blended over near-black space: a crushing shadow curve would void it.
+    expect(veilLightResponse(0)).toBeGreaterThanOrEqual(0.7);
+    expect(veilLightResponse(1)).toBeGreaterThan(1);
+    expect(veilLightResponse(1)).toBeLessThanOrEqual(1.5);
+  });
+
+  test('climbs monotonically with the light', () => {
+    let previous = veilLightResponse(0);
+    for (let light = 0.05; light <= 1; light += 0.05) {
+      const value = veilLightResponse(light);
+      expect(value).toBeGreaterThan(previous);
       previous = value;
     }
   });

@@ -390,6 +390,7 @@ function SceneContent({
           opacityRef={tailOpacityRef}
           particleCount={lod.tailParticles}
           tailLength={PHYSICS.TAIL.length}
+          miraBRef={miraBGroupRef}
         />
       </group>
       {/* Invisible click target for tail card */}

@@ -41,6 +41,13 @@ export function riverBrightness(light: number): number {
   return RIVER_SHADOW_FLOOR + (1 - RIVER_SHADOW_FLOOR) * clamp01(light);
 }
 
+// The veil ribbons are alpha-blended over near-black space, so the multiplicative floor that
+// suits the additive tail would crush them to invisible. Their response is gentler: shadow
+// keeps three quarters of the body, full light lifts it by a third.
+export function veilLightResponse(light: number): number {
+  return 0.75 + 0.6 * clamp01(light);
+}
+
 // Real-time binding to the star clock: the pulsation bends the river's brightness and warmth
 // without ever switching it off. Warmth tracks colour shift — a dim, red Mira A casts a
 // warmer river; a bright, white one a cooler river.
@@ -49,8 +56,8 @@ export function skyRiverGain(
   colorShift: number,
 ): { gain: number; warmth: number } {
   return {
-    gain: 0.72 + 0.3 * clamp01(brightness),
-    warmth: 0.3 * (1 - clamp01(colorShift)),
+    gain: 0.8 + 0.22 * clamp01(brightness),
+    warmth: 0.25 * (1 - clamp01(colorShift)),
   };
 }
 
@@ -65,9 +72,9 @@ export function goldAccentStrength(lightA: number): number {
 // soften toward the edges so the stack reads as one body with a feathered silhouette rather
 // than a deck of identical cards; accent layers always sit below the volume body.
 export function veilLayerWeight(index: number, count: number, accent: boolean): number {
-  if (accent) return 0.62;
+  if (accent) return 0.72;
   const p = count <= 1 ? 0 : (index / (count - 1)) * 2 - 1; // -1 .. 1 across the spread
-  return 1.05 + 0.75 * (1 - p * p);
+  return (1.05 + 0.75 * (1 - p * p)) * 1.4;
 }
 
 // Base opacity for the tail points. With the density image the veil carries the body and the
@@ -75,6 +82,6 @@ export function veilLayerWeight(index: number, count: number, accent: boolean): 
 // lighter tiers thin the count so each point does more work.
 export function tailBaseOpacity(textureReady: boolean, particleCount: number): number {
   return textureReady
-    ? 0.12 * Math.min(1, 600 / particleCount)
+    ? 0.16 * Math.min(1, 600 / particleCount)
     : 0.6 * Math.min(1, Math.sqrt(300 / particleCount));
 }
