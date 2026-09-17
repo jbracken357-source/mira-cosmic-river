@@ -43,12 +43,16 @@ async function openMiraACard(page: Page, epochMs: number) {
   // scene graph commits later than the explore UI, so a click before this lands on
   // nothing instead of the star.
   await expect(page.getByTestId('loading')).toHaveCount(0);
-  await canvas.click({
-    position: { x: box!.width * 0.6, y: box!.height * 0.5 },
-  });
 
   const card = page.getByTestId('info-card');
-  await expect(card).toBeVisible({ timeout: 15000 });
+  // Software rendering can stall past the first click; retry until the raycast
+  // lands on Mira A instead of asserting on a single attempt.
+  await expect(async () => {
+    await canvas.click({
+      position: { x: box!.width * 0.6, y: box!.height * 0.5 },
+    });
+    await expect(card).toBeVisible({ timeout: 3000 });
+  }).toPass({ timeout: 30000 });
   return card.locator('[data-phase-days-to-max]');
 }
 
