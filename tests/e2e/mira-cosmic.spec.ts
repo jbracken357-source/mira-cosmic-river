@@ -61,6 +61,7 @@ test.describe('Mira Cosmic River - E2E Tests', () => {
     const canvas = page.locator('canvas');
     const box = await canvas.boundingBox();
     expect(box).toBeTruthy();
+    await expect(page.getByTestId('loading')).toHaveCount(0);
 
     // Skip lands at CAMERA.EXPLORE, which looks left of origin, so Mira A sits right of centre.
     await canvas.click({

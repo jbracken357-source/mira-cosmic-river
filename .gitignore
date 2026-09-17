@@ -20,6 +20,10 @@ playwright-report
 test-results
 tests/e2e/screenshots
 
+# Local agent instructions (machine-specific, not shared)
+AGENTS.md
+CLAUDE.md
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

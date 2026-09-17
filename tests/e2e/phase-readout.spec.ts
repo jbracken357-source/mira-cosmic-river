@@ -36,6 +36,10 @@ async function openMiraACard(page: Page, epochMs: number) {
   const canvas = page.locator('canvas');
   const box = await canvas.boundingBox();
   expect(box).toBeTruthy();
+  // The loading veil lifts when the Canvas is created; under software rendering the
+  // scene graph commits later than the explore UI, so a click before this lands on
+  // nothing instead of the star.
+  await expect(page.getByTestId('loading')).toHaveCount(0);
   await canvas.click({
     position: { x: box!.width * 0.6, y: box!.height * 0.5 },
   });
