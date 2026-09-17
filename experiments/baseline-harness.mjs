@@ -131,10 +131,15 @@ async function sceneResourcesReady(page) {
     return surfaceReady === 1;
   }, null, { timeout: 10_000 }).then(() => true, () => false);
   if (await probe()) return true;
-  // On a loaded machine the first paint (shader compile, texture upload) can outlast the
-  // first probe; give it one more chance before declaring the textures missing.
-  await page.waitForTimeout(1500);
-  return probe();
+  // On a loaded machine the first paint (shader compile, texture upload) can outlast
+  // a probe; keep re-probing with pauses before declaring the textures missing.
+  // Returning false is only honest after real patience — a degraded screenshot must
+  // never be mistaken for a ready one.
+  for (let attempt = 0; attempt < 4; attempt++) {
+    await page.waitForTimeout(2000);
+    if (await probe()) return true;
+  }
+  return false;
 }
 
 async function readCameraPose(page) {
@@ -175,6 +180,14 @@ export async function captureViews({ baseUrl, outDir, views = VIEWS }) {
       await waitForExploreReady(page);
       await page.addStyleTag({ content: FREEZE_CSS });
       const texturesReady = await sceneResourcesReady(page);
+      // A degraded capture is not a baseline: fail loudly instead of writing a shot
+      // whose pixels silently came from the fallback path.
+      if (!texturesReady) {
+        throw new Error(`scene resources never reported ready for view "${view.name}"`);
+      }
+      // Web fonts can swap after the settle window on a loaded machine; wait for the
+      // font pipeline to be quiet so header text renders identically across runs.
+      await page.evaluate(() => document.fonts.ready.then(() => undefined));
       // Let the first frozen frames settle (bloom chain warm-up, font swap).
       await page.waitForTimeout(1200);
       const file = `${view.name}.png`;
