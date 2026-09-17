@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { createTailMaterial } from '../../shaders/tail';
 import { useReducedMotion } from 'framer-motion';
 import RiverVeil from './RiverVeil';
+import { CAPTURE_TIME, captureMode } from '../../lib/captureMode';
 
 interface MiraTailProps {
   opacityRef: React.MutableRefObject<number>;
@@ -61,6 +62,7 @@ export default function MiraTail({
   const textureReadyRef = useRef(false);
   const pointsRef = useRef<THREE.Points<THREE.BufferGeometry, THREE.ShaderMaterial>>(null);
   const reduceMotion = Boolean(useReducedMotion());
+  const capture = captureMode();
 
   const geometry = useMemo(() => {
     const { positions, seeds, sizes, lengths, spreads } =
@@ -97,13 +99,15 @@ export default function MiraTail({
     // Update the material actually mounted on the points (the old ref was never bound).
     const mat = pointsRef.current?.material;
     if (!mat) return;
-    if (!reduceMotion && !document.hidden) mat.uniforms.uTime.value += Math.min(delta, .05);
+    if (capture.active) mat.uniforms.uTime.value = CAPTURE_TIME;
+    else if (!reduceMotion && !document.hidden) mat.uniforms.uTime.value += Math.min(delta, .05);
     const particleOpacity = textureReadyRef.current
       ? .09 * Math.min(1, 600 / particleCount)
       : .6 * Math.min(1, Math.sqrt(300 / particleCount));
     mat.uniforms.uOpacity.value = opacityRef.current * particleOpacity;
     mat.uniforms.uMouse.value.copy(mouseRef.current);
-    mat.uniforms.uMouseInfluence.value = reduceMotion ? 0 : .3;
+    // Capture mode zeroes the ripple along with every other time-varying input.
+    mat.uniforms.uMouseInfluence.value = reduceMotion || capture.active ? 0 : .3;
   });
 
   return (

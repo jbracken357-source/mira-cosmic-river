@@ -3,6 +3,7 @@ import type { MutableRefObject } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { resolveQualityTier } from '../../constants';
+import { CAPTURE_TIME, captureMode } from '../../lib/captureMode';
 
 const vertexShader = `
   attribute vec3 aTangent;
@@ -101,6 +102,7 @@ export default function RiverVeil({ opacityRef, readyRef, length, reduceMotion }
   reduceMotion: boolean;
 }) {
   const tier = resolveQualityTier();
+  const capture = captureMode();
   const groupRef = useRef<THREE.Group>(null);
   const volumeCount = tier === 'low' ? 2 : tier === 'mid' ? 4 : 7;
   const accentCount = tier === 'low' ? 0 : tier === 'mid' ? 1 : 2;
@@ -141,7 +143,8 @@ export default function RiverVeil({ opacityRef, readyRef, length, reduceMotion }
   useFrame((_, delta) => {
     for (const child of groupRef.current?.children ?? []) {
       const material = (child as THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMaterial>).material;
-      if (!reduceMotion && !document.hidden) material.uniforms.uTime.value += Math.min(delta, .05);
+      if (capture.active) material.uniforms.uTime.value = CAPTURE_TIME;
+      else if (!reduceMotion && !document.hidden) material.uniforms.uTime.value += Math.min(delta, .05);
       const isAccent = material.uniforms.uAccent.value === 1;
       material.uniforms.uOpacity.value = opacityRef.current * (isAccent ? 1.05 : 1.55) / count;
     }

@@ -2,6 +2,7 @@
 // no randomness — which is what makes "tonight's Mira" differ from last week's.
 
 import { PHYSICS } from '../constants/physics';
+import { CAPTURE_EPOCH_ISO, captureMode } from './captureMode';
 
 // One source of truth: the pulsation period lives with the rest of Mira's physical data.
 export const MIRA_PERIOD_DAYS = PHYSICS.MIRA_A.pulsationPeriod;
@@ -96,6 +97,8 @@ function pinnedDate(): Date | null {
       const pinned = /^\d+$/.test(raw) ? new Date(Number(raw) * 1000) : new Date(raw);
       if (!Number.isNaN(pinned.getTime())) return pinned;
     }
+    // Capture mode implies a pinned clock: a baseline never floats with the wall clock.
+    if (captureMode().active) return new Date(CAPTURE_EPOCH_ISO);
   }
 
   return null;

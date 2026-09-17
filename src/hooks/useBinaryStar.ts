@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { StarSystemState, StarParameters, VisualMode, Language, CinematicPhase } from '../types';
 import type { SkyState } from '../lib/starClock';
 import { currentSkyState } from '../lib/starClock';
+import { captureMode } from '../lib/captureMode';
 
 export const SEEN_OPENING_KEY = 'mira:seen-opening';
 export const FOUND_TAIL_KEY = 'mira:found-tail';
@@ -60,14 +61,16 @@ export function persistFoundTail() {
 // The clock is read at load and only carried forward from there, so nothing has to read it
 // during a render.
 const initialSky = currentSkyState();
-const seenOpening = hasSeenOpening();
+// Capture mode skips the full cinematic: a baseline always starts from direct entry, without
+// persisting the seen-opening flag.
+const startInExplore = captureMode().active || hasSeenOpening();
 
 export const useBinaryStar = create<BinaryStarStore>((set) => ({
   mode: 'explore',
   language: 'ch',
   isPlaying: true,
-  introComplete: seenOpening,
-  cinematicPhase: seenOpening ? 'explore' : 'dark',
+  introComplete: startInExplore,
+  cinematicPhase: startInExplore ? 'explore' : 'dark',
   cinematicTime: 0,
   epilogueVisible: false,
   parameters: defaultParameters,

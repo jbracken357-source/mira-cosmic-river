@@ -9,6 +9,7 @@ import {
 } from '../../shaders/miraA';
 import { COLORS } from '../../constants';
 import { useBinaryStar } from '../../hooks';
+import { CAPTURE_TIME, captureMode } from '../../lib/captureMode';
 import GlowShell from './GlowShell';
 
 interface MiraAProps {
@@ -25,6 +26,7 @@ export default function MiraA({ position, radius, turbulence, segments = 64 }: M
   const outerAtmosphereRef = useRef<THREE.ShaderMaterial>(null);
   const timeRef = useRef(0);
   const reduceMotion = Boolean(useReducedMotion());
+  const capture = captureMode();
   const uniforms = useMemo(() => THREE.UniformsUtils.clone(MiraA_Shader.uniforms), []);
 
   useEffect(() => {
@@ -55,7 +57,10 @@ export default function MiraA({ position, radius, turbulence, segments = 64 }: M
   }, []);
 
   useFrame((_, delta) => {
-    if (!reduceMotion && !document.hidden) timeRef.current += Math.min(delta, .05);
+    // Capture mode parks the phase at CAPTURE_TIME; the same value also freezes the
+    // surface rotation below.
+    if (capture.active) timeRef.current = CAPTURE_TIME;
+    else if (!reduceMotion && !document.hidden) timeRef.current += Math.min(delta, .05);
     const time = timeRef.current;
 
     if (materialRef.current) {
