@@ -52,18 +52,20 @@
 
 状态：已测量，决定暂不拆分。
 
-- 探针：`Scene` 在 `onCreated` 记录 `performance.now()`（navigation start → 首个可呈现帧），写入 `window.__miraEntry.firstFrameMs` 与 canvas 的 `data-entry-first-frame-ms`；console 行 dev-only。
-- 测量脚本：`experiments/measure-cold-start.mjs`，对**生产构建**（`vite preview`）冷载 5 次、每次全新 context。本机中位数：
+- 探针：`Scene` 记录两个测量点（navigation start 起算）——`contextCreatedMs` 在 `onCreated`（上下文创建），`firstFrameMs` 在首个**完成**的 `useFrame` 末尾（与 `data-camera-pose` 落点同一时刻，即首个可呈现画面）。两者写入 `window.__miraEntry` 与 canvas 的 `data-entry-context-ms` / `data-entry-first-frame-ms`；console 行 dev-only 且仅记 firstFrameMs。
+- 测量脚本：`experiments/measure-cold-start.mjs`，对**生产构建**（`vite preview`）冷载 5 次、每次全新 context。本机中位数（2026-09-18，探针改为首帧后复测）：
 
 | 指标 | 中位数 |
 | --- | --- |
-| navigation start → 首个可呈现帧 | 981 ms |
-| HTML responseEnd | 3 ms |
-| DOMContentLoaded | 852 ms |
-| load | 854 ms |
-| 主 bundle 传输 | 437 kB（gzip），fetch 37 ms |
+| navigation start → 上下文创建（contextCreatedMs） | 867 ms |
+| navigation start → 首个可呈现帧（firstFrameMs） | 868 ms |
+| HTML responseEnd | 2 ms |
+| DOMContentLoaded | 753 ms |
+| load | 754 ms |
+| 主 bundle 传输 | 437 kB（gzip），fetch 33 ms |
 
-- 解读：本机 localhost 下传输可忽略，DCL 前的 ~850ms 主要是 1.45MB 单 bundle 的解析/求值与场景创建（SwiftShader 软件渲染）。但首个可呈现帧必须等 three.js 就绪——拆包只能让壳层文字更早出现，不能让首帧更早；按 SPEC "分包本身不作为变快证据"，这些数字不构成拆分理由。决定：**暂不拆包**；真实设备/慢网数字留待 #29 的桌面与真机证据收口时复测（本机数字不外推为移动端结论）。
+- 两个测量点的关系：同一次运行内 context → 首帧的差值中位数约 1 ms——本机（SwiftShader）上首个完成帧紧随上下文创建，因此探针从 onCreated 移到首帧几乎不改变读数（981 → 868 ms 的跨日差异属于运行间/机器负载波动，非探针移动所致）。改探针的意义在于口径诚实：firstFrameMs 现在确实指"首个可呈现画面"，而非"上下文已建"。
+- 解读：本机 localhost 下传输可忽略，DCL 前的 ~750ms 主要是 1.45MB 单 bundle 的解析/求值与场景创建（SwiftShader 软件渲染）。但首个可呈现帧必须等 three.js 就绪——拆包只能让壳层文字更早出现，不能让首帧更早；按 SPEC "分包本身不作为变快证据"，这些数字不构成拆分理由。决定：**暂不拆包**；真实设备/慢网数字留待 #29 的桌面与真机证据收口时复测（本机数字不外推为移动端结论）。
 
 ### 6. 故障注入验证非空画面与恢复操作，行为与视觉回退各留证
 
@@ -73,13 +75,14 @@
 - 非空画面不是"有 canvas"：用例解码截图并断言亮度均值 > 1 且标准差 > 1（非纯黑非平场）。
 - 视觉回退证据：见第 2 条两张 PNG。
 
-## 门槛复跑（2026-09-17 测量，2026-09-18 全量复跑）
+## 门槛复跑（2026-09-17 测量，2026-09-18 全量复跑；评审修订后再复跑）
 
 - `npm run build`：通过（1030 modules；既有 >500 kB chunk 提示保留，见第 5 条决定）。
 - `npm run lint`：通过，0 错误。
 - `npx playwright test --project=unit`：126 通过（含新增 entryReadiness 16 例）。
 - `npx playwright test`（全量）：176 通过 / 0 失败（约 3.7 分钟；含本票新增 e2e 6 例与 tonight-save 丢失场景用例的分层改写）。
 - `node experiments/verify-baseline.mjs`：PASS，两轮逐字节一致——加载遮罩与门槛不改变 capture 模式的已渲染画面。
+- 评审修订（首帧探针移至首个完成的 useFrame、遮罩与后备共用 `ENTRY_STILL_BACKDROP` 样式）后以上全部重跑，结果不变。
 
 ## verify-baseline 间歇失败排查（未静默）
 
