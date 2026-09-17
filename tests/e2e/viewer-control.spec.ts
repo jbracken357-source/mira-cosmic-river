@@ -101,14 +101,27 @@ test.describe('Viewer control', () => {
     await expect(wrapper(page)).toHaveAttribute('data-auto-camera', 'on', { timeout: 15000 });
   });
 
-  test('reduced motion never ramps and never shows the epilogue', async ({ page }) => {
+  test('reduced motion never moves the camera but still allows the epilogue text', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await gotoExplore(page);
 
-    await page.waitForTimeout(6000);
+    const canvas = page.locator('canvas');
+    const poseBefore = await canvas.getAttribute('data-camera-pose');
+    expect(poseBefore).toBeTruthy();
+
+    // No drift, ever…
     await expect(wrapper(page)).toHaveAttribute('data-auto-camera', 'off');
-    await expect(wrapper(page)).toHaveAttribute('data-epilogue', 'false');
-    await expect(page.getByTestId('epilogue-text')).toHaveCount(0);
+    // …but the epilogue line still arrives on the same shared clock…
+    await expect(page.getByTestId('epilogue-text')).toBeVisible({ timeout: 15000 });
+    await expect(wrapper(page)).toHaveAttribute('data-epilogue', 'true');
+    // …without a closing flight: the camera never left the explore framing.
+    expect(await canvas.getAttribute('data-camera-pose')).toBe(poseBefore);
+    await expect(wrapper(page)).toHaveAttribute('data-auto-camera', 'off');
+
+    // The first intentional input still dismisses it immediately.
+    await page.keyboard.press('ArrowLeft');
+    await expect(wrapper(page)).toHaveAttribute('data-epilogue', 'false', { timeout: 800 });
+    await expect(page.getByTestId('epilogue-text')).toBeHidden({ timeout: 8000 });
   });
 
   test('return to main view eases the camera back to the explore framing', async ({ page }) => {

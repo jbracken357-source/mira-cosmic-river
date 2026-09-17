@@ -6,11 +6,15 @@
 // epilogue (the closing camera leads the text by TRANSITIONS.CLOSING_CAMERA).
 //
 // Priority, highest first: capture mode > full cinematic > manual pause >
-// background / reading a card / reduced motion > free exploration. While any hold
-// is active (`holdsIdle`) the caller restamps the clock, so the idle run restarts
-// from zero when the hold ends instead of triggering a backlog takeover. Ticket #23
-// adds its saving hold as one more flag on ViewerHolds and one line in
-// collectViewerHolds — no rule changes.
+// background / reading a card > free exploration. While any hold is active
+// (`holdsIdle`) the caller restamps the clock, so the idle run restarts from zero
+// when the hold ends instead of triggering a backlog takeover. Ticket #23 adds its
+// saving hold as one more flag on ViewerHolds and one line in collectViewerHolds —
+// no rule changes.
+//
+// Reduced motion is not a hold: it suppresses the idle CAMERA takeover (no auto
+// drift, no closing flight) but the idle clock keeps counting and the epilogue text
+// is still allowed at the 60s mark — it fades in place, no camera motion.
 import { TRANSITIONS } from '../constants/animation';
 import { captureMode } from './captureMode';
 
@@ -89,29 +93,49 @@ export function resolveViewerControl(
   if (holds.manualPause) return held('manual-pause');
   if (holds.background) return held('background');
   if (holds.readingCard) return held('reading-card');
-  if (holds.reduceMotion) return held('reduced-motion');
 
   const idleMs = Math.max(0, now - lastIntentionalInputAt);
+  const epilogueText = idleMs >= timing.epilogueMs;
+
+  // Reduced motion holds the camera only: no drift, no closing flight, but the
+  // epilogue text still arrives on the same idle count.
+  if (holds.reduceMotion) {
+    return { ...held('reduced-motion'), holdsIdle: false, epilogueText };
+  }
+
   // A lead longer than the epilogue threshold would arm the closing camera before
   // any idle time; collapse to camera-with-text instead of going negative.
   const cameraAt =
     timing.epilogueMs > timing.epilogueLeadMs ? timing.epilogueMs - timing.epilogueLeadMs : timing.epilogueMs;
   const epilogueCamera = idleMs >= cameraAt;
-  const epilogueText = idleMs >= timing.epilogueMs;
+
+  // Where the drift would be on its 3s ease-in, epilogue or not — the fade below
+  // multiplies it down so the hand-off never snaps.
+  const rampProgress = Math.min(1, Math.max(0, (idleMs - timing.resumeMs) / timing.rampMs));
+  const rampSpeed = AUTO_ROTATE_SPEED * easeInOutCubic(rampProgress);
 
   if (epilogueCamera) {
-    // The closing camera owns the frame; the drift stops while it runs.
-    return { ...held('epilogue'), holdsIdle: false, epilogueCamera, epilogueText };
+    // Symmetric to the ease-in: the drift eases out over one ramp window as the
+    // closing camera takes over, rather than halting at the arm point.
+    const fade = Math.min(1, (idleMs - cameraAt) / timing.rampMs);
+    const speed = rampSpeed * (1 - easeInOutCubic(fade));
+    return {
+      autoCamera: speed > 0 ? 'ramping' : 'off',
+      autoRotateSpeed: speed,
+      rampProgress,
+      epilogueCamera,
+      epilogueText,
+      holdsIdle: false,
+      reason: 'epilogue',
+    };
   }
 
-  const rampT = (idleMs - timing.resumeMs) / timing.rampMs;
-  if (rampT < 0) {
+  if (idleMs < timing.resumeMs) {
     return { ...held('idle'), holdsIdle: false };
   }
-  const rampProgress = Math.min(1, rampT);
   return {
     autoCamera: rampProgress >= 1 ? 'on' : 'ramping',
-    autoRotateSpeed: AUTO_ROTATE_SPEED * easeInOutCubic(rampProgress),
+    autoRotateSpeed: rampSpeed,
     rampProgress,
     epilogueCamera,
     epilogueText,

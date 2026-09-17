@@ -37,8 +37,11 @@ export default function ClosingMessage() {
         collectViewerHolds(state, reduceMotion),
         idleTiming(),
       );
-      if (state.epilogueVisible !== control.epilogueCamera) {
-        state.setEpilogueVisible(control.epilogueCamera);
+      // The flag covers camera or text: under reduced motion there is no closing
+      // flight, but the epilogue line is still allowed at the 60s mark.
+      const epilogueActive = control.epilogueCamera || control.epilogueText;
+      if (state.epilogueVisible !== epilogueActive) {
+        state.setEpilogueVisible(epilogueActive);
       }
       setIsVisible(control.epilogueText);
     };

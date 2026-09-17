@@ -7,6 +7,7 @@ import {
 } from '../../src/lib/viewerControl';
 import type { ViewerHolds } from '../../src/lib/viewerControl';
 import { TRANSITIONS } from '../../src/constants/animation';
+import { useBinaryStar } from '../../src/hooks/useBinaryStar';
 
 // No holds: the viewer is freely exploring.
 const FREE: ViewerHolds = {
@@ -101,12 +102,25 @@ test.describe('epilogue', () => {
     expect(text.epilogueText).toBe(true);
   });
 
-  test('the epilogue owns the camera: auto rotation stops while it runs', () => {
-    const control = resolveViewerControl(55_000, 0, FREE);
-    expect(control.epilogueCamera).toBe(true);
-    expect(control.autoCamera).toBe('off');
-    expect(control.autoRotateSpeed).toBe(0);
-    expect(control.reason).toBe('epilogue');
+  test('the epilogue eases the drift out instead of snapping it off', () => {
+    const cameraAt = 60_000 - TRANSITIONS.CLOSING_CAMERA * 1000; // 52s
+
+    // Arming the closing camera does not cut the drift: full speed at the arm point.
+    const atArm = resolveViewerControl(cameraAt, 0, FREE);
+    expect(atArm.epilogueCamera).toBe(true);
+    expect(atArm.autoCamera).toBe('ramping');
+    expect(atArm.autoRotateSpeed).toBeCloseTo(AUTO_ROTATE_SPEED, 6);
+
+    // Symmetric to the 3s ease-in: the drift eases to zero over one ramp window.
+    let previous = atArm.autoRotateSpeed;
+    for (let idleMs = cameraAt + 250; idleMs <= cameraAt + 3_000; idleMs += 250) {
+      const { autoRotateSpeed } = resolveViewerControl(idleMs, 0, FREE);
+      expect(autoRotateSpeed).toBeLessThanOrEqual(previous);
+      expect(previous - autoRotateSpeed).toBeLessThan(AUTO_ROTATE_SPEED / 3);
+      previous = autoRotateSpeed;
+    }
+    expect(previous).toBe(0);
+    expect(resolveViewerControl(cameraAt + 3_000, 0, FREE).autoCamera).toBe('off');
   });
 });
 
@@ -115,7 +129,6 @@ test.describe('suppression holds', () => {
     ['manual pause', { manualPause: true }, 'manual-pause'],
     ['background', { background: true }, 'background'],
     ['reading a card', { readingCard: true }, 'reading-card'],
-    ['reduced motion', { reduceMotion: true }, 'reduced-motion'],
   ];
 
   for (const [name, hold, reason] of HOLD_CASES) {
@@ -159,11 +172,35 @@ test.describe('suppression holds', () => {
   });
 
   test('resuming cannot bypass reduced motion', () => {
-    // Not paused (the viewer resumed) but the system preference still holds.
+    // Not paused (the viewer resumed) but the system preference still holds the camera.
     const control = resolveViewerControl(600_000, 0, held({ reduceMotion: true, manualPause: false }));
     expect(control.autoCamera).toBe('off');
     expect(control.epilogueCamera).toBe(false);
     expect(control.reason).toBe('reduced-motion');
+  });
+});
+
+test.describe('reduced motion', () => {
+  test('never lets the idle loop take the camera, no matter how long the idle run', () => {
+    for (const idleMs of [0, 34_000, 51_999, 60_000, 600_000]) {
+      const control = resolveViewerControl(idleMs, 0, held({ reduceMotion: true }));
+      expect(control.autoCamera).toBe('off');
+      expect(control.autoRotateSpeed).toBe(0);
+      // No closing camera flight — the preference forbids forced motion.
+      expect(control.epilogueCamera).toBe(false);
+      expect(control.reason).toBe('reduced-motion');
+    }
+  });
+
+  test('still allows the epilogue text at the 60s mark, without holding the clock', () => {
+    const reduce = held({ reduceMotion: true });
+    // Not a hold: idle time accumulates so the text can arrive…
+    expect(resolveViewerControl(59_999, 0, reduce).holdsIdle).toBe(false);
+    expect(resolveViewerControl(59_999, 0, reduce).epilogueText).toBe(false);
+    const atText = resolveViewerControl(60_000, 0, reduce);
+    expect(atText.epilogueText).toBe(true);
+    expect(atText.epilogueCamera).toBe(false);
+    expect(atText.holdsIdle).toBe(false);
   });
 });
 
@@ -185,5 +222,30 @@ test.describe('custom timing (dev override shape)', () => {
     expect(resolveViewerControl(0, 0, FREE, tight).epilogueCamera).toBe(false);
     expect(resolveViewerControl(1_999, 0, FREE, tight).epilogueCamera).toBe(false);
     expect(resolveViewerControl(2_000, 0, FREE, tight).epilogueCamera).toBe(true);
+  });
+});
+
+// The store-level contract a camera flight relies on: while a flight is armed the
+// scene restamps the idle clock every frame (an armed flight holds the idle count),
+// and interruption is detected by the input sequence, not by comparing timestamps —
+// a silent restamp must not look like an interrupt.
+test.describe('intentional input bookkeeping', () => {
+  test('intentional input bumps the sequence; a silent restamp does not', () => {
+    const store = () => useBinaryStar.getState();
+    const before = store().inputSeq;
+
+    store().restampIdleClock();
+    expect(store().inputSeq).toBe(before);
+
+    store().noteIntentionalInput();
+    expect(store().inputSeq).toBe(before + 1);
+  });
+
+  test('intentional input dismisses the epilogue in the same event', () => {
+    const store = () => useBinaryStar.getState();
+    store().setEpilogueVisible(true);
+    store().noteIntentionalInput();
+    expect(store().epilogueVisible).toBe(false);
+    store().setEpilogueVisible(false);
   });
 });
