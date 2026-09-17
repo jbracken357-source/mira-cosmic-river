@@ -30,6 +30,9 @@ async function reachExplore(page: Page) {
 
 async function openMiraACard(page: Page, epochMs: number) {
   await clearMiraStorage(page);
+  // Pin the camera: auto-rotate would drift Mira A off the fixed click point while
+  // software rendering stalls between steps (same pattern as river-material.spec.ts).
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto(`/?quality=low&epoch=${Math.round(epochMs / 1000)}`);
   await reachExplore(page);
 
