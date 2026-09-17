@@ -152,7 +152,9 @@ export function transition(state: AmbientSoundState, event: AmbientEvent): Ambie
 
     case 'start-denied':
     case 'start-error':
-      if (state.phase === 'enabling') {
+      // Denial/failure can also arrive from a foreground resume that the browser
+      // rejects after the fact — either way the honest landing is failed.
+      if (state.phase === 'enabling' || state.phase === 'playing') {
         return silent(state, {
           phase: 'failed',
           failure: event === 'start-denied' ? 'denied' : 'error',

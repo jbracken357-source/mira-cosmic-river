@@ -3,6 +3,7 @@ import { Scene } from './components/Scene';
 import { CinematicOverlay, InfoCards, ClosingMessage, MilestoneHint } from './components/UI';
 import type { StarName } from './components/UI/InfoCards';
 import { hasFoundTail, persistFoundTail, useBinaryStar, useIntentionalInput } from './hooks';
+import { initAmbientSound, useAmbientSound } from './hooks/useAmbientSound';
 import './App.css';
 
 export default function App() {
@@ -21,6 +22,8 @@ export default function App() {
   }, []);
 
   useIntentionalInput();
+  // The ambient sound shell (visibility, gestures, the one graph). Idempotent.
+  useEffect(() => initAmbientSound(), []);
 
   useEffect(() => {
     if (!showTailFound) return;
@@ -32,6 +35,7 @@ export default function App() {
   const introComplete = useBinaryStar((state) => state.introComplete);
   const autoCamera = useBinaryStar((state) => state.autoCamera);
   const epilogueVisible = useBinaryStar((state) => state.epilogueVisible);
+  const ambientPhase = useAmbientSound((state) => state.phase);
   if (!introComplete && selectedStar !== null) setSelectedStar(null);
   if (!introComplete && showTailFound) setShowTailFound(false);
 
@@ -52,6 +56,8 @@ export default function App() {
         // Viewer-control observability for e2e: who owns the camera right now.
         data-auto-camera={autoCamera}
         data-epilogue={epilogueVisible ? 'true' : 'false'}
+        // Ambient sound (#22): the honest phase, dev-only like data-camera-pose.
+        {...(!import.meta.env.PROD ? { 'data-ambient-state': ambientPhase } : {})}
         className="relative w-full h-dvh overflow-hidden pointer-events-none"
       >
         <CinematicOverlay onSelectStar={handleSelectStar} />

@@ -40,6 +40,12 @@ export const TRANSLATIONS = {
     tailFound: 'You found her tail.',
     loading: 'Loading Mira...',
 
+    // Ambient sound (#22): opt-in, honest states — pending never claims to be playing
+    ambientSound: 'Ambient sound',
+    ambientTapToStart: 'Tap to start ambient sound',
+    ambientStarting: 'Starting ambient sound…',
+    ambientRetry: 'Retry ambient sound',
+
     // Closing message
     closingMessage: 'We are made of starstuff. And my starstuff chose yours.',
   },
@@ -80,6 +86,12 @@ export const TRANSLATIONS = {
     tailHint: '去找她的尾巴',
     tailFound: '你找到了她的尾巴。',
     loading: '正在点亮 Mira...',
+
+    // 环境音（#22）：主动开启，状态如实——等待手势时绝不冒充正在播放
+    ambientSound: '环境音',
+    ambientTapToStart: '点按开启环境音',
+    ambientStarting: '正在开启环境音…',
+    ambientRetry: '重试环境音',
 
     // Closing message
     closingMessage: '我们都是星尘。而我的星尘，选择了你的。',

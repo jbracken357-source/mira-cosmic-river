@@ -161,6 +161,15 @@ test.describe('ambient sound state machine', () => {
     expect(visible.state.phase).toBe('failed');
   });
 
+  test('a resume the browser rejects after the fact still lands honestly in failed', () => {
+    const playing = play();
+    const denied = transition(playing, 'start-denied');
+    expect(denied.state.phase).toBe('failed');
+    expect(denied.state.failure).toBe('denied');
+    // Retry remains the viewer's move.
+    expect(transition(denied.state, 'retry').effects).toEqual([{ type: 'start' }]);
+  });
+
   test('turning off mid-start stops whatever exists', () => {
     const enabling = transition(OFF, 'toggle-on').state;
     const { state, effects } = transition(enabling, 'toggle-off');
