@@ -38,5 +38,18 @@ node experiments/verify-baseline.mjs            # capture twice, assert pixel eq
 `reduced-motion`. Each set carries a `manifest.json` with epoch, seeds, resolved camera
 poses, viewport, dpr, quality tier and the git commit it was captured at.
 
-- `before/` — the current visuals, captured when the harness was introduced (no visual
-  changes yet).
+- `before/` — the visuals when the harness was introduced (no river changes yet).
+- `after/` — the calibrated river (issue #19 slice 2): star-light response, layered veil
+  weights, sky coupling, and consistent output-chain chunks. Same epoch, poses and phase as
+  `before/`.
+- `fallback/` — `default` view with `materials/*.webp` forced to 404, proving the
+  procedural tail stays visibly non-empty. Captured with
+  `experiments/capture-fallback-check.mjs` (no manifest; single view).
+
+## Cross-change comparison caveat
+
+Two captures of the *same* code are pixel-identical (`verify-baseline.mjs`). Comparing
+across code changes, expect tiny localized flips around the brightest bloom-threshold edges
+(Mira B's disk rim): any shader source change triggers recompilation, and sub-ULP rounding
+differences can flip individual pixels across the bloom threshold. Judge before/after by the
+image, not by raw diff counts.
