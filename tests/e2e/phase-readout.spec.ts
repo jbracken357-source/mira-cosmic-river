@@ -37,23 +37,28 @@ async function openMiraACard(page: Page, epochMs: number) {
   await reachExplore(page);
 
   const canvas = page.locator('canvas');
-  const box = await canvas.boundingBox();
-  expect(box).toBeTruthy();
   // The loading veil lifts when the Canvas is created; under software rendering the
   // scene graph commits later than the explore UI, so a click before this lands on
   // nothing instead of the star. The pose attribute is written at the end of the
   // first completed frame, which proves the click targets are mounted.
   await expect(page.getByTestId('loading')).toHaveCount(0);
   await expect(canvas).toHaveAttribute('data-camera-pose', /.+/, { timeout: 30000 });
+  // Measured only after frames are running: a canvas located earlier can still carry
+  // the default 300×150 backing size under load, which silently misplaces the click.
+  const box = await canvas.boundingBox();
+  expect(box).toBeTruthy();
 
   const card = page.getByTestId('info-card');
-  // Software rendering can stall past the first click; retry until the raycast
-  // lands on Mira A instead of asserting on a single attempt. The budget is generous
-  // because the whole suite shares one software-rendered browser and late specs run
-  // hot — the assertion itself is unchanged.
+  // Click the star where it actually is: the app projects Mira A to screen
+  // percentages every frame (dev-only data attribute), so the raycast target does
+  // not depend on a hardcoded canvas fraction. Retried because software rendering
+  // can stall past a click; the assertion itself is unchanged.
   await expect(async () => {
+    const raw = await canvas.getAttribute('data-mira-a-screen');
+    expect(raw).toBeTruthy();
+    const [xp, yp] = raw!.split(',').map(Number);
     await canvas.click({
-      position: { x: box!.width * 0.6, y: box!.height * 0.5 },
+      position: { x: (box!.width * xp) / 100, y: (box!.height * yp) / 100 },
     });
     await expect(card).toBeVisible({ timeout: 5000 });
   }).toPass({ timeout: 60000 });

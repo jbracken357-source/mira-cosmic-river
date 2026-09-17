@@ -54,24 +54,33 @@ test.describe('Mira Cosmic River - E2E Tests', () => {
   });
 
   test('info card opens when a star is clicked', async ({ page }) => {
+    test.setTimeout(120000);
     // Exploration is the only state where stars are clickable
     await page.getByTestId('skip-cinematic').click();
     await expect(page.getByTestId('explore-ui')).toBeVisible();
 
     const canvas = page.locator('canvas');
-    const box = await canvas.boundingBox();
-    expect(box).toBeTruthy();
     await expect(page.getByTestId('loading')).toHaveCount(0);
     // Written at the end of the first completed frame: proves the click targets are
     // mounted, which the veil lifting alone does not.
     await expect(canvas).toHaveAttribute('data-camera-pose', /.+/, { timeout: 30000 });
+    // Measured only after frames are running: an early canvas can still report the
+    // default 300×150 size under load, which silently misplaces the click.
+    const box = await canvas.boundingBox();
+    expect(box).toBeTruthy();
 
-    // Skip lands at CAMERA.EXPLORE, which looks left of origin, so Mira A sits right of centre.
-    await canvas.click({
-      position: { x: box!.width * 0.6, y: box!.height * 0.5 },
-    });
-
-    await expect(page.getByTestId('info-card')).toBeVisible({ timeout: 15000 });
+    // Click Mira A where it actually is: the app projects the star to screen
+    // percentages every frame (dev-only), so the raycast does not depend on a
+    // hardcoded canvas fraction. Retried — software rendering can stall past a click.
+    await expect(async () => {
+      const raw = await canvas.getAttribute('data-mira-a-screen');
+      expect(raw).toBeTruthy();
+      const [xp, yp] = raw!.split(',').map(Number);
+      await canvas.click({
+        position: { x: (box!.width * xp) / 100, y: (box!.height * yp) / 100 },
+      });
+      await expect(page.getByTestId('info-card')).toBeVisible({ timeout: 5000 });
+    }).toPass({ timeout: 60000 });
   });
 
   test('responsive design - mobile view', async ({ page }) => {
