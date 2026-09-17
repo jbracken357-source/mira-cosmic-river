@@ -81,6 +81,7 @@ export const TRANSITIONS = {
   FINAL_TEXT_FADE: 1.5,  // Final title fade in
   EXPLORE_TRANSITION: 0.5,
   CLOSING_CAMERA: 8,     // idle pull-in; matches the lead before the epilogue line
+  RETURN_CAMERA: 1.5,    // deliberate return to the main view; reduced motion places instantly
 } as const;
 
 // Spring physics for Framer Motion

@@ -1,9 +1,10 @@
 import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
+import { useReducedMotion } from 'framer-motion';
 import * as THREE from 'three';
 import { SKY_SPECTRAL } from '../../constants/colors';
 import { useBinaryStar } from '../../hooks';
-import { captureClock } from '../../lib/captureMode';
+import { advanceTime } from '../../lib/captureMode';
 
 interface StarFieldProps {
   count?: number;
@@ -57,6 +58,8 @@ const LAYER_LIST = (Object.keys(LAYERS) as LayerName[]).map((name) => ({
 // Each star has its own colour temperature, depth, brightness and twinkle rhythm.
 export default function StarField({ count = 5000 }: StarFieldProps) {
   const materialRef = useRef<THREE.ShaderMaterial>(null);
+  const timeRef = useRef(0);
+  const reduceMotion = Boolean(useReducedMotion());
   const brightness = useBinaryStar((state) => state.sky.brightness);
 
   const { geometry } = useMemo(() => {
@@ -121,10 +124,16 @@ export default function StarField({ count = 5000 }: StarFieldProps) {
     };
   }, [count]);
 
-  useFrame((state) => {
+  useFrame((_, delta) => {
     if (materialRef.current) {
-      // Capture mode freezes the twinkle at one fixed phase instead of the wall clock.
-      materialRef.current.uniforms.uTime.value = captureClock(state.clock.elapsedTime);
+      // Accumulated like every other decorative clock: capture mode parks the twinkle
+      // at CAPTURE_TIME, and a manual pause or a hidden tab holds the phase instead of
+      // letting the wall clock jump ahead.
+      timeRef.current = advanceTime(timeRef.current, delta, {
+        reduceMotion,
+        paused: !useBinaryStar.getState().isPlaying,
+      });
+      materialRef.current.uniforms.uTime.value = timeRef.current;
       // Low quality has no bloom, so the field carries the sky envelope.
       materialRef.current.uniforms.uSky.value = 0.35 + 0.65 * brightness;
     }

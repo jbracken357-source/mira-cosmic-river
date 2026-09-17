@@ -103,6 +103,7 @@ export default function CinematicOverlay({
 function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => void }) {
   const language = useBinaryStar((state) => state.language);
   const setLanguage = useBinaryStar((state) => state.setLanguage);
+  const isPlaying = useBinaryStar((state) => state.isPlaying);
   const t = TRANSLATIONS[language];
   const isMobile = useMobile();
   const reduceMotion = Boolean(useReducedMotion());
@@ -126,6 +127,21 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
         </div>
 
         <div className="flex items-center gap-4 md:gap-6">
+          <button
+            data-testid="return-to-view"
+            onClick={() => useBinaryStar.getState().requestReturnToExplore()}
+            className="pointer-events-auto min-h-11 min-w-11 inline-flex items-center justify-center text-white/30 text-xs font-extralight tracking-widest uppercase hover:text-white/60 transition-colors"
+          >
+            {t.returnToView}
+          </button>
+          <button
+            data-testid="pause-toggle"
+            aria-pressed={!isPlaying}
+            onClick={() => useBinaryStar.getState().setPlaying(!isPlaying)}
+            className="pointer-events-auto min-h-11 min-w-11 inline-flex items-center justify-center text-white/30 text-xs font-extralight tracking-widest uppercase hover:text-white/60 transition-colors"
+          >
+            {isPlaying ? t.pause : t.resume}
+          </button>
           <button
             data-testid="replay-opening"
             onClick={() => useBinaryStar.getState().setIntroComplete(false)}

@@ -54,16 +54,18 @@ export function captureMode(): CaptureMode {
 }
 
 // Advance one uTime-style accumulator by a frame. Capture mode pins every phase at
-// CAPTURE_TIME; otherwise time accrues only while motion is allowed and the tab is
-// visible, clamped so a background tab's long frame cannot lurch the scene. `scale`
-// covers callers whose clock runs slower than wall time (the orbital mechanics).
+// CAPTURE_TIME; otherwise time accrues only while motion is allowed, the viewer has
+// not paused the scene, and the tab is visible, clamped so a background tab's long
+// frame cannot lurch the scene. `scale` covers callers whose clock runs slower than
+// wall time (the orbital mechanics). The real-time star clock is untouched — it
+// keeps its own source in lib/starClock.
 export function advanceTime(
   current: number,
   delta: number,
-  { reduceMotion, scale = 1 }: { reduceMotion: boolean; scale?: number },
+  { reduceMotion, scale = 1, paused = false }: { reduceMotion: boolean; scale?: number; paused?: boolean },
 ): number {
   if (captureMode().active) return CAPTURE_TIME;
-  if (!reduceMotion && !document.hidden) return current + Math.min(delta, .05) * scale;
+  if (!reduceMotion && !paused && !document.hidden) return current + Math.min(delta, .05) * scale;
   return current;
 }
 

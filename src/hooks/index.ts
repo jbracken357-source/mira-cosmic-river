@@ -8,3 +8,4 @@ export {
 } from './useBinaryStar';
 export { useAnimation } from './useAnimation';
 export { useMobile } from './useMobile';
+export { useIntentionalInput } from './useIntentionalInput';

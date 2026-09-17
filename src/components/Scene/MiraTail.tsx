@@ -109,7 +109,10 @@ export default function MiraTail({
     // Update the material actually mounted on the points (the old ref was never bound).
     const mat = pointsRef.current?.material;
     if (!mat) return;
-    mat.uniforms.uTime.value = advanceTime(mat.uniforms.uTime.value, delta, { reduceMotion });
+    mat.uniforms.uTime.value = advanceTime(mat.uniforms.uTime.value, delta, {
+      reduceMotion,
+      paused: !useBinaryStar.getState().isPlaying,
+    });
     mat.uniforms.uOpacity.value = opacityRef.current * tailBaseOpacity(textureReadyRef.current, particleCount);
     mat.uniforms.uSkyGain.value = sky.gain;
     mat.uniforms.uSkyWarmth.value = sky.warmth;

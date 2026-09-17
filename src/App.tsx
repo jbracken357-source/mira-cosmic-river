@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { Scene } from './components/Scene';
 import { CinematicOverlay, InfoCards, ClosingMessage, MilestoneHint } from './components/UI';
 import type { StarName } from './components/UI/InfoCards';
-import { hasFoundTail, persistFoundTail, useBinaryStar } from './hooks';
+import { hasFoundTail, persistFoundTail, useBinaryStar, useIntentionalInput } from './hooks';
 import './App.css';
 
 export default function App() {
@@ -16,7 +16,11 @@ export default function App() {
       setShowTailFound(false);
     }
     setSelectedStar(star);
+    // Reading a card holds the idle takeover; the hold ends when the card closes.
+    useBinaryStar.getState().setCardOpen(star !== null);
   }, []);
+
+  useIntentionalInput();
 
   useEffect(() => {
     if (!showTailFound) return;
@@ -26,7 +30,12 @@ export default function App() {
 
   const sky = useBinaryStar((state) => state.sky);
   const introComplete = useBinaryStar((state) => state.introComplete);
-  if (!introComplete && selectedStar !== null) setSelectedStar(null);
+  const autoCamera = useBinaryStar((state) => state.autoCamera);
+  const epilogueVisible = useBinaryStar((state) => state.epilogueVisible);
+  if (!introComplete && selectedStar !== null) {
+    setSelectedStar(null);
+    useBinaryStar.getState().setCardOpen(false);
+  }
   if (!introComplete && showTailFound) setShowTailFound(false);
 
   return (
@@ -37,6 +46,9 @@ export default function App() {
         data-sky-phase={sky.pulsationPhase.toFixed(4)}
         data-sky-brightness={sky.brightness.toFixed(4)}
         data-sky-orbital-phase={sky.orbitalPhase.toFixed(4)}
+        // Viewer-control observability for e2e: who owns the camera right now.
+        data-auto-camera={autoCamera}
+        data-epilogue={epilogueVisible ? 'true' : 'false'}
         className="relative w-full h-dvh overflow-hidden pointer-events-none"
       >
         <CinematicOverlay onSelectStar={handleSelectStar} />

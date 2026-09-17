@@ -3,6 +3,7 @@ import type { MutableRefObject } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { resolveQualityTier } from '../../constants';
+import { useBinaryStar } from '../../hooks';
 import { advanceTime } from '../../lib/captureMode';
 import {
   MIRA_A_REACH,
@@ -188,9 +189,10 @@ export default function RiverVeil({ opacityRef, readyRef, length, reduceMotion, 
 
   useFrame((_, delta) => {
     if (miraBRef.current) miraBRef.current.getWorldPosition(bWorldPos.current);
+    const paused = !useBinaryStar.getState().isPlaying;
     for (const [i, child] of (groupRef.current?.children ?? []).entries()) {
       const material = (child as THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMaterial>).material;
-      material.uniforms.uTime.value = advanceTime(material.uniforms.uTime.value, delta, { reduceMotion });
+      material.uniforms.uTime.value = advanceTime(material.uniforms.uTime.value, delta, { reduceMotion, paused });
       const isAccent = material.uniforms.uAccent.value === 1;
       material.uniforms.uOpacity.value = opacityRef.current * veilLayerWeight(i, count, isAccent) / count;
       material.uniforms.uMiraBPos.value.copy(bWorldPos.current);
