@@ -1,0 +1,64 @@
+[
+  {
+    "name": "desktop",
+    "resources": {
+      "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+      "layers": 9,
+      "dpr": 1,
+      "overflow": false,
+      "buttons": [
+        {
+          "text": "完整开场",
+          "width": 52.8125,
+          "height": 16
+        },
+        {
+          "text": "EN",
+          "width": 18.65625,
+          "height": 16
+        },
+        {
+          "text": "去找她的尾巴",
+          "width": 64.8125,
+          "height": 13.5
+        }
+      ],
+      "fontResources": [
+        "https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+      ]
+    },
+    "escapeClosesCard": false,
+    "errors": []
+  },
+  {
+    "name": "mobile",
+    "resources": {
+      "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+      "layers": 5,
+      "dpr": 1,
+      "overflow": false,
+      "buttons": [
+        {
+          "text": "完整开场",
+          "width": 52.8125,
+          "height": 16
+        },
+        {
+          "text": "EN",
+          "width": 18.65625,
+          "height": 16
+        },
+        {
+          "text": "去找她的尾巴",
+          "width": 64.8125,
+          "height": 13.5
+        }
+      ],
+      "fontResources": [
+        "https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+      ]
+    },
+    "escapeClosesCard": false,
+    "errors": []
+  }
+]

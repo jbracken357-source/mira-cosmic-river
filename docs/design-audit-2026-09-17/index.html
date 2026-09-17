@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mira · 视觉审阅与提案</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,"Microsoft YaHei",sans-serif;background:#080b12;color:#e8e5df}*{box-sizing:border-box}body{margin:0}main{max-width:1320px;margin:auto;padding:52px 32px 64px}header{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid #30343f;padding-bottom:20px}.wordmark{font:italic 42px Georgia,serif;color:#ddc8a4}small,.muted{color:#a3a9b6}h1{font-family:Georgia,"Songti SC",SimSun,serif;font-weight:400;font-size:clamp(28px,4vw,46px);margin:38px 0 18px}p{line-height:1.85;margin:10px 0}a{color:#c8d7ef;text-underline-offset:4px}.lead{max-width:830px;color:#bfc4d0}nav{display:flex;gap:10px;margin:28px 0 16px;flex-wrap:wrap}button{font:inherit;min-height:44px;padding:8px 18px;border:1px solid #454955;color:#cbd0da;background:transparent;cursor:pointer;border-radius:3px}button[aria-pressed=true]{background:#ddc8a4;color:#15161b;border-color:#ddc8a4}button:focus-visible,a:focus-visible{outline:2px solid #b9cef3;outline-offset:4px}.pair{display:grid;grid-template-columns:1fr 1fr;gap:18px}figure{margin:0;background:#030306;border:1px solid #282d38}figure img{width:100%;height:360px;object-fit:contain;display:block}figcaption{padding:14px 18px;font-size:13px;line-height:1.7;color:#bcc2ce;border-top:1px solid #282d38}.note{font-size:13px;color:#9ca6b8;margin-top:14px}.proposals{display:grid;grid-template-columns:repeat(3,1fr);gap:26px;margin-top:44px}article{border-top:1px solid #576176;padding-top:20px}article:first-child{border-color:#ddc8a4}h2{font-size:21px;font-weight:500;margin:10px 0}article p{font-size:14px;color:#bac2d0}.label{color:#ddc8a4;font-size:12px;letter-spacing:.08em}.verdict{margin-top:36px;border-top:1px solid #30343f;padding-top:22px;display:grid;grid-template-columns:1fr 1fr;gap:26px}.verdict p{font-size:14px;color:#bec5d2}footer{margin-top:38px;font-size:14px;display:flex;gap:24px;flex-wrap:wrap}@media(max-width:720px){main{padding:24px 18px}.pair,.proposals,.verdict{grid-template-columns:1fr}figure img{height:280px}header small{max-width:130px;text-align:right;font-size:11px}.proposals{gap:22px}}
+</style>
+<main>
+<header><span class="wordmark">Mira</span><small>2026.09.17 · 本地版本 3320e00</small></header>
+<h1>让光河有厚度，让相伴被看见。</h1>
+<p class="lead">现有技术路线成立。下一轮把投入集中到受光层次、双星质感和交互完成度。下面左侧是本次真实网页截图，右侧是项目已有的美术目标，两者并非同一次渲染，也不是已完成的前后对比。</p>
+<nav aria-label="当前画面"><button data-shot="desktop.png" aria-pressed="true">桌面直达</button><button data-shot="desktop-rotated.png" aria-pressed="false">旋转视角</button><button data-shot="mobile.png" aria-pressed="false">竖屏直达</button><button data-shot="desktop-card.png" aria-pressed="false">信息卡</button></nav>
+<div class="pair"><figure><img id="current" src="desktop.png" alt="当前桌面直达截图"><figcaption id="caption">当前网页 · 桌面直达 · 1440 × 900</figcaption></figure><figure><img src="../visual-direction/wayfinder/no-plastic-target-v1.png" alt="项目已有的光河美术目标"><figcaption>已有美术目标 · 预渲染参考，尚非实时网页效果</figcaption></figure></div>
+<p class="note">本次截图：固定日期 2026-09-17，减少动态效果，SwiftShader 软件渲染。用于判断构图与层次；不代表真实 GPU / 手机性能验收。</p>
+<div class="proposals">
+<article><span class="label">A · 首选视觉升级</span><h2>光河成为主角</h2><p>前景柔雾、中景主体、远处双星。先校准密度与受光，再判断是否需要新贴图；白矮星从完整圆环变为断续的吸积弧。</p><p>先证明一张实时主画面，再验证自由旋转和竖屏。</p></article>
+<article><span class="label">B · 与 A 配套</span><h2>每天打开都顺手</h2><p>提高小字可读性，扩展点击区，补齐 Esc 与焦点。第一次操作立即退出结语；加载和回退也保持完整的画面。</p><p>现有按钮高度仅约 14–16px；两种尺寸 Esc 均未关闭信息卡。</p></article>
+<article><span class="label">C · 第二阶段</span><h2>更完整的仪式时刻</h2><p>用镜头停顿、尺度揭示和可选环境音建立电影感，保留直达模式。细微的日期变化，让今晚与上周不同。</p><p>主画面成立之后，再投入声音与更复杂的镜头编排。</p></article>
+</div>
+<div class="verdict"><div><span class="label">保留</span><p>R3F / Three.js、混合素材路线、竖屏斜向构图、直达与重播、真实时间绑定。</p></div><div><span class="label">优先解决</span><p>光河过暗且细丝化，白矮星与巨星质感脱节，控件难读难点，加载与运行时质量策略不完整。</p></div></div>
+<footer><a href="PROPOSAL.md">完整审阅与实施提案 →</a><a href="evidence.json">本次浏览器读数</a><a href="https://www.littleworkshop.fr/projects/equinox/">参考：Equinox</a><a href="https://unseen.co/labs/webgl-rain/">参考：Unseen</a><a href="https://bruno-simon.com/">参考：Bruno Simon</a></footer>
+</main>
+<script>
+const captions={'desktop.png':'当前网页 · 桌面直达 · 1440 × 900','desktop-rotated.png':'当前网页 · 自由旋转后的视角','mobile.png':'当前网页 · 竖屏直达 · 390 × 844','desktop-card.png':'当前网页 · 尾巴信息卡'};
+document.querySelectorAll('button[data-shot]').forEach(button=>button.addEventListener('click',()=>{document.querySelectorAll('button[data-shot]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));const img=document.getElementById('current');img.src=button.dataset.shot;img.alt=captions[button.dataset.shot];document.getElementById('caption').textContent=captions[button.dataset.shot];}));
+</script>
+</html>
