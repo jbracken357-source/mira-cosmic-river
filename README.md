@@ -67,6 +67,7 @@ src/
   shaders/            GLSL sources
   hooks/              store and device hooks
 tests/e2e/            Playwright specs (behaviour, not pixels)
+tests/unit/           star-clock and quality specs (same Playwright command)
 docs/adr/             decisions worth not re-litigating
 docs/archive/         Gen 1 material, kept for history only
 ```
