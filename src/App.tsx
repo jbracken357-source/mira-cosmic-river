@@ -32,11 +32,14 @@ export default function App() {
   const introComplete = useBinaryStar((state) => state.introComplete);
   const autoCamera = useBinaryStar((state) => state.autoCamera);
   const epilogueVisible = useBinaryStar((state) => state.epilogueVisible);
-  if (!introComplete && selectedStar !== null) {
-    setSelectedStar(null);
-    useBinaryStar.getState().setCardOpen(false);
-  }
+  if (!introComplete && selectedStar !== null) setSelectedStar(null);
   if (!introComplete && showTailFound) setShowTailFound(false);
+
+  // Replay (or any return to the opening) also releases the reading-card idle hold.
+  // External-store writes belong in an effect, not in the render pass above.
+  useEffect(() => {
+    if (!introComplete) useBinaryStar.getState().setCardOpen(false);
+  }, [introComplete]);
 
   return (
     <>

@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import type { StarSystemState, StarParameters, VisualMode, Language, CinematicPhase } from '../types';
 import type { SkyState } from '../lib/starClock';
 import { currentSkyState } from '../lib/starClock';
-import { captureMode } from '../lib/captureMode';
+import { captureMode, registerPauseSource } from '../lib/captureMode';
 import type { AutoCameraState } from '../lib/viewerControl';
 
 export const SEEN_OPENING_KEY = 'mira:seen-opening';
@@ -23,7 +23,10 @@ interface BinaryStarStore extends StarSystemState {
   setEpilogueVisible: (visible: boolean) => void;
   // Shared idle clock: the timestamp of the last intentional input. Drag, wheel,
   // touch, keys and control presses restamp it; mousemove and the auto camera do not.
+  // inputSeq counts intentional inputs only (never the silent restamps), so a camera
+  // flight can tell "the viewer interrupted" apart from "the clock moved".
   lastIntentionalInputAt: number;
+  inputSeq: number;
   noteIntentionalInput: () => void;
   restampIdleClock: () => void;
   cardOpen: boolean;
@@ -86,6 +89,7 @@ export const useBinaryStar = create<BinaryStarStore>((set, get) => ({
   cinematicTime: 0,
   epilogueVisible: false,
   lastIntentionalInputAt: Date.now(),
+  inputSeq: 0,
   cardOpen: false,
   autoCamera: 'off',
   returnToExploreAt: 0,
@@ -109,7 +113,12 @@ export const useBinaryStar = create<BinaryStarStore>((set, get) => ({
   setEpilogueVisible: (epilogueVisible) => set({ epilogueVisible }),
   // Intentional input restamps the clock and dismisses the epilogue in the same
   // event, so the interrupt never waits for a poll tick.
-  noteIntentionalInput: () => set({ lastIntentionalInputAt: Date.now(), epilogueVisible: false }),
+  noteIntentionalInput: () =>
+    set((state) => ({
+      lastIntentionalInputAt: Date.now(),
+      epilogueVisible: false,
+      inputSeq: state.inputSeq + 1,
+    })),
   // Hold bookkeeping: the clock restarts from zero when the hold ends, without
   // dismissing anything.
   restampIdleClock: () => set({ lastIntentionalInputAt: Date.now() }),
@@ -124,6 +133,10 @@ export const useBinaryStar = create<BinaryStarStore>((set, get) => ({
   })),
   setSky: (sky) => set({ sky }),
 }));
+
+// The scene clocks pause when the viewer pauses; the predicate lives in one place
+// (lib/captureMode) instead of being spelled out at every advanceTime call site.
+registerPauseSource(() => !useBinaryStar.getState().isPlaying);
 
 export function useTimeSpeed() {
   return useBinaryStar((state) => state.parameters.timeSpeed);

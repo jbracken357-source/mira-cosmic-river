@@ -129,10 +129,7 @@ export default function StarField({ count = 5000 }: StarFieldProps) {
       // Accumulated like every other decorative clock: capture mode parks the twinkle
       // at CAPTURE_TIME, and a manual pause or a hidden tab holds the phase instead of
       // letting the wall clock jump ahead.
-      timeRef.current = advanceTime(timeRef.current, delta, {
-        reduceMotion,
-        paused: !useBinaryStar.getState().isPlaying,
-      });
+      timeRef.current = advanceTime(timeRef.current, delta, { reduceMotion });
       materialRef.current.uniforms.uTime.value = timeRef.current;
       // Low quality has no bloom, so the field carries the sky envelope.
       materialRef.current.uniforms.uSky.value = 0.35 + 0.65 * brightness;

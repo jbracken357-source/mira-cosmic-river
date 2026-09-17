@@ -5,7 +5,6 @@ import * as THREE from 'three';
 import { COLORS } from '../../constants';
 import type { OrbitPositions } from '../../types';
 import { useReducedMotion } from 'framer-motion';
-import { useBinaryStar } from '../../hooks';
 import { advanceTime } from '../../lib/captureMode';
 
 export type OrbitPositionsRef = MutableRefObject<OrbitPositions>;
@@ -63,10 +62,7 @@ export default function MaterialStream({
     if (!pts) return;
 
     const { primary, secondary } = positionsRef.current;
-    timeRef.current = advanceTime(timeRef.current, delta, {
-      reduceMotion,
-      paused: !useBinaryStar.getState().isPlaying,
-    });
+    timeRef.current = advanceTime(timeRef.current, delta, { reduceMotion });
     const dx = secondary[0] - primary[0];
     const dy = secondary[1] - primary[1];
     const dz = secondary[2] - primary[2];

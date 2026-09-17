@@ -59,13 +59,23 @@ export function captureMode(): CaptureMode {
 // frame cannot lurch the scene. `scale` covers callers whose clock runs slower than
 // wall time (the orbital mechanics). The real-time star clock is untouched — it
 // keeps its own source in lib/starClock.
+// The pause policy lives here with the rest of the clock policy, so a new pause
+// source means editing this file, not every call site. The store registers itself
+// (it already imports this module; importing it back would cycle).
+let pauseSource: () => boolean = () => false;
+
+export function registerPauseSource(source: () => boolean) {
+  pauseSource = source;
+}
+
 export function advanceTime(
   current: number,
   delta: number,
-  { reduceMotion, scale = 1, paused = false }: { reduceMotion: boolean; scale?: number; paused?: boolean },
+  { reduceMotion, scale = 1, paused }: { reduceMotion: boolean; scale?: number; paused?: boolean },
 ): number {
   if (captureMode().active) return CAPTURE_TIME;
-  if (!reduceMotion && !paused && !document.hidden) return current + Math.min(delta, .05) * scale;
+  const isPaused = paused ?? pauseSource();
+  if (!reduceMotion && !isPaused && !document.hidden) return current + Math.min(delta, .05) * scale;
   return current;
 }
 
