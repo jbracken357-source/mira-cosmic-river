@@ -7,8 +7,8 @@
 // Provenance matters (TICKETS.md: the fallback still records its source scene
 // version): the capture is pinned to the baseline epoch/pose like every
 // baseline, and the scene commit it was captured from is written next to the
-// image as entry-still-v1.SOURCE.txt. Ticket 11 (#29) re-makes the still once
-// the 01/02 art lands — never pass this still off as the new scene.
+// image as entry-still-v1.SOURCE.txt. Ticket 11 (#29) re-made this still from
+// the 01/02 art; re-running the script keeps the provenance trail honest.
 import path from 'node:path';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
@@ -52,7 +52,7 @@ try {
     `epoch: ${BASELINE_EPOCH}`,
     `view: default (${DESKTOP_VIEWPORT.width}x${DESKTOP_VIEWPORT.height}, dpr 1, quality tier pinned high)`,
     'captured-by: experiments/capture-entry-still.mjs',
-    'note: recorded from the pre-01/02 scene; ticket 11 (#29) re-makes this still when the new art lands',
+    'note: re-made from the post-01/02 scene by ticket 11 (#29); earlier versions predate the new art',
     '',
   ].join('\n');
   await writeFile(path.join(outDir, 'entry-still-v1.SOURCE.txt'), provenance);

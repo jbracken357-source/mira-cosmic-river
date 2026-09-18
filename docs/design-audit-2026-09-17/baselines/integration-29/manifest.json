@@ -1,0 +1,211 @@
+{
+  "label": "integration-29",
+  "epoch": "2026-09-12T00:00:00Z",
+  "captureTimeSeconds": 8,
+  "seeds": {
+    "starField": "mulberry32:0x5eed1a",
+    "miraTail": "lcg:17",
+    "materialStream": "index-sin-hash"
+  },
+  "qualityTier": "high (navigator.deviceMemory/hardwareConcurrency pinned to 8)",
+  "url": "/?capture=1&epoch=2026-09-12T00%3A00%3A00Z&cam=<preset>",
+  "gitCommit": "764996e47836c4f81981fe769da093f978798496",
+  "views": [
+    {
+      "name": "default",
+      "file": "default.png",
+      "cam": "default",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "deviceScaleFactor": 1,
+      "reducedMotion": false,
+      "texturesReady": true,
+      "cameraPose": {
+        "position": [
+          8,
+          7,
+          28
+        ],
+        "fov": 45
+      },
+      "sky": {
+        "pulsationPhase": "0.4658",
+        "brightness": "0.2500",
+        "orbitalPhase": "0.0534",
+        "density": "1.0200"
+      },
+      "overlaySettle": "1.000,1.000,absent,absent",
+      "pageErrors": []
+    },
+    {
+      "name": "near",
+      "file": "near.png",
+      "cam": "near",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "deviceScaleFactor": 1,
+      "reducedMotion": false,
+      "texturesReady": true,
+      "cameraPose": {
+        "position": [
+          1.95,
+          3.7,
+          15.35
+        ],
+        "fov": 45
+      },
+      "sky": {
+        "pulsationPhase": "0.4658",
+        "brightness": "0.2500",
+        "orbitalPhase": "0.0534",
+        "density": "1.0200"
+      },
+      "overlaySettle": "1.000,1.000,absent,absent",
+      "pageErrors": []
+    },
+    {
+      "name": "az90",
+      "file": "az90.png",
+      "cam": "az90",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "deviceScaleFactor": 1,
+      "reducedMotion": false,
+      "texturesReady": true,
+      "cameraPose": {
+        "position": [
+          20,
+          7,
+          -6
+        ],
+        "fov": 45
+      },
+      "sky": {
+        "pulsationPhase": "0.4658",
+        "brightness": "0.2500",
+        "orbitalPhase": "0.0534",
+        "density": "1.0200"
+      },
+      "overlaySettle": "1.000,1.000,absent,absent",
+      "pageErrors": []
+    },
+    {
+      "name": "az180",
+      "file": "az180.png",
+      "cam": "az180",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "deviceScaleFactor": 1,
+      "reducedMotion": false,
+      "texturesReady": true,
+      "cameraPose": {
+        "position": [
+          -14,
+          7,
+          -18
+        ],
+        "fov": 45
+      },
+      "sky": {
+        "pulsationPhase": "0.4658",
+        "brightness": "0.2500",
+        "orbitalPhase": "0.0534",
+        "density": "1.0200"
+      },
+      "overlaySettle": "1.000,1.000,absent,absent",
+      "pageErrors": []
+    },
+    {
+      "name": "az270",
+      "file": "az270.png",
+      "cam": "az270",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "deviceScaleFactor": 1,
+      "reducedMotion": false,
+      "texturesReady": true,
+      "cameraPose": {
+        "position": [
+          -26,
+          7,
+          16
+        ],
+        "fov": 45
+      },
+      "sky": {
+        "pulsationPhase": "0.4658",
+        "brightness": "0.2500",
+        "orbitalPhase": "0.0534",
+        "density": "1.0200"
+      },
+      "overlaySettle": "1.000,1.000,absent,absent",
+      "pageErrors": []
+    },
+    {
+      "name": "portrait",
+      "file": "portrait.png",
+      "cam": "default",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "deviceScaleFactor": 1,
+      "reducedMotion": false,
+      "texturesReady": true,
+      "cameraPose": {
+        "position": [
+          8,
+          9,
+          28
+        ],
+        "fov": 83.7461
+      },
+      "sky": {
+        "pulsationPhase": "0.4658",
+        "brightness": "0.2500",
+        "orbitalPhase": "0.0534",
+        "density": "1.0200"
+      },
+      "overlaySettle": "1.000,1.000,absent,absent",
+      "pageErrors": []
+    },
+    {
+      "name": "reduced-motion",
+      "file": "reduced-motion.png",
+      "cam": "default",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "deviceScaleFactor": 1,
+      "reducedMotion": true,
+      "texturesReady": true,
+      "cameraPose": {
+        "position": [
+          8,
+          7,
+          28
+        ],
+        "fov": 45
+      },
+      "sky": {
+        "pulsationPhase": "0.4658",
+        "brightness": "0.2500",
+        "orbitalPhase": "0.0534",
+        "density": "1.0200"
+      },
+      "overlaySettle": "1.000,1.000,absent,absent",
+      "pageErrors": []
+    }
+  ]
+}

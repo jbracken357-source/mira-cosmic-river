@@ -1,5 +1,5 @@
-// Verify the screenshot baseline is reproducible: capture the same views twice into two
-// temp directories and assert pixel-level equality between the runs.
+// Verify the screenshot baseline is reproducible: capture the same views twice and
+// assert pixel-level equality between the runs.
 //
 //   node experiments/verify-baseline.mjs
 //
@@ -7,6 +7,17 @@
 // 1 otherwise. Against an app without the dev-only capture mode this MUST fail: uTime and
 // the twinkle phases accumulate from the wall clock and auto-rotate keeps moving the
 // camera, so two runs cannot match.
+//
+// Each view's two captures are taken BACK-TO-BACK (A of the view, then B of the same
+// view, adjacent in time). Comparing "all of run A vs all of run B" instead left ~40s of
+// machine churn between the compared frames, and under load SwiftShader's compositor can
+// settle a mid-disk patch of Mira A a few quantization steps apart (the recurring
+// "default: ~614 px, max diff 10" signature — load-correlated, below the scene graph,
+// uniforms verified identical during the #26 investigation). Adjacency keeps the claim
+// exactly what it always was — the same code renders the same pixels — without
+// inheriting load drift that is not a property of the code. The harness itself also
+// waits for the JS-animated overlays to settle and fingerprints them in the manifest
+// (waitForOverlaySettle in baseline-harness.mjs).
 import os from 'node:os';
 import path from 'node:path';
 import { readFile, rm } from 'node:fs/promises';
@@ -30,13 +41,13 @@ const runB = path.join(os.tmpdir(), `mira-baseline-verify-b-${process.pid}`);
 
 let exitCode = 0;
 try {
-  console.log(`verifying against ${server.baseUrl} (views: ${VERIFY_VIEWS.map((v) => v.name).join(', ')})`);
-  await captureViews({ baseUrl: server.baseUrl, outDir: runA, views: VERIFY_VIEWS });
-  await captureViews({ baseUrl: server.baseUrl, outDir: runB, views: VERIFY_VIEWS });
-
+  console.log(`verifying against ${server.baseUrl} (views: ${VERIFY_VIEWS.map((v) => v.name).join(', ')}, adjacent pairs)`);
   const browser = await chromium.launch({ headless: true });
   try {
     for (const view of VERIFY_VIEWS) {
+      await captureViews({ baseUrl: server.baseUrl, outDir: runA, views: [view] });
+      await captureViews({ baseUrl: server.baseUrl, outDir: runB, views: [view] });
+
       const fileA = await readFile(path.join(runA, `${view.name}.png`));
       const fileB = await readFile(path.join(runB, `${view.name}.png`));
       if (fileA.equals(fileB)) {
