@@ -30,6 +30,7 @@ export interface GovernorConfig {
   windowMs: number;      // aggregation window
   cooldownMs: number;    // minimum time between two tier changes
   desktopOnly: boolean;  // phones keep their detected tier, no frame-rate bar
+  stallFrameMs: number;  // a frame slower than this is a stall, not a measurement
 }
 
 export const DEFAULT_GOVERNOR_CONFIG: GovernorConfig = {
@@ -42,6 +43,12 @@ export const DEFAULT_GOVERNOR_CONFIG: GovernorConfig = {
   windowMs: 2000,
   cooldownMs: 8000,
   desktopOnly: true,
+  // 250ms (~4fps) and slower is rAF starvation — a minimized or fully occluded
+  // window stops BeginFrames without always firing visibilitychange, and the
+  // occasional frame that still lands carries a delta that says nothing about
+  // what the GPU can sustain. Measured on Windows: a minimized headed window
+  // kept rendering ~1 frame/s with visibilityState still 'visible'.
+  stallFrameMs: 250,
 };
 
 export interface GovernorState {
@@ -81,6 +88,12 @@ export function evaluateQuality(
   now: number,
   config: GovernorConfig,
 ): GovernorVerdict {
+  // A stall is not evidence: the frame took that long because the loop was
+  // starved, not because the scene is expensive. Leave the window and the
+  // streaks untouched; the pre-stall samples still count when the loop resumes.
+  if (frameMs > config.stallFrameMs) {
+    return { kind: 'stable', state };
+  }
   const samples = [...state.samples, frameMs];
   if (now - state.windowStartAt < config.windowMs) {
     return { kind: 'stable', state: { ...state, samples } };

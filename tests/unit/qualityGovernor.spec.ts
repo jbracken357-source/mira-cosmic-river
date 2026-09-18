@@ -14,6 +14,7 @@ const CONFIG: GovernorConfig = {
   windowMs: 1000,
   cooldownMs: 5000,
   desktopOnly: true,
+  stallFrameMs: 250,
 };
 
 const SLOW = 40; // ms per frame, well past the down threshold
@@ -177,6 +178,39 @@ test.describe('evaluateQuality', () => {
     expect(verdict.kind).toBe('change');
     expect(state.tier).toBe('mid');
   });
+
+  test('a stalled loop is not evidence: starved frames neither build nor break a streak', () => {
+    // Minimised/occluded windows keep producing rare frames with huge deltas.
+    let state = readyState('high');
+    let now = 0;
+    // One genuine slow window starts a streak…
+    ({ state, now } = feedWindows(state, SLOW, 1, now));
+    expect(state.slowWindows).toBe(1);
+    // …then the loop starves for seconds (minimised window). No verdict may act
+    // on those frames, and the streak must survive them intact.
+    for (let i = 0; i < 6; i += 1) {
+      const verdict = evaluateQuality(state, 900, (now += 900), CONFIG);
+      state = verdict.state;
+      expect(verdict.kind).toBe('stable');
+    }
+    expect(state.slowWindows).toBe(1);
+    // …and the next genuine slow window completes the pair: the streak resumed
+    // exactly where the stall interrupted it.
+    const { state: after, verdicts } = feedWindows(state, SLOW, 1, now);
+    expect(changes(verdicts)).toHaveLength(1);
+    expect(after.tier).toBe('mid');
+  });
+
+  test('stall frames alone never move the tier', () => {
+    let state = readyState('high');
+    let now = 0;
+    for (let i = 0; i < 20; i += 1) {
+      const verdict = evaluateQuality(state, 1000, (now += 1000), CONFIG);
+      state = verdict.state;
+    }
+    expect(state.tier).toBe('high');
+    expect(state.slowWindows).toBe(0);
+  });
 });
 
 test.describe('resolveGovernorSetup', () => {
@@ -220,5 +254,6 @@ test.describe('resolveGovernorSetup', () => {
     expect(DEFAULT_GOVERNOR_CONFIG.windowMs).toBe(2000);
     expect(DEFAULT_GOVERNOR_CONFIG.cooldownMs).toBe(8000);
     expect(DEFAULT_GOVERNOR_CONFIG.desktopOnly).toBe(true);
+    expect(DEFAULT_GOVERNOR_CONFIG.stallFrameMs).toBe(250);
   });
 });
