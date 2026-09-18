@@ -48,13 +48,14 @@ export const CAMERA = {
     lookAt: [-8, 1, 6] as [number, number, number],
     fov: 48,
   },
-  // FOV range during pull-back
-  FOV_START: 35,
-  FOV_END: 50,
+  // The pull-back's fov range is CLOSE.fov → FAR.fov; the opening timeline reads it
+  // from those poses so the portrait table can diverge without a second source.
 } as const;
-
 // The same space is composed diagonally in portrait, giving the river room below
-// the pair instead of simply cutting the sides off the desktop composition.
+// the pair instead of simply cutting the sides off the desktop composition. The fov
+// values intentionally match the landscape ones: fittedFov (Scene.tsx) already
+// widens the vertical field to preserve the horizontal composition, so the stored
+// fov names the shared horizontal framing, not the on-screen vertical angle.
 export const PORTRAIT_CAMERA = {
   ...CAMERA,
   // Portrait keeps its own hold and waypoint: the pair sits in the upper part of the

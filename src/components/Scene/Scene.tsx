@@ -9,7 +9,7 @@ import type { QualityTier } from '../../constants';
 import { PORTRAIT_CAMERA } from '../../constants/animation';
 import { MATERIALS_TIMEOUT_MS, gateAllowsCinematic } from '../../lib/entryReadiness';
 import { advanceTime, captureMode, resolveCapturePose } from '../../lib/captureMode';
-import { cinematicTimeScale, openingCaptionMark, resolveOpeningPose } from '../../lib/openingTimeline';
+import { cinematicTimeScale, easeInOutCubic, openingCaptionMark, resolveOpeningPose, TAIL_FULL_OPACITY } from '../../lib/openingTimeline';
 import { collectViewerHolds, idleTiming, resolveViewerControl } from '../../lib/viewerControl';
 import {
   driveQualityGovernor,
@@ -61,10 +61,6 @@ const LOD = {
     streamParticles: 150,
   },
 } as const;
-
-function easeInOutCubic(t: number): number {
-  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-}
 
 // Preserve the horizontal view on portrait screens instead of cropping the stars.
 function fittedFov(fov: number, aspect: number, fromAspect = 1) {
@@ -351,7 +347,9 @@ function SceneContent({
         closingBlend.current = 0;
         if (orbitControlsRef.current) orbitControlsRef.current.enabled = true;
       }
-      tailOpacityRef.current = 0.85;
+      // Free exploration holds the tail at full reveal — the same value the opening
+      // timeline ramps to, so the hand-off never steps.
+      tailOpacityRef.current = TAIL_FULL_OPACITY;
     } else if (!gateAllowsCinematic(useEntryReadiness.getState().gate)) {
       // The full cinematic waits until the main materials — or the procedural
       // fallback — can actually be presented (#24). The clock stays at zero and

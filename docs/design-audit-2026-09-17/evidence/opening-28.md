@@ -35,7 +35,7 @@
 
 - 三阶段由单测固定（`tests/unit/openingTimeline.spec.ts` 15 例）：停顿段 0–4s 机位逐值等于 CLOSE；pull-back 段 z 与 fov 单调推进、8s 中点偏离直线 ≥1 且偏向光河一侧；12s 末逐值落在 FAR；**t=15s（及之后任意时刻）pose 逐值等于 EXPLORE**，且 14.0–15.0s 逐 0.05s 采样相邻步长 < 0.2 单位、fov 步长 < 0.5°——交接零跳变的核心断言。
 - e2e：自然结束与提前进入的落地机位均逐字等于 EXPLORE 机位（见第 1 条）。
-- 相位图：`baselines/opening-28/t0-hold.png`（停顿，巨星近景）、`t6-river-pass.png`（中段尺度展开）、`t9-tail-reveal.png`（尾巴随 lookAt 扫描进入画面左侧）、`t13-settle.png`（落位段：标题 + 光河构图，与直达探索的 `baselines/default.png` 构图连续）。
+- 相位图：`baselines/opening-28/t0-hold.png`（停顿，巨星近景）、`t6-river-pass.png`（中段尺度展开）、`t9-tail-reveal.png`（尾巴随 lookAt 扫描进入画面左侧）、`t13-settle.png`（落位段：标题 + 光河构图，与直达探索的 `baselines/after/default.png` 构图连续）。
 
 ### 3. 竖屏独立构图保留双星与尾巴方向，不卡在空黑画面
 

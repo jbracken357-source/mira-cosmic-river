@@ -41,7 +41,7 @@ test.describe('pull-back (中)', () => {
     const pose = resolveOpeningPose(CINEMATIC.PULL_BACK_END, LAND);
     expect(pose.position).toEqual([...CAMERA.FAR.position]);
     expect(pose.lookAt).toEqual([...CAMERA.FAR.lookAt]);
-    expect(pose.fov).toBe(CAMERA.FOV_END);
+    expect(pose.fov).toBe(CAMERA.FAR.fov);
   });
 
   test('the path bows toward the river instead of retreating in a straight line', () => {
@@ -128,6 +128,18 @@ test.describe('portrait composition', () => {
       (v, i) => v + (PORTRAIT_CAMERA.FAR.position[i] - v) * 0.5,
     );
     expect(pose.position[0]).toBeLessThan(straight[0] - 0.5);
+  });
+
+  test('the portrait fov path reads the portrait table, not the landscape globals', () => {
+    // If the timeline fell back to the landscape constants these would stay green
+    // only while both tables coincidentally agree — diverge them and this goes red.
+    expect(resolveOpeningPose(1, PORT).fov).toBe(PORTRAIT_CAMERA.CLOSE.fov);
+    expect(resolveOpeningPose(CINEMATIC.PULL_BACK_END, PORT).fov).toBe(PORTRAIT_CAMERA.FAR.fov);
+    expect(resolveOpeningPose(12.25, PORT).fov).toBe(PORTRAIT_CAMERA.FAR.fov);
+    expect(resolveOpeningPose(CINEMATIC.EXPLORE_MODE, PORT).fov).toBe(PORTRAIT_CAMERA.EXPLORE.fov);
+    const mid = resolveOpeningPose(8, PORT).fov;
+    expect(mid).toBeGreaterThanOrEqual(Math.min(PORTRAIT_CAMERA.CLOSE.fov, PORTRAIT_CAMERA.FAR.fov));
+    expect(mid).toBeLessThanOrEqual(Math.max(PORTRAIT_CAMERA.CLOSE.fov, PORTRAIT_CAMERA.FAR.fov));
   });
 
   test('portrait lands exactly on the portrait explore framing', () => {
