@@ -76,12 +76,14 @@ export function skyRiverGain(
 }
 
 // How tonight's sky sits on the river beyond the plain gain/warmth above (issue #27).
-// One deterministic sky in, three coordinated channels out, so local colour temperature,
+// One deterministic sky in, four coordinated channels out, so local colour temperature,
 // brightness and material density move together and the same date always renders the
-// same river. warmth is the curve the river already follows, collected into this seam so
-// every daily channel has one home; the other two are deliberately small — the sky
-// modulates the river, it never re-tunes it.
+// same river. gain composes the plain coupling's gain with the daily lift here, once, so
+// the component and the tests consume one formula; warmth is the curve the river already
+// follows, collected into this seam so every daily channel has one home. The lift and
+// the density are deliberately small — the sky modulates the river, it never re-tunes it.
 export interface DailySkyCoupling {
+  gain: number;
   warmth: number;
   brightnessLift: number;
   density: number;
@@ -90,18 +92,21 @@ export interface DailySkyCoupling {
 // The lift peaks near 1% of river gain; the density swing stays within ±4%. Both sit far
 // inside the protection of the gain floor above (0.8): the tail can thin or thicken with
 // the season, never empty.
-const DAILY_LIFT_AMPLITUDE = 0.05;
-const DAILY_DENSITY_AMPLITUDE = 0.08;
+export const DAILY_LIFT_AMPLITUDE = 0.05;
+export const DAILY_DENSITY_AMPLITUDE = 0.08;
 
 export function dailySkyCoupling(sky: SkyState): DailySkyCoupling {
   const brightness = clamp01(sky.brightness);
   const colorShift = clamp01(sky.colorShift);
+  const plain = skyRiverGain(brightness, colorShift);
+  // Colour saturates ahead of luminosity (starClock), so their gap reads as the star
+  // running ahead of its own light: zero at maximum and minimum where the curves meet,
+  // peaking mid-cycle. A lift on top of the gain, not a second gain.
+  const brightnessLift = DAILY_LIFT_AMPLITUDE * Math.max(0, colorShift - brightness);
   return {
-    warmth: skyRiverGain(brightness, colorShift).warmth,
-    // Colour saturates ahead of luminosity (starClock), so their gap reads as the star
-    // running ahead of its own light: zero at maximum and minimum where the curves meet,
-    // peaking mid-cycle. A lift on top of the gain, not a second gain.
-    brightnessLift: DAILY_LIFT_AMPLITUDE * Math.max(0, colorShift - brightness),
+    gain: plain.gain + brightnessLift,
+    warmth: plain.warmth,
+    brightnessLift,
     // A brighter Mira A drives a stronger wind and spreads the river slightly thinner; a
     // faint one lets material settle. Centred on 0.5 — the exact cycle mean of the two
     // half-cosines — so the year as a whole neither gains nor loses river.

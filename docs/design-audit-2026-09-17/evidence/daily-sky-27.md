@@ -6,11 +6,12 @@
 
 ## 改动内容
 
-- **纯函数 seam（`src/lib/riverLighting.ts`）**：新增 `dailySkyCoupling(sky: SkyState)`，与 `skyRiverGain` 同文件同风格，把"今晚的天空"落到光河的三个协调通道：
-  - `warmth`：局部色温，沿用既有 `0.25·(1−colorShift)` 曲线（数值与 `skyRiverGain` 完全一致），收进同一 seam 让三个通道同源同行；
+- **纯函数 seam（`src/lib/riverLighting.ts`）**：新增 `dailySkyCoupling(sky: SkyState)`，与 `skyRiverGain` 同文件同风格，把"今晚的天空"落到光河的协调通道上：
+  - `warmth`：局部色温，沿用既有 `0.25·(1−colorShift)` 曲线（数值与 `skyRiverGain` 完全一致），收进同一 seam 让各通道同源同行；
+  - `gain`：`skyRiverGain` 的增益叠加 `brightnessLift` 后在 seam 内一次组好，组件与单测消费同一公式，不再各自拼装；
   - `brightnessLift`：亮度微调 `0.05·max(0, colorShift−brightness)`。颜色比光度先饱和（starClock 的既有设计），两者的差在极大/极小恰为零、在周期中段达峰——实测全周期 0 ~ 0.0093，叠在既有 gain（地板 0.8）之上是约 1% 的抬起，不是第二个增益；
   - `density`：微妙密度 `1 + 0.08·(0.5−brightness)`，全周期 0.96 ~ 1.04。0.5 是两段半余弦的精确周期均值，全年不留净增减；较亮的 Mira A 星风更强、光河略稀，较暗时物质略沉。
-- **消费点**：尾巴粒子透明度 `tailBaseOpacity(..., density)`（第三参数缺省为 1，旧调用数值不变）与光河各层 `uOpacity` 同乘 density（`MiraTail.tsx`、`RiverVeil.tsx`）；`uSkyGain` 叠加 brightnessLift。密度同时作用于贴图路径与程序化回退路径，稀疏的夜晚读作"更稀疏的河"，不会读成"河断了"。
+- **消费点**：尾巴点精灵的基础不透明度 `tailBaseOpacity(..., density)`（第三参数缺省为 1，旧调用数值不变）与光河各层 `uOpacity` 同乘 density（`MiraTail.tsx`、`RiverVeil.tsx`）；`uSkyGain`/`uSkyWarmth` 直接取 seam 组好的 `coupling.gain/warmth`。密度同时作用于贴图路径与程序化回退路径，稀疏的夜晚读作"更稀疏的河"，不会读成"河断了"。
 - **天空刷新（`src/App.tsx`）**：回到前台（visibilitychange → visible）时 `setSky(currentSkyState())`——`setSky` 此前有定义无调用方。不加轮询：天空按日变化，回到前台一次重读足够。 pinned clock（`?epoch=`）路径同源，capture 模式不受影响。`App.tsx` 同时暴露 `data-sky-density` 供 e2e 与证据脚本读取。
 - **未动**：`advanceTime` 的暂停/后台冻结与 delta clamp（不补播由它继续保证）、今晚的 Mira 快照路径、里程碑/相位读数、直达/重播、父票 #18 的其他部分。
 
@@ -67,6 +68,7 @@
 
 - `experiments/verify-baseline.mjs` 断言的是同代码两次重采逐像素一致，不受影响（PASS，见门槛表）。
 - 既有 `baselines/after/` 等已提交基线**未重捕覆盖**：其变化幅度为河域约 1–2% 亮度/不透明度，低于视觉可辨阈值；README 亦已声明跨代码变更的像素对比会有局部翻转。如需一份反映新耦合的默认日期基准，可在观看者确认后另起标签重捕。
+- 证据目录中的六张 `interface-20-*.png` **已按新耦合重捕**（界面叠在实时场景上，场景变了约 1–2%，重捕让文档与画面保持一致）；`interface-20.md` 文字结论不受影响。基线（回归参照）与证据图（文档插图）因此有意走了两条路。
 
 ## 门槛数字（本分支）
 
@@ -74,9 +76,9 @@
 | --- | --- |
 | `npm run build` | 通过（仅有既有的 >500 kB chunk 提示） |
 | `npm run lint` | 通过 |
-| `npx playwright test --project=unit` | 205 passed（新增 5 例 daily sky coupling/tail density） |
-| `npx playwright test`（全量） | 见提交前最终运行 |
-| `node experiments/verify-baseline.mjs` | PASS |
+| `npx playwright test --project=unit` | 201 passed（含新增 5 例 daily sky coupling / tail density） |
+| `npx playwright test`（全量，chromium 83 + unit 201） | 284 passed（5.6 分钟） |
+| `node experiments/verify-baseline.mjs` | PASS（default 与 az90 逐字节一致；首轮遇已知热机抖动，安静重跑即过） |
 
 ## TDD 记录
 

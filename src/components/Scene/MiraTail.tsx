@@ -6,8 +6,7 @@ import { createTailMaterial } from '../../shaders/tail';
 import { useReducedMotion } from 'framer-motion';
 import RiverVeil from './RiverVeil';
 import { advanceTime, captureMode } from '../../lib/captureMode';
-import { skyRiverGain, dailySkyCoupling, tailBaseOpacity } from '../../lib/riverLighting';
-import type { SkyRiverCoupling } from '../../lib/riverLighting';
+import { dailySkyCoupling, tailBaseOpacity } from '../../lib/riverLighting';
 import { useBinaryStar } from '../../hooks';
 
 interface MiraTailProps {
@@ -71,14 +70,10 @@ export default function MiraTail({
   const reduceMotion = Boolean(useReducedMotion());
   const capture = captureMode();
   const skyState = useBinaryStar((state) => state.sky);
-  // The daily coupling (#27): one deterministic sky drives the river's warmth, a small
-  // brightness lift, and the density of its material — all re-derived only when the sky
-  // itself is refreshed, never per frame.
+  // The daily coupling (#27): one deterministic sky drives the river's gain (a small lift
+  // over the plain coupling), warmth, and the density of its material — all re-derived
+  // only when the sky itself is refreshed, never per frame.
   const coupling = useMemo(() => dailySkyCoupling(skyState), [skyState]);
-  const sky = useMemo<SkyRiverCoupling>(() => {
-    const base = skyRiverGain(skyState.brightness, skyState.colorShift);
-    return { gain: base.gain + coupling.brightnessLift, warmth: coupling.warmth };
-  }, [skyState, coupling]);
 
   const geometry = useMemo(() => {
     const { positions, seeds, sizes, lengths, spreads } =
@@ -117,8 +112,8 @@ export default function MiraTail({
     if (!mat) return;
     mat.uniforms.uTime.value = advanceTime(mat.uniforms.uTime.value, delta, { reduceMotion });
     mat.uniforms.uOpacity.value = opacityRef.current * tailBaseOpacity(textureReadyRef.current, particleCount, coupling.density);
-    mat.uniforms.uSkyGain.value = sky.gain;
-    mat.uniforms.uSkyWarmth.value = sky.warmth;
+    mat.uniforms.uSkyGain.value = coupling.gain;
+    mat.uniforms.uSkyWarmth.value = coupling.warmth;
     if (miraBRef.current) {
       miraBRef.current.getWorldPosition(bWorldPos.current);
       mat.uniforms.uMiraBPos.value.copy(bWorldPos.current);
@@ -131,7 +126,7 @@ export default function MiraTail({
   return (
     <group>
       <points ref={pointsRef} geometry={geometry} material={material} raycast={() => {}} />
-      <RiverVeil opacityRef={opacityRef} readyRef={textureReadyRef} length={tailLength} reduceMotion={reduceMotion} miraBRef={miraBRef} sky={sky} density={coupling.density} />
+      <RiverVeil opacityRef={opacityRef} readyRef={textureReadyRef} length={tailLength} reduceMotion={reduceMotion} miraBRef={miraBRef} sky={coupling} />
     </group>
   );
 }

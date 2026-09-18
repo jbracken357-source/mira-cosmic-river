@@ -10,6 +10,7 @@ import {
   veilLightResponse,
   skyRiverGain,
   dailySkyCoupling,
+  DAILY_DENSITY_AMPLITUDE,
   goldAccentStrength,
   veilLayerWeight,
   tailBaseOpacity,
@@ -170,17 +171,18 @@ test.describe('daily sky coupling', () => {
     for (let day = 0; day < MIRA_PERIOD_DAYS; day += 3) {
       const sky = skyStateAt(new Date(MIRA_MAXIMUM_EPOCH_MS + day * DAY_MS));
       const coupling = dailySkyCoupling(sky);
-      expect(coupling.density).toBeGreaterThanOrEqual(0.95);
-      expect(coupling.density).toBeLessThanOrEqual(1.05);
+      // The amplitude is centred on 1, so brightness 0..1 swings density exactly ±amplitude/2.
+      expect(coupling.density).toBeGreaterThanOrEqual(1 - DAILY_DENSITY_AMPLITUDE / 2);
+      expect(coupling.density).toBeLessThanOrEqual(1 + DAILY_DENSITY_AMPLITUDE / 2);
       expect(coupling.brightnessLift).toBeGreaterThanOrEqual(0);
       expect(coupling.brightnessLift).toBeLessThanOrEqual(0.01);
       expect(coupling.warmth).toBeGreaterThanOrEqual(0);
       expect(coupling.warmth).toBeLessThanOrEqual(0.25);
       // Stacked on the dimmest night the lift never lifts the river past a few percent,
-      // and the gain floor from the plain coupling still holds.
-      const gain = skyRiverGain(sky.brightness, sky.colorShift).gain + coupling.brightnessLift;
-      expect(gain).toBeGreaterThanOrEqual(0.8);
-      expect(gain).toBeLessThanOrEqual(1.04);
+      // and the gain floor from the plain coupling still holds — the seam composes the
+      // gain once, so this is the same number the component writes to the uniform.
+      expect(coupling.gain).toBeGreaterThanOrEqual(0.8);
+      expect(coupling.gain).toBeLessThanOrEqual(1.04);
     }
   });
 
