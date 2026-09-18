@@ -27,3 +27,10 @@
 - 普通 issue 没有原生 blocked-by 字段，阻塞边以各票正文中的任务清单引用表达。
 - `ready-for-human` 标签为本次新建，仅 #30（12）使用；其余子票为 `ready-for-agent`。父 Spec 不因工程票全部完成而自动关闭。
 - 静态后备重制（08→11）与可访问构建（11，供 12 的 iPhone 验收）已在票面显式化。
+
+## 收尾记录（2026-09-18）
+
+- 工程票 #19–#29 全部经 PR 合入 master（最终 b10948d），每票有独立证据文档与门槛记录。
+- #30 由观看者本人总览性认可后收尾（原话与四层状态——工程/视觉/真机/发布——见 [evidence/viewer-acceptance-30.md](evidence/viewer-acceptance-30.md)；真机逐项检查知情缓办）。
+- 生产部署版本核对（本地构建哈希与线上资源名一致）与生产冒烟工具 `experiments/smoke-production.mjs` 一并交付；预览部署的 SSO 门禁如实标注于 evidence/integration-29.md。
+- 父 Spec #18（GitHub issue）同日关闭。后续观感反馈或真机问题开新票，不重开已关票。
