@@ -1,14 +1,23 @@
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useCallback } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls as DreiOrbitControls } from '@react-three/drei';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import { useReducedMotion } from 'framer-motion';
 import { useBinaryStar, ambientSpace, tonightFrame, useEntryReadiness } from '../../hooks';
 import { COLORS, PHYSICS, calculateOrbitalPosition, CINEMATIC, CAMERA as LANDSCAPE_CAMERA, TRANSITIONS, TRANSLATIONS, resolveQualityTier, ENTRY_STILL, ENTRY_STILL_BACKDROP } from '../../constants';
+import type { QualityTier } from '../../constants';
 import { PORTRAIT_CAMERA } from '../../constants/animation';
 import { MATERIALS_TIMEOUT_MS, gateAllowsCinematic } from '../../lib/entryReadiness';
 import { advanceTime, captureMode, resolveCapturePose } from '../../lib/captureMode';
 import { collectViewerHolds, idleTiming, resolveViewerControl } from '../../lib/viewerControl';
+import {
+  evaluateQuality,
+  governorProbeFrameMs,
+  governorSetup,
+  initialGovernorState,
+  qualityRecorder,
+} from '../../lib/qualityGovernor';
+import type { GovernorConfig, GovernorState } from '../../lib/qualityGovernor';
 import * as THREE from 'three';
 import type { StarName } from '../UI/InfoCards';
 import MiraA from './MiraA';
@@ -115,9 +124,15 @@ function blendFlight(
 function SceneContent({
   onSelectStar,
   reduceMotion,
+  tier,
+  governor,
+  onTierChange,
 }: {
   onSelectStar: (star: StarName | null) => void;
   reduceMotion: boolean;
+  tier: QualityTier;
+  governor: { enabled: boolean; config: GovernorConfig };
+  onTierChange: (from: QualityTier, to: QualityTier, reason: 'sustained-slow' | 'sustained-fast') => void;
 }) {
   const portrait = useThree(state => state.size.height > state.size.width);
   const CAMERA = portrait ? PORTRAIT_CAMERA : LANDSCAPE_CAMERA;
@@ -126,7 +141,6 @@ function SceneContent({
   const setCinematicPhase = useBinaryStar((state) => state.setCinematicPhase);
   const setCinematicTime = useBinaryStar((state) => state.setCinematicTime);
   const setIntroComplete = useBinaryStar((state) => state.setIntroComplete);
-  const tier = resolveQualityTier();
   const lod = tier === 'low' ? LOD.low : tier === 'mid' ? LOD.mobile : LOD.desktop;
   const capture = captureMode();
 
@@ -182,6 +196,25 @@ function SceneContent({
   const miraAScreenRef = useRef(new THREE.Vector3());
   const ambientLookRef = useRef(new THREE.Vector3());
   const firstFrameMarkedRef = useRef(false);
+  // Quality governor (#26): the state lives outside React — it is fed every frame
+  // and only its rare "change" verdicts surface, through onTierChange. Lazily
+  // initialised on the first frame (ref writes and clocks belong off the render pass).
+  const governorRef = useRef<GovernorState | null>(null);
+  const frameCountRef = useRef(0);
+  const lastResourceSampleAtRef = useRef(0);
+  // Returning from the background: the first frame's delta spans the whole hidden
+  // interval and the pipeline may re-warm, so neither the window nor the streaks
+  // may carry over. Treat the return like initialisation — same tier, fresh
+  // window, fresh cooldown grace.
+  useEffect(() => {
+    const onVisibility = () => {
+      if (!document.hidden && governorRef.current !== null) {
+        governorRef.current = initialGovernorState(governorRef.current.tier, performance.now());
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, []);
 
   const positionsRef = useRef({
     primary: [0, 0, 0] as [number, number, number],
@@ -451,15 +484,55 @@ function SceneContent({
       orbitControlsRef.current?.target ?? ambientLookRef.current.set(...CAMERA.EXPLORE.lookAt),
     );
 
+    // Quality governor (#26): feed the frame time and act on change verdicts only.
+    // Capture mode parks every clock at a fixed phase, so its frames say nothing
+    // about the viewer's machine — recording and governing both stand down. While
+    // the tab is hidden the loop is stopped (frameloop="never" on the Canvas); the
+    // document.hidden guard covers the frames before React applies that switch.
+    const recorder = qualityRecorder();
+    if (!capture.active) {
+      const frameMs = (governor.enabled ? governorProbeFrameMs() : null) ?? delta * 1000;
+      const now = performance.now();
+      if (governorRef.current === null) {
+        governorRef.current = initialGovernorState(tier, now);
+      }
+      recorder.noteFrame(frameMs);
+      if (now - lastResourceSampleAtRef.current >= 5000) {
+        lastResourceSampleAtRef.current = now;
+        recorder.noteResources({
+          at: now,
+          tier,
+          dpr: state.gl.getPixelRatio(),
+          width: state.gl.domElement.width,
+          height: state.gl.domElement.height,
+          geometries: state.gl.info.memory.geometries,
+          textures: state.gl.info.memory.textures,
+          heapBytes:
+            (performance as unknown as { memory?: { usedJSHeapSize: number } }).memory?.usedJSHeapSize ?? null,
+        });
+      }
+      if (governor.enabled && !document.hidden && governorRef.current !== null) {
+        const verdict = evaluateQuality(governorRef.current, frameMs, now, governor.config);
+        governorRef.current = verdict.state;
+        if (verdict.kind === 'change') {
+          recorder.noteChange({ at: now, from: verdict.from, to: verdict.to, reason: verdict.reason });
+          onTierChange(verdict.from, verdict.to, verdict.reason);
+        }
+      }
+    }
+
     // Dev-only e2e observability (same gate as ?epoch=): the camera pose as a coarse
     // attribute, written imperatively so it never re-renders React. Rounded to a
     // tenth of a unit — enough to tell a drag apart from the main view. Mira A's
     // projected screen position lets specs click the star where it actually is
-    // instead of a hardcoded canvas fraction.
+    // instead of a hardcoded canvas fraction. data-frame-count is the frame-loop
+    // heartbeat: a hidden tab must stop it, a visible one must keep it moving.
     if (!import.meta.env.PROD) {
       const el = state.gl.domElement;
       const pose = `${camera.position.x.toFixed(1)},${camera.position.y.toFixed(1)},${camera.position.z.toFixed(1)}`;
       if (el.dataset.cameraPose !== pose) el.dataset.cameraPose = pose;
+      frameCountRef.current += 1;
+      el.dataset.frameCount = String(frameCountRef.current);
       miraAScreenRef.current.set(0, 0, 0).project(camera);
       const miraA = `${(((miraAScreenRef.current.x + 1) / 2) * 100).toFixed(2)},${(((1 - miraAScreenRef.current.y) / 2) * 100).toFixed(2)}`;
       if (el.dataset.miraAScreen !== miraA) el.dataset.miraAScreen = miraA;
@@ -602,8 +675,7 @@ function SceneContent({
   );
 }
 
-function PostProcessing() {
-  const tier = resolveQualityTier();
+function PostProcessing({ tier }: { tier: QualityTier }) {
   const brightness = useBinaryStar((state) => state.sky.brightness);
   const colorShift = useBinaryStar((state) => state.sky.colorShift);
   // Bloom is a stack of full-screen passes: keep it off the light tier.
@@ -643,8 +715,15 @@ function noteEntryMark(canvas: HTMLCanvasElement, key: 'contextCreatedMs' | 'fir
 
 export default function Scene({ onSelectStar }: SceneProps) {
   const CAMERA = window.innerHeight > window.innerWidth ? PORTRAIT_CAMERA : LANDSCAPE_CAMERA;
-  const tier = resolveQualityTier();
-  const lowQuality = tier === 'low';
+  // The governor's opening tier is the detected one, unless a dev ?quality-start=
+  // asks otherwise; an explicit ?quality= pin keeps the governor off, so the tier
+  // state below never moves away from the pin.
+  const setup = governorSetup();
+  const [tier, setTier] = useState<QualityTier>(() => setup.startTier ?? resolveQualityTier());
+  const [lastQualityChange, setLastQualityChange] = useState<string | null>(null);
+  // Antialias is a context-creation flag: a runtime downgrade cannot re-create the
+  // context, so it follows the opening tier, not the governed one.
+  const [antialias] = useState(() => tier !== 'low');
   const reduceMotion = Boolean(useReducedMotion());
   const startInExplore = useBinaryStar.getState().introComplete;
   const introComplete = useBinaryStar((state) => state.introComplete);
@@ -652,6 +731,32 @@ export default function Scene({ onSelectStar }: SceneProps) {
   const [glCanvas, setGlCanvas] = useState<HTMLCanvasElement | null>(null);
   const language = useBinaryStar((state) => state.language);
   const gate = useEntryReadiness((state) => state.gate);
+  // Background draw control (#26): a hidden tab stops the render loop entirely.
+  // r3f owns the loop, so switching frameloop never stacks a second one, and the
+  // 0.05s delta clamp in advanceTime keeps the first frame back from lurching.
+  const [background, setBackground] = useState(() => document.hidden);
+  useEffect(() => {
+    const onVisibility = () => setBackground(document.hidden);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, []);
+
+  const handleTierChange = useCallback(
+    (from: QualityTier, to: QualityTier, reason: 'sustained-slow' | 'sustained-fast') => {
+      setTier(to);
+      setLastQualityChange(`${from}>${to}:${reason}`);
+    },
+    [],
+  );
+
+  // Quality observability (#26): always on, unlike the dev-only probes — the SPEC
+  // asks the shipped experience to record tier changes, not just the test build.
+  // Written on change only, so there is no per-frame DOM work.
+  useEffect(() => {
+    if (!glCanvas) return;
+    glCanvas.dataset.qualityTier = tier;
+    if (lastQualityChange !== null) glCanvas.dataset.qualityLastChange = lastQualityChange;
+  }, [glCanvas, tier, lastQualityChange]);
 
   // The gate's hard bound: materials that never answer are declared timed-out
   // and the opening proceeds on the procedural fallback.
@@ -700,6 +805,7 @@ export default function Scene({ onSelectStar }: SceneProps) {
         </div>
       )}
     <Canvas
+      frameloop={background ? 'never' : 'always'}
       onCreated={(state) => {
         setCanvasReady(true);
         setGlCanvas(state.gl.domElement);
@@ -710,7 +816,7 @@ export default function Scene({ onSelectStar }: SceneProps) {
         fov: startInExplore ? CAMERA.EXPLORE.fov : CAMERA.CLOSE.fov,
       }}
       gl={{
-        antialias: !lowQuality,
+        antialias,
         alpha: false,
         stencil: false,
         depth: true,
@@ -730,8 +836,14 @@ export default function Scene({ onSelectStar }: SceneProps) {
       <color attach="background" args={[COLORS.VOID_BLACK]} />
       <fog attach="fog" args={[COLORS.VOID_BLACK, 15, 50]} />
 
-      <SceneContent onSelectStar={onSelectStar} reduceMotion={reduceMotion} />
-      <PostProcessing />
+      <SceneContent
+        onSelectStar={onSelectStar}
+        reduceMotion={reduceMotion}
+        tier={tier}
+        governor={{ enabled: setup.enabled, config: setup.config }}
+        onTierChange={handleTierChange}
+      />
+      <PostProcessing tier={tier} />
     </Canvas>
     </>
   );

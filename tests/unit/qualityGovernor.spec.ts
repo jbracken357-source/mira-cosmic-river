@@ -162,21 +162,20 @@ test.describe('evaluateQuality', () => {
     expect(state.tier).toBe('high');
   });
 
-  test('an empty window (no frames arrived) is no evidence in either direction', () => {
+  test('frames sparser than the window still settle, one window per late frame', () => {
+    // A heavily throttled machine can render slower than the window is long; the
+    // late frame's own time is still evidence and the streak must keep building.
     let state = readyState('high');
-    // One slow window, then a gap longer than a window with no frames at all,
-    // then another slow window: the gap must not count toward the streak.
     let now = 0;
     let verdict = evaluateQuality(state, SLOW, (now += 50), CONFIG);
     state = verdict.state;
     verdict = evaluateQuality(state, SLOW, (now += CONFIG.windowMs), CONFIG);
     state = verdict.state;
     expect(state.slowWindows).toBe(1);
-    // The next frame lands more than a full window later: settles an empty window.
     verdict = evaluateQuality(state, SLOW, (now += CONFIG.windowMs + 1), CONFIG);
     state = verdict.state;
-    expect(verdict.kind).toBe('stable');
-    expect(state.slowWindows).toBe(1);
+    expect(verdict.kind).toBe('change');
+    expect(state.tier).toBe('mid');
   });
 });
 
