@@ -7,10 +7,28 @@
 // light tier so behavioural tests can run anywhere.
 //
 // When the query is absent, pick a tier from device capability so a mid-range phone
-// uses the mobile LOD and dpr 1 rather than the desktop 5000-star / bloom-4 path.
+// takes the mid path (dpr 1, lighter bloom) rather than the desktop dpr-1.5 / bloom-4
+// path. Decoration counts stay at the desktop level until the light tier — the
+// descent cuts post-processing and resolution before it touches the scene (#26).
 export type QualityTier = 'high' | 'mid' | 'low';
 
 const MOBILE_WIDTH = 640;
+
+// The same short-side rule detectQualityTier uses, shared with the governor's
+// desktop-only gate so both agree on what counts as a phone (SPEC: 手机不设帧率门槛).
+export function isMobileSized(innerWidth: number, innerHeight: number): boolean {
+  return Math.min(innerWidth, innerHeight) < MOBILE_WIDTH;
+}
+
+// An explicit ?quality= is the viewer's (or a test harness's) own decision: the
+// runtime governor (lib/qualityGovernor) must not second-guess it, so pin detection
+// lives here, next to the detection it overrides.
+export function explicitQualityPin(qualityQuery: string | null): QualityTier | null {
+  if (qualityQuery === 'high' || qualityQuery === 'mid' || qualityQuery === 'low') {
+    return qualityQuery;
+  }
+  return null;
+}
 
 export function detectQualityTier(env: {
   qualityQuery: string | null;
@@ -19,12 +37,13 @@ export function detectQualityTier(env: {
   deviceMemory?: number;
   hardwareConcurrency?: number;
 }): QualityTier {
-  if (env.qualityQuery === 'low') return 'low';
+  const pin = explicitQualityPin(env.qualityQuery);
+  if (pin !== null) return pin;
   // deviceMemory is Chrome-only; treat "very constrained" as the light tier.
   if (env.deviceMemory !== undefined && env.deviceMemory <= 2) return 'low';
 
   // Short side, so a landscape phone still lands on mid even when innerWidth is large.
-  const midWidth = Math.min(env.innerWidth, env.innerHeight) < MOBILE_WIDTH;
+  const midWidth = isMobileSized(env.innerWidth, env.innerHeight);
   const midMem = env.deviceMemory !== undefined && env.deviceMemory <= 4;
   const midCpu = env.hardwareConcurrency !== undefined && env.hardwareConcurrency <= 4;
   if (midWidth || midMem || midCpu) return 'mid';
