@@ -33,7 +33,14 @@ const PROFILE =
     : { idle: 120_000, drag: 30_000, background: 20_000, watch: 300_000, throttle: 30_000, recovery: 40_000 };
 
 const SAMPLE_EVERY_MS = 5000;
-const LABEL = process.argv[2] && /^[a-z0-9-]+$/.test(process.argv[2]) ? process.argv[2] : 'quality-26';
+// A typo'd label must never silently fall back to "quality-26" — that default exists so
+// the #26 gate command keeps working, and overwriting that evidence would be data loss.
+const LABEL_ARG = process.argv[2];
+if (LABEL_ARG !== undefined && !/^[a-z0-9-]+$/.test(LABEL_ARG)) {
+  console.error('usage: node experiments/measure-quality.mjs [label] (lowercase letters, digits, dashes)');
+  process.exit(1);
+}
+const LABEL = LABEL_ARG ?? 'quality-26';
 const OUT_FILE = `docs/design-audit-2026-09-17/evidence/${LABEL}-quality.json`;
 
 // A tiny pointer jiggle every sample keeps Windows from turning the display off

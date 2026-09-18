@@ -9,7 +9,7 @@
   },
   "qualityTier": "high (navigator.deviceMemory/hardwareConcurrency pinned to 8)",
   "url": "/?capture=1&epoch=2026-09-12T00%3A00%3A00Z&cam=<preset>",
-  "gitCommit": "d601df101e71ecc296519fef4a4fc90cbb6522b1",
+  "gitCommit": "764996e47836c4f81981fe769da093f978798496",
   "views": [
     {
       "name": "default",
@@ -36,6 +36,7 @@
         "orbitalPhase": "0.0534",
         "density": "1.0200"
       },
+      "overlaySettle": "1.000,1.000,absent,absent",
       "pageErrors": []
     },
     {
@@ -63,6 +64,7 @@
         "orbitalPhase": "0.0534",
         "density": "1.0200"
       },
+      "overlaySettle": "1.000,1.000,absent,absent",
       "pageErrors": []
     },
     {
@@ -90,6 +92,7 @@
         "orbitalPhase": "0.0534",
         "density": "1.0200"
       },
+      "overlaySettle": "1.000,1.000,absent,absent",
       "pageErrors": []
     },
     {
@@ -117,6 +120,7 @@
         "orbitalPhase": "0.0534",
         "density": "1.0200"
       },
+      "overlaySettle": "1.000,1.000,absent,absent",
       "pageErrors": []
     },
     {
@@ -144,6 +148,7 @@
         "orbitalPhase": "0.0534",
         "density": "1.0200"
       },
+      "overlaySettle": "1.000,1.000,absent,absent",
       "pageErrors": []
     },
     {
@@ -171,6 +176,7 @@
         "orbitalPhase": "0.0534",
         "density": "1.0200"
       },
+      "overlaySettle": "1.000,1.000,absent,absent",
       "pageErrors": []
     },
     {
@@ -198,6 +204,7 @@
         "orbitalPhase": "0.0534",
         "density": "1.0200"
       },
+      "overlaySettle": "1.000,1.000,absent,absent",
       "pageErrors": []
     }
   ]

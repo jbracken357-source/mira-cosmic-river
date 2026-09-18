@@ -136,7 +136,7 @@ export async function waitForExploreReady(page) {
 // can be located directly instead of re-derived (the deferred hardening from #24/#26,
 // landed here as ticket 11's evidence-closing item).
 export async function waitForOverlaySettle(page, timeoutMs = 8000) {
-  const readout = await page.waitForFunction(async () => {
+  const handle = await page.waitForFunction(async () => {
     const ids = ['tail-hint', 'interaction-hint', 'interaction-hint-recall', 'milestone-hint'];
     const read = () => ids.map((id) => {
       const el = document.querySelector(`[data-testid="${id}"]`);
@@ -157,7 +157,7 @@ export async function waitForOverlaySettle(page, timeoutMs = 8000) {
     const c = read();
     return a === b && b === c ? a : null;
   }, null, { timeout: timeoutMs }).catch(() => null);
-  return readout;
+  return handle ? await handle.jsonValue() : null;
 }
 
 // Kill animations and transitions (the explore UI has a pulsing dot) so the DOM overlay
@@ -249,8 +249,12 @@ export async function captureViews({ baseUrl, outDir, views = VIEWS, epoch = BAS
       // font pipeline to be quiet so header text renders identically across runs.
       await page.evaluate(() => document.fonts.ready.then(() => undefined));
       // The JS-animated overlays must be at rest before the shot (see
-      // waitForOverlaySettle); the readout doubles as a manifest fingerprint.
+      // waitForOverlaySettle); the readout doubles as a manifest fingerprint. A capture
+      // whose overlays never settle is not a baseline — fail loudly, never swallow.
       const overlaySettle = await waitForOverlaySettle(page);
+      if (overlaySettle === null) {
+        throw new Error(`overlays never settled for view "${view.name}"`);
+      }
       // Let the first frozen frames settle (bloom chain warm-up, font swap).
       await page.waitForTimeout(1200);
       const file = `${view.name}.png`;

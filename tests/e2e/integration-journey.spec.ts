@@ -23,11 +23,19 @@ const EPOCH = '2026-09-12T00%3A00%3A00Z';
 const JOURNEY =
   `/?quality=low&cinematic-scale=2&epoch=${EPOCH}` +
   '&idle-resume=1200&idle-ramp=600&idle-epilogue=4200&idle-lead=600';
-// Explore framing on a landscape viewport (full-opening.spec keeps the same number).
-const EXPLORE_POSE = '8.0,7.0,28.0';
 
 async function firstFrame(page: Page) {
   await expect(page.locator('canvas')).toHaveAttribute('data-camera-pose', /.+/, { timeout: 30000 });
+}
+
+// The camera is within `tolerance` of the explore framing [8, 7, 28]. The tolerance
+// admits the fast idle drift that begins the moment control hands back (the exact-value
+// assertion belongs to full-opening.spec, which runs without the idle overrides).
+async function expectExploreFraming(canvas: ReturnType<Page['locator']>) {
+  await expect(async () => {
+    const [x, y, z] = ((await canvas.getAttribute('data-camera-pose')) ?? '').split(',').map(Number);
+    expect(Math.hypot(x - 8, y - 7, z - 28)).toBeLessThan(1);
+  }).toPass({ timeout: 15000 });
 }
 
 async function skyAttributes(page: Page) {
@@ -63,13 +71,9 @@ test.describe('Integration journey', () => {
     await expect(page.getByTestId('cinematic-overlay')).toBeVisible({ timeout: 30000 });
     await firstFrame(page);
     await expect(page.getByTestId('explore-ui')).toBeVisible({ timeout: 45000 });
-    // The settle beat lands on the explore framing (the exact-value assertion is
-    // full-opening.spec's, without idle overrides); here a small tolerance also admits
-    // the fast idle drift that begins the moment the opening hands control back.
-    await expect(async () => {
-      const [x, y, z] = ((await canvas.getAttribute('data-camera-pose')) ?? '').split(',').map(Number);
-      expect(Math.hypot(x - 8, y - 7, z - 28)).toBeLessThan(1);
-    }).toPass({ timeout: 15000 });
+    // The settle beat lands on the explore framing; the tolerance also admits the fast
+    // idle drift that begins the moment the opening hands control back.
+    await expectExploreFraming(canvas);
     const firstNight = await skyAttributes(page);
 
     // --- Reload: direct entry, the same night, no opening to wait through. ---
@@ -83,11 +87,17 @@ test.describe('Integration journey', () => {
     // --- Free exploration: a drag owns the camera immediately. ---
     const box = await canvas.boundingBox();
     expect(box).not.toBeNull();
+    const poseBefore = (await canvas.getAttribute('data-camera-pose'))!.split(',').map(Number);
     await page.mouse.move(box!.x + box!.width * 0.5, box!.y + box!.height * 0.5);
     await page.mouse.down();
     await page.mouse.move(box!.x + box!.width * 0.7, box!.y + box!.height * 0.4, { steps: 12 });
     await page.mouse.up();
-    await expect(canvas).not.toHaveAttribute('data-camera-pose', EXPLORE_POSE, { timeout: 10000 });
+    // The drag really moved the camera (distance, not string inequality), and the
+    // viewer owns it: the auto camera is off the moment input lands.
+    await expect(async () => {
+      const [x, y, z] = ((await canvas.getAttribute('data-camera-pose')) ?? '').split(',').map(Number);
+      expect(Math.hypot(x - poseBefore[0], y - poseBefore[1], z - poseBefore[2])).toBeGreaterThan(1);
+    }).toPass({ timeout: 10000 });
     await expect(page.locator('[data-auto-camera]')).toHaveAttribute('data-auto-camera', 'off');
     // Load and drag time must not count toward idle: restamp before the next leg.
     await page.keyboard.press('Shift');
@@ -160,10 +170,7 @@ test.describe('Integration journey', () => {
     // The fast idle drift may already own the camera after the hand-back; returning to
     // the main view is the explicit way back and eases onto the framing.
     await page.getByTestId('return-to-view').click();
-    await expect(async () => {
-      const [x, y, z] = ((await canvas.getAttribute('data-camera-pose')) ?? '').split(',').map(Number);
-      expect(Math.hypot(x - 8, y - 7, z - 28)).toBeLessThan(1);
-    }).toPass({ timeout: 15000 });
+    await expectExploreFraming(canvas);
 
     // The whole journey ran without a single page error.
     expect(errors).toEqual([]);

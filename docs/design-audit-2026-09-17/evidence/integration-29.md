@@ -93,7 +93,7 @@
 #24/#26 遗留的"verify-baseline 间歇失败（default ~614px/max10、az90 ~4780px/max147 两种固定签名）"在本票调查并加固：
 
 - **复现与定位**：一次性诊断脚本（已删除）复刻 verify 的采集形状——被比较的两帧 default 之间隔着约 40 秒的 az90 采集时，满载后必现 614px/max10；差异定位在 **Mira A 星盘内部 38×44 像素的一块**（x783-821, y466-510），不在任何 DOM 覆盖层。与 #26 调查结论一致：场景图之下（SwiftShader/合成层）的负载相关不确定性，uniforms/变换逐对象比对全等，非代码回归信号。
-- **加固一（覆盖层稳定等待）**：`baseline-harness.mjs` 新增 `waitForOverlaySettle`——tail-hint/interaction-hint 等 JS 动画入场（FREEZE_CSS 冻不住）需连续三次读数一致才截图，读数作为状态指纹写入 manifest（#24 要求的"逐 run 状态指纹"）。实测四类覆盖层指纹稳定为 `1.000,1.000,absent,absent`。
+- **加固一（覆盖层稳定等待）**：`baseline-harness.mjs` 新增 `waitForOverlaySettle`——tail-hint/interaction-hint 等 JS 动画入场（FREEZE_CSS 冻不住）需连续三次读数一致才截图；覆盖层永不稳定时**采集直接失败**（不吞错）。读数作为状态指纹写入 manifest（#24 要求的"逐 run 状态指纹"）——`baselines/integration-29/manifest.json` 七个视角均记录 `1.000,1.000,absent,absent`。
 - **加固二（相邻比对）**：`verify-baseline.mjs` 从"整轮 A vs 整轮 B"改为**逐视角背靠背比对**（A(default)→B(default)→A(az90)→B(az90)）。它检验的语义不变——同代码渲染同像素——但不再让被比较的两帧隔着整轮机器搅动。default 签名自此未再出现；az90 的 bloom 光晕签名仅在紧贴满载的首次尝试出现过一次，安静窗口稳定全绿。
 - **断言口径不变**：仍为逐字节相等，不加阈值、不静默重试；最终基线采集遵循 #24 既定的低负载窗口协议。
 - 验证：满载后首试 az90 曾现旧签名（如实记录），随后连续两次 PASS + 静置一分钟后 PASS——**安静窗口 3/3 全绿**。
