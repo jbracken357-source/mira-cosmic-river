@@ -1,0 +1,112 @@
+{
+  "label": "opening-28",
+  "epoch": "2026-09-12T00:00:00Z",
+  "captureTimeSeconds": 8,
+  "seeds": {
+    "starField": "mulberry32:0x5eed1a",
+    "miraTail": "lcg:17",
+    "materialStream": "index-sin-hash"
+  },
+  "qualityTier": "high (navigator.deviceMemory/hardwareConcurrency pinned to 8)",
+  "url": "/?capture=1&epoch=2026-09-12T00%3A00%3A00Z&cinematic-t=<ms>",
+  "gitCommit": "831aa5784f4cd5d2aaf89aba120fd926941cb0b8",
+  "views": [
+    {
+      "name": "t0-hold",
+      "file": "t0-hold.png",
+      "cinematicT": 0,
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "deviceScaleFactor": 1,
+      "texturesReady": true,
+      "pageErrors": []
+    },
+    {
+      "name": "t3-stars",
+      "file": "t3-stars.png",
+      "cinematicT": 3000,
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "deviceScaleFactor": 1,
+      "texturesReady": true,
+      "pageErrors": []
+    },
+    {
+      "name": "t6-river-pass",
+      "file": "t6-river-pass.png",
+      "cinematicT": 6000,
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "deviceScaleFactor": 1,
+      "texturesReady": true,
+      "pageErrors": []
+    },
+    {
+      "name": "t9-tail-reveal",
+      "file": "t9-tail-reveal.png",
+      "cinematicT": 9000,
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "deviceScaleFactor": 1,
+      "texturesReady": true,
+      "pageErrors": []
+    },
+    {
+      "name": "t13-settle",
+      "file": "t13-settle.png",
+      "cinematicT": 13000,
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "deviceScaleFactor": 1,
+      "texturesReady": true,
+      "pageErrors": []
+    },
+    {
+      "name": "portrait-t1-hold",
+      "file": "portrait-t1-hold.png",
+      "cinematicT": 1000,
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "deviceScaleFactor": 1,
+      "texturesReady": true,
+      "pageErrors": []
+    },
+    {
+      "name": "portrait-t6-river-pass",
+      "file": "portrait-t6-river-pass.png",
+      "cinematicT": 6000,
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "deviceScaleFactor": 1,
+      "texturesReady": true,
+      "pageErrors": []
+    },
+    {
+      "name": "portrait-t9-tail-reveal",
+      "file": "portrait-t9-tail-reveal.png",
+      "cinematicT": 9000,
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "deviceScaleFactor": 1,
+      "texturesReady": true,
+      "pageErrors": []
+    }
+  ],
+  "note": "full cinematic frozen by ?capture=1&cinematic-t=<ms>; camera poses come from src/lib/openingTimeline.ts"
+}

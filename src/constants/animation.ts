@@ -21,10 +21,12 @@ export const CAMERA = {
     lookAt: [0, 0, 0] as [number, number, number],
     fov: 35,
   },
-  // Phase 2: Mid-distance, stars small, tail hint
+  // Phase 2: mid-path waypoint of the pull-back. The path bows through it toward the
+  // river (-X side, where the tail streams), so the near edge of the river passes the
+  // lens instead of the camera retreating in a straight line (前景经过).
   MID: {
-    position: [10, 4, 14] as [number, number, number],
-    lookAt: [0, 0, 0] as [number, number, number],
+    position: [5, 4.5, 18] as [number, number, number],
+    lookAt: [-1, 0, 2] as [number, number, number],
     fov: 45,
   },
   // Phase 3: Far back, tail dominates
@@ -46,15 +48,29 @@ export const CAMERA = {
     lookAt: [-8, 1, 6] as [number, number, number],
     fov: 48,
   },
-  // FOV range during pull-back
-  FOV_START: 35,
-  FOV_END: 50,
+  // The pull-back's fov range is CLOSE.fov → FAR.fov; the opening timeline reads it
+  // from those poses so the portrait table can diverge without a second source.
 } as const;
-
 // The same space is composed diagonally in portrait, giving the river room below
-// the pair instead of simply cutting the sides off the desktop composition.
+// the pair instead of simply cutting the sides off the desktop composition. The fov
+// values intentionally match the landscape ones: fittedFov (Scene.tsx) already
+// widens the vertical field to preserve the horizontal composition, so the stored
+// fov names the shared horizontal framing, not the on-screen vertical angle.
 export const PORTRAIT_CAMERA = {
   ...CAMERA,
+  // Portrait keeps its own hold and waypoint: the pair sits in the upper part of the
+  // frame (the look-at drops below it) with the river's direction kept below, so the
+  // tight framing never hangs on empty black.
+  CLOSE: {
+    position: [8, 4, 13] as [number, number, number],
+    lookAt: [0, -2, 0] as [number, number, number],
+    fov: 35,
+  },
+  MID: {
+    position: [5, 5.5, 19] as [number, number, number],
+    lookAt: [-1, -2, 3] as [number, number, number],
+    fov: 45,
+  },
   EXPLORE: {
     position: [8, 9, 28] as [number, number, number],
     lookAt: [-2, -3, 6] as [number, number, number],
