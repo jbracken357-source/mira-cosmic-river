@@ -41,6 +41,12 @@ export default function App() {
   // The ambient sound shell (visibility, gestures, the one graph). Idempotent.
   useEffect(() => initAmbientSound(), []);
 
+  const language = useBinaryStar((state) => state.language);
+  // Keep the document language honest with the copy on screen (#20).
+  useEffect(() => {
+    document.documentElement.lang = language === 'ch' ? 'zh-CN' : 'en';
+  }, [language]);
+
   useEffect(() => {
     if (!showTailFound) return;
     const id = window.setTimeout(() => setShowTailFound(false), 4500);

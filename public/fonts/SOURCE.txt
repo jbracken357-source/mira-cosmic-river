@@ -1,0 +1,23 @@
+Self-hosted font subsets for the interface (#20). Google Fonts is no longer linked;
+these two woff2 files are the whole font payload.
+
+file: mira-serif-sc.woff2 (142 KB, 721 glyphs, variable wght 200-900 kept)
+family-name: "Mira Serif SC" (custom name; the OFL reserved font names stay untouched)
+source-font: Noto Serif SC (Source Han Serif SC), variable TTF NotoSerifSC[wght].ttf
+source-url: https://raw.githubusercontent.com/google/fonts/main/ofl/notoserifsc/NotoSerifSC%5Bwght%5D.ttf
+license: SIL OFL 1.1 — full text in OFL-NotoSerifSC.txt (same directory)
+subset-of: every character in src/constants/translations.ts (en + ch) + printable ASCII
+  + the few glyphs the chrome renders directly; the list is subset-glyphs.txt, rebuilt
+  by experiments/build-font-subset.mjs and guarded by tests/unit/fontSubset.spec.ts
+subset-command: pyftsubset (fontTools 4.63.0) --flavor=woff2 --layout-features='*'
+  --no-hinting --desubroutinize --text-file=subset-glyphs.txt
+subsetted-on: 2026-09-18
+
+file: mira-wenkai.woff2 (66 KB, 494 glyphs, Regular)
+family-name: "Mira WenKai" (custom name; the OFL reserved font names stay untouched)
+source-font: LXGW WenKai (霞鹜文楷) Regular TTF
+source-url: https://raw.githubusercontent.com/lxgw/LxgwWenKai/main/fonts/TTF/LXGWWenKai-Regular.ttf
+license: SIL OFL 1.1 — full text in OFL-LXGWWenKai.txt (same directory); the upstream
+  license explicitly allows subsetted / format-converted copies for web font delivery
+usage: the epilogue (结语) line only
+subsetted-on: 2026-09-18

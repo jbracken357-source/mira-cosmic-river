@@ -32,6 +32,8 @@ export const TRANSLATIONS = {
     timeSpeed: 'Time Speed',
     interactionHint: 'Drag to Rotate · Scroll to Zoom',
     interactionHintMobile: 'Drag to Rotate · Pinch to Zoom',
+    // Direct entry mid-opening: the viewer cuts the full cinematic short
+    enterEarly: 'Enter early',
     replayOpening: 'Full cinematic',
     pause: 'Pause',
     resume: 'Resume',
@@ -102,6 +104,8 @@ export const TRANSLATIONS = {
     timeSpeed: '时间速度',
     interactionHint: '拖拽旋转 · 滚轮缩放',
     interactionHintMobile: '拖拽旋转 · 双指缩放',
+    // 直达：观看者在完整开场中途提前进入场景
+    enterEarly: '提前进入',
     replayOpening: '完整开场',
     pause: '暂停',
     resume: '恢复',
