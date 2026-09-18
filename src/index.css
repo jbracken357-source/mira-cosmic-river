@@ -109,14 +109,8 @@ body {
   border-color: rgba(255, 255, 255, 0.2);
 }
 
-.glass-button:focus-visible {
-  outline: 2px solid var(--color-nebula-violet);
-  outline-offset: 2px;
-}
-
-/* One focus ring for every interactive control (#20): most controls are plain
-   buttons/inputs without .glass-button, so the ring lives at the element level
-   instead of being re-declared per component. */
+/* One focus ring for every interactive control (#20), .glass-button included:
+   the ring lives at the element level instead of being re-declared per class. */
 button:focus-visible,
 input:focus-visible,
 [role='button']:focus-visible {

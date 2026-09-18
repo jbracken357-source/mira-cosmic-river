@@ -52,7 +52,6 @@ export default function CinematicOverlay({
         <AmbientToggle />
         <button
           data-testid="skip-cinematic"
-          aria-label={t.enterEarly}
           onClick={handleEnterEarly}
           className="min-h-11 min-w-11 inline-flex items-center justify-center text-white/30 text-xs font-extralight tracking-widest uppercase hover:text-white/60 transition-colors"
         >
@@ -113,6 +112,26 @@ export default function CinematicOverlay({
   );
 }
 
+// Once the viewer has manipulated the scene, the interaction hint has done its
+// job — remembered across visits like the seen-opening flag.
+const LEARNED_CONTROLS_KEY = 'mira:learned-controls';
+
+function hasLearnedControls(): boolean {
+  try {
+    return globalThis.localStorage?.getItem(LEARNED_CONTROLS_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function persistLearnedControls(): void {
+  try {
+    globalThis.localStorage?.setItem(LEARNED_CONTROLS_KEY, '1');
+  } catch {
+    // Private mode / blocked storage: the hint simply returns next visit.
+  }
+}
+
 // Minimal explore-mode UI
 function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => void }) {
   const language = useBinaryStar((state) => state.language);
@@ -123,15 +142,19 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
   const reduceMotion = Boolean(useReducedMotion());
 
   // The interaction hint leaves once the viewer has actually manipulated the scene
-  // (drag/zoom land on the canvas; presses on UI buttons do not count). It stays
-  // rediscoverable: a quiet recall button takes its place in the footer.
-  const [hintVisible, setHintVisible] = useState(true);
+  // (drag/zoom land on the canvas; presses on UI buttons do not count), and stays
+  // gone on later visits. It stays rediscoverable: a quiet recall button takes its
+  // place in the footer.
+  const [hintVisible, setHintVisible] = useState(() => !hasLearnedControls());
   useEffect(() => {
     if (!hintVisible) return;
     const dismiss = (event: Event) => {
-      if (event.target instanceof HTMLCanvasElement) setHintVisible(false);
+      if (event.target instanceof HTMLCanvasElement) {
+        persistLearnedControls();
+        setHintVisible(false);
+      }
     };
-    window.addEventListener('pointerdown', dismiss);
+    window.addEventListener('pointerdown', dismiss, { passive: true });
     window.addEventListener('wheel', dismiss, { passive: true });
     window.addEventListener('touchstart', dismiss, { passive: true });
     return () => {

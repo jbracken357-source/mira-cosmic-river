@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { useBinaryStar, useMobile } from '../../hooks';
 import { TRANSLATIONS } from '../../constants/translations';
@@ -43,19 +43,29 @@ export default function InfoCards({ selectedStar, onSelectStar, showTailFound }:
   // Focus bookkeeping (#20): the card is non-modal (no focus lock), but opening it
   // moves focus onto the card so Esc and Tab start from a sensible place, and
   // closing returns focus to whatever opened it (canvas click → body, which is a
-  // no-op; keyboard trigger → the trigger button).
-  const cardRef = useRef<HTMLDivElement | null>(null);
+  // no-op; keyboard trigger → the trigger button). The focus happens in the ref
+  // callback, not an effect: with AnimatePresence mode="wait", switching directly
+  // from one card to another mounts the new card only after the old one exits, and
+  // an effect would fire while the ref still points at the leaving node.
   const returnFocusRef = useRef<Element | null>(null);
+  const hadCardRef = useRef(false);
   const prevStarRef = useRef<StarName | null>(null);
 
+  const handleCardRef = useCallback((node: HTMLDivElement | null) => {
+    if (!node) return;
+    // The return target is captured on the FIRST open only; a card-to-card switch
+    // keeps the original entry so closing still lands back where reading started.
+    if (!hadCardRef.current) returnFocusRef.current = document.activeElement;
+    hadCardRef.current = true;
+    node.focus();
+  }, []);
+
   useEffect(() => {
-    if (selectedStar && !prevStarRef.current) {
-      returnFocusRef.current = document.activeElement;
-      cardRef.current?.focus();
-    } else if (!selectedStar && prevStarRef.current) {
+    if (!selectedStar && prevStarRef.current) {
       const el = returnFocusRef.current;
       if (el instanceof HTMLElement && el.isConnected) el.focus();
       returnFocusRef.current = null;
+      hadCardRef.current = false;
     }
     prevStarRef.current = selectedStar;
   }, [selectedStar]);
@@ -94,7 +104,7 @@ export default function InfoCards({ selectedStar, onSelectStar, showTailFound }:
   const card = selectedStar ? (
     <motion.div
       key={selectedStar}
-      ref={cardRef}
+      ref={handleCardRef}
       tabIndex={-1}
       role="region"
       aria-label={cardData[selectedStar].title}

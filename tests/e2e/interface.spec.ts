@@ -10,12 +10,13 @@ import type { Page } from '@playwright/test';
 const APP = '/?quality=low';
 const EVIDENCE = 'docs/design-audit-2026-09-17/evidence';
 
-async function gotoExplore(page: Page) {
+async function gotoExplore(page: Page, url = APP) {
   await page.addInitScript(() => {
     localStorage.setItem('mira:seen-opening', '1');
     localStorage.removeItem('mira:found-tail');
+    localStorage.removeItem('mira:learned-controls');
   });
-  await page.goto(APP);
+  await page.goto(url);
   await expect(page.getByTestId('explore-ui')).toBeVisible({ timeout: 15000 });
   await expect(page.getByTestId('loading')).toHaveCount(0);
   // The pose attribute lands at the end of the first completed frame: the scene is
@@ -54,6 +55,30 @@ test.describe('keyboard access to the star info', () => {
     await expect(card).toHaveCount(0);
     // Focus is back on the trigger that opened the card.
     await expect(trigger).toBeFocused();
+  });
+
+  test('switching directly between cards keeps focus on the new card; Esc returns to the original trigger', async ({ page }) => {
+    await gotoExplore(page);
+
+    const triggerA = page.getByTestId('star-trigger-miraA');
+    await triggerA.focus();
+    await page.keyboard.press('Enter');
+    const card = page.getByTestId('info-card');
+    await expect(card).toBeVisible();
+    await expect(card).toBeFocused();
+
+    // Straight from card A to card B: the old node exits before the new one mounts,
+    // and focus must land on the new card instead of falling back to body.
+    const triggerB = page.getByTestId('star-trigger-miraB');
+    await triggerB.focus();
+    await page.keyboard.press('Enter');
+    await expect(card).toContainText('蒭藁增二 B');
+    await expect(card).toBeFocused();
+
+    await page.keyboard.press('Escape');
+    await expect(card).toHaveCount(0);
+    // The return target is where the reading session started.
+    await expect(triggerA).toBeFocused();
   });
 
   test('the close control has an accessible name and closes with the keyboard', async ({ page }) => {
@@ -156,12 +181,27 @@ test.describe('interaction hint exit and rediscovery', () => {
     await page.mouse.move(640, 400);
     await page.mouse.wheel(0, 120);
     await expect(hint).toHaveCount(0);
+    // The learned state is written at dismissal…
+    expect(await page.evaluate(() => localStorage.getItem('mira:learned-controls'))).toBe('1');
 
     const recall = page.getByTestId('interaction-hint-recall');
     await expect(recall).toBeVisible();
     await expectMinTarget(page, 'interaction-hint-recall');
     await recall.click();
     await expect(hint).toBeVisible();
+  });
+
+  test('a returning visit does not show the hint again, but the recall entry stays', async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('mira:seen-opening', '1');
+      localStorage.setItem('mira:learned-controls', '1');
+    });
+    await page.goto(APP);
+    await expect(page.getByTestId('explore-ui')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('canvas')).toHaveAttribute('data-camera-pose', /.+/, { timeout: 30000 });
+
+    await expect(page.getByTestId('interaction-hint')).toHaveCount(0);
+    await expect(page.getByTestId('interaction-hint-recall')).toBeVisible();
   });
 });
 
@@ -210,3 +250,41 @@ for (const viewport of VIEWPORTS) {
     await page.screenshot({ path: `${EVIDENCE}/interface-20-${viewport.name}.png` });
   });
 }
+
+// Evidence captures: the open card and the epilogue in its WenKai face, kept as
+// living tests so the proof re-renders whenever the interface changes.
+test.describe('evidence captures', () => {
+  test('the open info card at 390x844', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await gotoExplore(page);
+
+    await page.getByTestId('star-trigger-miraA').focus();
+    await page.keyboard.press('Enter');
+    const card = page.getByTestId('info-card');
+    await expect(card).toBeVisible();
+    await expect(card).toContainText('蒭藁增二 A');
+    // Let the enter animation settle before the shot.
+    await page.waitForTimeout(1000);
+
+    await page.screenshot({ path: `${EVIDENCE}/interface-20-card-open.png` });
+  });
+
+  test('the epilogue renders in its own face', async ({ page }) => {
+    // The dev-only idle overrides compress the 60s epilogue threshold into seconds
+    // (same pattern as viewer-control.spec); production ignores them.
+    await gotoExplore(page, '/?quality=low&idle-resume=1000&idle-ramp=800&idle-epilogue=4000&idle-lead=800');
+
+    const epilogue = page.getByTestId('epilogue-text');
+    await expect(epilogue).toBeVisible({ timeout: 15000 });
+    await expect(epilogue).toContainText('星尘');
+    // font-epilogue must resolve to the self-hosted WenKai subset — and the face
+    // must actually be loaded, not just named in the stack.
+    const family = await epilogue.evaluate((el) => getComputedStyle(el).fontFamily);
+    expect(family).toContain('Mira WenKai');
+    const faceLoaded = await epilogue.evaluate(() => document.fonts.check('24px "Mira WenKai"', '星'));
+    expect(faceLoaded).toBe(true);
+    await page.waitForTimeout(1000);
+
+    await page.screenshot({ path: `${EVIDENCE}/interface-20-epilogue.png` });
+  });
+});
