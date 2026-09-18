@@ -49,8 +49,32 @@ export function freePort() {
   });
 }
 
-export async function startDevServer(port) {
-  // Spawn vite's JS entry directly so killing the child kills the server (no npm shim
+// The production counterpart of startDevServer: serve `dist` (run `npm run build`
+// first) for measurements that must see the real bundle — cold start, quality.
+export function startPreviewServer(port) {
+  return spawn(
+    process.execPath,
+    ['node_modules/vite/bin/vite.js', 'preview', '--port', String(port), '--strictPort', '--host', '127.0.0.1'],
+    { stdio: ['ignore', 'pipe', 'pipe'] },
+  );
+}
+
+export async function waitForServer(baseUrl, child) {
+  const deadline = Date.now() + 60_000;
+  while (Date.now() < deadline) {
+    if (child.exitCode !== null) throw new Error(`server exited with ${child.exitCode}`);
+    try {
+      const response = await fetch(`${baseUrl}/`);
+      if (response.ok) return;
+    } catch {
+      // Not up yet.
+    }
+    await new Promise((resolve) => setTimeout(resolve, 300));
+  }
+  throw new Error('server did not start within 60s');
+}
+
+export async function startDevServer(port) {  // Spawn vite's JS entry directly so killing the child kills the server (no npm shim
   // orphaning a process on Windows).
   const child = spawn(
     process.execPath,

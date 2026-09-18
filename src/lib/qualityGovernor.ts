@@ -7,9 +7,9 @@
 //     evidence is sustained — a window of frames is judged by its P75 (a GC pause
 //     or a background tab's timer throttle must not count), and a change needs two
 //     consecutive windows on the same side of the band;
-//   - the band between upFrameMs and upFrameMs' slow counterpart is the hysteresis:
-//     frame times inside it (a healthy vsync-locked 60fps) reset both streaks and
-//     change nothing;
+//   - the band between upFrameMs and downFrameMs is the hysteresis: frame times
+//     inside it (a healthy vsync-locked 60fps) reset both streaks and change
+//     nothing;
 //   - every change steps exactly one tier and starts a cooldown, so a session
 //     slides high → mid → low over tens of seconds, never in one jump;
 //   - phones are exempt (desktopOnly): the SPEC sets no frame-rate bar for mobile;
@@ -18,9 +18,10 @@
 //
 // The descent order "costly post-processing/resolution first, decoration last"
 // is not encoded here — it falls out of the tier table in Scene.tsx: high → mid
-// cuts bloom levels and dpr, mid → low drops post-processing entirely and only
-// then thins the star field and the tail. The governor only ever moves one step
-// along that fixed ladder.
+// cuts ONLY bloom levels and dpr (the star field, the tail and the stream keep
+// their full counts); mid → low drops post-processing entirely and only then
+// thins the decoration. The governor only ever moves one step along that fixed
+// ladder.
 import { explicitQualityPin, isMobileSized } from '../constants/quality';
 import type { QualityTier } from '../constants/quality';
 
@@ -77,9 +78,10 @@ export function initialGovernorState(tier: QualityTier, now: number): GovernorSt
   return { tier, lastChangeAt: now, windowStartAt: now, slowWindows: 0, fastWindows: 0, samples: [] };
 }
 
-function p75(samples: number[]): number {
-  const sorted = [...samples].sort((a, b) => a - b);
-  return sorted[Math.max(0, Math.ceil(sorted.length * 0.75) - 1)];
+// Shared percentile over an ascending-sorted array (window P75 below, recorder
+// stats further down).
+function percentile(sorted: number[], q: number): number {
+  return sorted[Math.max(0, Math.ceil(sorted.length * q) - 1)];
 }
 
 export function evaluateQuality(
@@ -104,7 +106,7 @@ export function evaluateQuality(
   // window is long). A window with no frames at all never settles, because this
   // function is only ever fed by a rendered frame; background resume is handled
   // by the caller resetting the state, not by judging stale samples.
-  const typical = p75(samples);
+  const typical = percentile([...samples].sort((a, b) => a - b), 0.75);
   let { slowWindows, fastWindows } = state;
   if (typical > config.downFrameMs) {
     slowWindows += 1;
@@ -279,10 +281,17 @@ export function createQualityRecorder(capacity = 8192): QualityRecorder {
       const count = Math.min(written, capacity);
       if (count === 0) return null;
       const values = Array.from(ring.slice(0, count)).sort((a, b) => a - b);
-      const pick = (q: number) => values[Math.max(0, Math.ceil(count * q) - 1)];
       const mean = values.reduce((sum, v) => sum + v, 0) / count;
       const slowOver25 = values.filter((v) => v > 25).length;
-      return { count, mean, p50: pick(0.5), p75: pick(0.75), p95: pick(0.95), max: values[count - 1], slowOver25 };
+      return {
+        count,
+        mean,
+        p50: percentile(values, 0.5),
+        p75: percentile(values, 0.75),
+        p95: percentile(values, 0.95),
+        max: values[count - 1],
+        slowOver25,
+      };
     },
   };
 }

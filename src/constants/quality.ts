@@ -7,7 +7,9 @@
 // light tier so behavioural tests can run anywhere.
 //
 // When the query is absent, pick a tier from device capability so a mid-range phone
-// uses the mobile LOD and dpr 1 rather than the desktop 5000-star / bloom-4 path.
+// takes the mid path (dpr 1, lighter bloom) rather than the desktop dpr-1.5 / bloom-4
+// path. Decoration counts stay at the desktop level until the light tier — the
+// descent cuts post-processing and resolution before it touches the scene (#26).
 export type QualityTier = 'high' | 'mid' | 'low';
 
 const MOBILE_WIDTH = 640;

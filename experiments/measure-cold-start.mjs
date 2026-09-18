@@ -17,35 +17,10 @@
 // The verdict line feeds the SPEC decision "测量冷启动和解析后再拆分加载":
 // splitting the bundle is justified only if these numbers say the monolith is
 // what keeps the first frame late — chunk counts are not evidence.
-import { spawn } from 'node:child_process';
 import { chromium } from 'playwright';
-import { freePort } from './baseline-harness.mjs';
+import { freePort, startPreviewServer, waitForServer } from './baseline-harness.mjs';
 
 const RUNS = 5;
-
-function startPreviewServer(port) {
-  const child = spawn(
-    process.execPath,
-    ['node_modules/vite/bin/vite.js', 'preview', '--port', String(port), '--strictPort', '--host', '127.0.0.1'],
-    { stdio: ['ignore', 'pipe', 'pipe'] },
-  );
-  return child;
-}
-
-async function waitForServer(baseUrl, child) {
-  const deadline = Date.now() + 60_000;
-  while (Date.now() < deadline) {
-    if (child.exitCode !== null) throw new Error(`preview server exited with ${child.exitCode}`);
-    try {
-      const response = await fetch(`${baseUrl}/`);
-      if (response.ok) return;
-    } catch {
-      // Not up yet.
-    }
-    await new Promise((resolve) => setTimeout(resolve, 300));
-  }
-  throw new Error('preview server did not start within 60s');
-}
 
 const port = await freePort();
 const child = startPreviewServer(port);

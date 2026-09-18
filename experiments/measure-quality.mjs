@@ -8,7 +8,7 @@
 //
 //   idle       ~2min untouched viewing (the auto camera resumes naturally)
 //   drag       ~30s of continuous dragging
-//   background a second tab hides the scene tab for ~20s, then the return
+//   background the real window is minimised through CDP for ~20s, then restored
 //   watch      ~5min continuous viewing (long-run frame times, resource growth)
 //   throttle   CDP CPU throttling forces real slow frames, so the governor's
 //              tier changes are recorded on real hardware; then the throttle
@@ -20,10 +20,9 @@
 // Output: docs/design-audit-2026-09-17/evidence/quality-26.json + a console summary.
 //
 // QUALITY_MEASURE_PROFILE=short runs a ~2min smoke of the same protocol.
-import { spawn } from 'node:child_process';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
-import { freePort } from './baseline-harness.mjs';
+import { freePort, startPreviewServer, waitForServer } from './baseline-harness.mjs';
 
 const PROFILE =
   process.env.QUALITY_MEASURE_PROFILE === 'short'
@@ -41,29 +40,6 @@ let jiggleCount = 0;
 async function keepAwake(page) {
   jiggleCount += 1;
   await page.mouse.move(jiggleCount % 2 === 0 ? 4 : 6, 6);
-}
-
-function startPreviewServer(port) {
-  return spawn(
-    process.execPath,
-    ['node_modules/vite/bin/vite.js', 'preview', '--port', String(port), '--strictPort', '--host', '127.0.0.1'],
-    { stdio: ['ignore', 'pipe', 'pipe'] },
-  );
-}
-
-async function waitForServer(baseUrl, child) {
-  const deadline = Date.now() + 60_000;
-  while (Date.now() < deadline) {
-    if (child.exitCode !== null) throw new Error(`preview server exited with ${child.exitCode}`);
-    try {
-      const response = await fetch(`${baseUrl}/`);
-      if (response.ok) return;
-    } catch {
-      // Not up yet.
-    }
-    await new Promise((resolve) => setTimeout(resolve, 300));
-  }
-  throw new Error('preview server did not start within 60s');
 }
 
 function readGpuStrings(page) {
@@ -132,8 +108,8 @@ async function runPhase(name, durationMs, page, timeline, activity) {
 const port = await freePort();
 const child = startPreviewServer(port);
 const baseUrl = `http://127.0.0.1:${port}`;
-// Headed on purpose: the machine's real GPU does the rendering, and a second tab
-// can genuinely hide the scene tab later.
+// Headed on purpose: the machine's real GPU does the rendering, and the window
+// can genuinely be minimised for the background phase.
 const browser = await chromium.launch({ headless: false });
 const phases = [];
 const timeline = [];

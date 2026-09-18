@@ -31,19 +31,23 @@ interface SceneProps {
   onSelectStar: (star: StarName | null) => void;
 }
 
-// Level of Detail settings
+// Level of Detail settings. The descent order is the ticket's contract (#26):
+// high → mid touches ONLY the costly post-processing (bloom levels) and
+// resolution (dpr) — the star field, the tail and the stream keep their full
+// counts; mid → low is where decoration is cut, after post-processing is
+// already off (PostProcessing returns null for low).
 const LOD = {
-  mobile: {
-    starCount: 1500,
-    sphereSegments: 32,
-    bloomLevels: 2,
-    tailParticles: 3000,
-    streamParticles: 300,
-  },
-  desktop: {
+  high: {
     starCount: 5000,
     sphereSegments: 64,
     bloomLevels: 4,
+    tailParticles: 10000,
+    streamParticles: 600,
+  },
+  mid: {
+    starCount: 5000,
+    sphereSegments: 64,
+    bloomLevels: 2,
     tailParticles: 10000,
     streamParticles: 600,
   },
@@ -141,7 +145,7 @@ function SceneContent({
   const setCinematicPhase = useBinaryStar((state) => state.setCinematicPhase);
   const setCinematicTime = useBinaryStar((state) => state.setCinematicTime);
   const setIntroComplete = useBinaryStar((state) => state.setIntroComplete);
-  const lod = tier === 'low' ? LOD.low : tier === 'mid' ? LOD.mobile : LOD.desktop;
+  const lod = LOD[tier];
   const capture = captureMode();
 
   // 今晚的 Mira (#23) bridge: the save flow presses capture synchronously inside
@@ -681,7 +685,7 @@ function PostProcessing({ tier }: { tier: QualityTier }) {
   // Bloom is a stack of full-screen passes: keep it off the light tier.
   // Low quality has no bloom — StarField carries the same envelope there.
   if (tier === 'low') return null;
-  const levels = tier === 'mid' ? LOD.mobile.bloomLevels : LOD.desktop.bloomLevels;
+  const levels = tier === 'mid' ? LOD.mid.bloomLevels : LOD.high.bloomLevels;
 
   return (
     <EffectComposer enableNormalPass={false}>
@@ -720,7 +724,11 @@ export default function Scene({ onSelectStar }: SceneProps) {
   // state below never moves away from the pin.
   const setup = governorSetup();
   const [tier, setTier] = useState<QualityTier>(() => setup.startTier ?? resolveQualityTier());
-  const [lastQualityChange, setLastQualityChange] = useState<string | null>(null);
+  const [lastQualityChange, setLastQualityChange] = useState<{
+    from: QualityTier;
+    to: QualityTier;
+    reason: 'sustained-slow' | 'sustained-fast';
+  } | null>(null);
   // Antialias is a context-creation flag: a runtime downgrade cannot re-create the
   // context, so it follows the opening tier, not the governed one.
   const [antialias] = useState(() => tier !== 'low');
@@ -744,7 +752,7 @@ export default function Scene({ onSelectStar }: SceneProps) {
   const handleTierChange = useCallback(
     (from: QualityTier, to: QualityTier, reason: 'sustained-slow' | 'sustained-fast') => {
       setTier(to);
-      setLastQualityChange(`${from}>${to}:${reason}`);
+      setLastQualityChange({ from, to, reason });
     },
     [],
   );
@@ -755,7 +763,10 @@ export default function Scene({ onSelectStar }: SceneProps) {
   useEffect(() => {
     if (!glCanvas) return;
     glCanvas.dataset.qualityTier = tier;
-    if (lastQualityChange !== null) glCanvas.dataset.qualityLastChange = lastQualityChange;
+    if (lastQualityChange !== null) {
+      glCanvas.dataset.qualityLastChange =
+        `${lastQualityChange.from}>${lastQualityChange.to}:${lastQualityChange.reason}`;
+    }
   }, [glCanvas, tier, lastQualityChange]);
 
   // The gate's hard bound: materials that never answer are declared timed-out

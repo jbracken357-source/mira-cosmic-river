@@ -9,7 +9,7 @@
 - **新增 `src/lib/qualityGovernor.ts`**（纯函数，模式照 viewerControl.ts）：`evaluateQuality` 逐帧喂入帧时间，按 2s 窗口取 P75 聚合（单帧毛刺不计），连续 2 个慢窗（P75>19ms）降一档、连续 2 个快窗（P75<13ms）升一档，每次换档步进一档并进入 8s 冷却；13–19ms 之间为滞回带，健康 60fps 落带内不换档。`stallFrameMs=250`：更慢的帧是 rAF 饥饿（最小化/遮挡窗口不会总是触发 visibilitychange，实测见第 3 条），不是 GPU 能力的度量，不计入证据。初始化视为一次换档，着色器编译期的慢帧有冷却保护。`resolveGovernorSetup`：显式 `?quality=` 钉死档位 governor 不启动；短边 <640px 的设备在 desktopOnly 下不设帧率门槛。`?quality-probe/window/cooldown/start` 为 dev-only 测试钩子（照 idleTiming 的 PROD 门控）。`window.__miraQuality` 常驻记录器（always-on）：帧时间环形缓冲、换档事件、每 5s 资源采样（几何体/纹理/JS 堆/dpr/分辨率/档位）——SPEC 要求"真实记录"，观测是交付物本身。
 - **`src/constants/quality.ts`**：`detectQualityTier` 现在识别显式 `?quality=high|mid|low` 三档钉死（原仅 low）；新增 `explicitQualityPin` 与 `isMobileSized`（短边规则提取复用，governor 的手机判定与分档同源）。
 - **`src/components/Scene/Scene.tsx`**：档位从模块常量改为 React state（初值=探测档或 dev `?quality-start=`），governor 的 change verdict 才触发重渲染；LOD/bloom/dpr 随档切换（dpr 用 r3f 原生响应式 prop）。后台绘制控制：`visibilitychange` → Canvas `frameloop` 在 'always'/'never' 间切换（r3f 内部单循环管理，天然无双循环）；回前台时 governor 状态重置（同档、新窗口、新冷却宽限）。观测属性：canvas 上 `data-quality-tier`/`data-quality-last-change`（always-on，仅换档时写入）与 dev-only `data-frame-count`（帧心跳）。antialias 是上下文创建期参数，跟随初始档。
-- **降档顺序**（先砍高成本后处理/分辨率再砍装饰）不由 governor 编码，而由档位表天然保证：high→mid 砍 bloom levels 4→2 与 dpr 1.5→1；mid→low 才关 EffectComposer 并减粒子（5000→300 星、10000→300 尾巴粒子）。
+- **降档顺序**（先砍高成本后处理/分辨率再砍装饰）由 LOD 表体现，review 修正后严格成立：high→mid **只**动 bloom levels 4→2 与 dpr 1.5→1，星野 5000、尾巴 10000、来流 600、球面 64 段全部保持；mid→low 才关 EffectComposer 并把装饰砍到 300/300/150/16。（首版 mid 档同时砍了 70% 装饰，不符合票面顺序，本轮修正；LOD 键名随之从 mobile/desktop 改为 mid/high 名实一致。）副带取舍：自动选档的手机落 mid 档，现在保留满装饰、只减 dpr 与 bloom——SPEC 明确手机无帧率门槛，观感优先。
 - **`experiments/measure-quality.mjs`**：headed Chromium + 本机真实 GPU，跑生产构建（vite preview）；启动时打印 UNMASKED_RENDERER 并拒绝软件渲染。协议照 SPEC：静置 ~2min、连续拖动 ~30s、真实最小化后台 ~20s（CDP `Browser.setWindowBounds`，非合成事件）、连续观看 ~5min、10x CPU 节流强制慢帧、恢复观察。输出 `quality-26.json`。
 
 ## 逐条验收标准
@@ -82,6 +82,7 @@
 
 - `c48501a` Add failing quality governor specs for #26
 - `5c17713` Govern quality at runtime: hysteresis tier changes, background draw control (#26)
-- `16e0ad3` Ignore starved frames in the governor and record real-GPU long-run evidence (#26)（stall 阈、测量脚本、本证据文件）
+- `fc3f8b9` Ignore starved frames in the governor and record real-GPU long-run evidence (#26)（stall 阈、测量脚本、本证据文件）
+- `62eb77d` Cut post-processing before decoration in the quality descent (#26)（review 修正：LOD 表重排装饰最后砍、注释与证据笔误、测量脚本去重）
 
 最终观感验收（各档画面气质）属于观看者，见 #30。
