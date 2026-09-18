@@ -9,7 +9,10 @@
 //   - every time-driven uniform (uTime accumulation, twinkle phases, stream flow, the
 //     decorative orbit) is parked at CAPTURE_TIME, one fixed animation phase;
 //   - OrbitControls auto-rotate and damping switch off, mouse influence drops to zero;
-//   - the run starts from direct entry — the full cinematic belongs to the ritual moment;
+//   - the run starts from direct entry — the full cinematic belongs to the ritual moment —
+//     unless `?cinematic-t=<ms>` is also given, which freezes the opening at that instant
+//     (opening phase captures; the pose comes from lib/openingTimeline, so it is
+//     deterministic frame for frame);
 //   - `?cam=default|near|az90|az180|az270` parks the camera at a named pose, re-applied
 //     every frame so nothing can drift.
 //
@@ -35,6 +38,9 @@ export interface CapturePose {
 export interface CaptureMode {
   active: boolean;
   camera: string;
+  // Milliseconds into the full cinematic, or null for the usual direct entry. Only
+  // honored while capture mode is active.
+  cinematicT: number | null;
 }
 
 let cached: CaptureMode | null = null;
@@ -43,12 +49,16 @@ export function captureMode(): CaptureMode {
   if (cached === null) {
     let active = false;
     let camera = 'default';
+    let cinematicT: number | null = null;
     if (typeof window !== 'undefined' && !import.meta.env.PROD) {
       const params = new URLSearchParams(window.location.search);
       active = params.get('capture') === '1';
       camera = params.get('cam') ?? 'default';
+      const rawT = params.get('cinematic-t');
+      const parsed = rawT === null ? NaN : Number(rawT);
+      if (Number.isFinite(parsed) && parsed >= 0) cinematicT = parsed;
     }
-    cached = { active, camera };
+    cached = { active, camera, cinematicT };
   }
   return cached;
 }

@@ -81,8 +81,10 @@ export function persistFoundTail() {
 // during a render.
 const initialSky = currentSkyState();
 // Capture mode enters via direct entry: a baseline always starts in the explore state,
-// without persisting the seen-opening flag.
-const startInExplore = captureMode().active || hasSeenOpening();
+// without persisting the seen-opening flag — except `?cinematic-t=`, which pins the
+// full cinematic at one instant instead (opening phase captures, #28).
+const capture = captureMode();
+const startInExplore = (capture.active && capture.cinematicT === null) || hasSeenOpening();
 
 export const useBinaryStar = create<BinaryStarStore>((set, get) => ({
   mode: 'explore',

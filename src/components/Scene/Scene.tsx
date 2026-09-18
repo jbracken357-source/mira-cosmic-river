@@ -9,6 +9,7 @@ import type { QualityTier } from '../../constants';
 import { PORTRAIT_CAMERA } from '../../constants/animation';
 import { MATERIALS_TIMEOUT_MS, gateAllowsCinematic } from '../../lib/entryReadiness';
 import { advanceTime, captureMode, resolveCapturePose } from '../../lib/captureMode';
+import { cinematicTimeScale, openingCaptionMark, resolveOpeningPose } from '../../lib/openingTimeline';
 import { collectViewerHolds, idleTiming, resolveViewerControl } from '../../lib/viewerControl';
 import {
   driveQualityGovernor,
@@ -63,10 +64,6 @@ const LOD = {
 
 function easeInOutCubic(t: number): number {
   return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-}
-
-function clamp01(v: number): number {
-  return Math.max(0, Math.min(1, v));
 }
 
 // Preserve the horizontal view on portrait screens instead of cropping the stars.
@@ -173,6 +170,7 @@ function SceneContent({
   const timeRef = useRef(0);
   const cinematicStartRef = useRef(0);
   const cinematicElapsedRef = useRef(0);
+  const captionMarkRef = useRef(0);
   const exploreAppliedRef = useRef(false);
   const orbitControlsRef = useRef<React.ElementRef<typeof DreiOrbitControls>>(null);
   const tailOpacityRef = useRef(0);
@@ -277,8 +275,10 @@ function SceneContent({
         if (landExplore) applyPose(camera, orbitControlsRef.current, CAMERA.EXPLORE);
         if (orbitControlsRef.current) {
           if (!landExplore) {
-            const lookAt = reduceMotion ? CAMERA.EXPLORE.lookAt : CAMERA.FAR.lookAt;
-            orbitControlsRef.current.target.set(...lookAt);
+            // A finished opening has already settled onto the explore framing; the
+            // orbit target only has to join it (the far and explore framings share
+            // the look-at, so this cannot jump).
+            orbitControlsRef.current.target.set(...CAMERA.EXPLORE.lookAt);
           }
           orbitControlsRef.current.enabled = true;
           cinematicStartRef.current = 0;
@@ -373,12 +373,26 @@ function SceneContent({
       }
       // Replay has to re-anchor here; keeping the old start time would skip the opening.
       if (cinematicStartRef.current === 0) cinematicStartRef.current = Date.now();
-      const elapsed = (Date.now() - cinematicStartRef.current) / 1000;
+      // Two dev-only clock overrides: `?cinematic-t=` (with capture mode) freezes the
+      // opening at one instant for phase evidence; `?cinematic-scale=` multiplies the
+      // wall clock so e2e reaches the natural ending in seconds.
+      const frozen = capture.active ? capture.cinematicT : null;
+      const elapsed =
+        frozen !== null
+          ? frozen / 1000
+          : ((Date.now() - cinematicStartRef.current) / 1000) * cinematicTimeScale();
       const t = elapsed / timeSpeed;
       cinematicElapsedRef.current = t;
 
       if (t < CINEMATIC.EXPLORE_MODE) {
-        setCinematicTime(t);
+        // The overlay only reacts at its caption boundaries, so publish the boundary
+        // value (openingCaptionMark) instead of the raw clock: the store updates on
+        // segment changes only, never per frame (SPEC 界面订阅离散阶段).
+        const mark = openingCaptionMark(t);
+        if (mark !== captionMarkRef.current) {
+          captionMarkRef.current = mark;
+          setCinematicTime(mark);
+        }
         if (t >= CINEMATIC.STARS_APPEAR && cinematicPhase === 'dark') {
           setCinematicPhase('stars-appear');
         }
@@ -388,69 +402,22 @@ function SceneContent({
         if (t >= CINEMATIC.TAIL_REVEAL_START && cinematicPhase === 'pull-back') {
           setCinematicPhase('tail-reveal');
         }
-
-        if (reduceMotion) {
-          applyPose(camera, null, CAMERA.EXPLORE);
-        } else {
-          let camPos: [number, number, number];
-          let camFov: number;
-
-          if (t < CINEMATIC.STARS_APPEAR) {
-            camPos = CAMERA.CLOSE.position;
-            camFov = CAMERA.CLOSE.fov;
-          } else if (t < CINEMATIC.PULL_BACK_START) {
-            camPos = CAMERA.CLOSE.position;
-            camFov = CAMERA.CLOSE.fov;
-          } else if (t < CINEMATIC.PULL_BACK_END) {
-            const pullT = clamp01((t - CINEMATIC.PULL_BACK_START) / (CINEMATIC.PULL_BACK_END - CINEMATIC.PULL_BACK_START));
-            const eased = easeInOutCubic(pullT);
-            camPos = [
-              THREE.MathUtils.lerp(CAMERA.CLOSE.position[0], CAMERA.FAR.position[0], eased),
-              THREE.MathUtils.lerp(CAMERA.CLOSE.position[1], CAMERA.FAR.position[1], eased),
-              THREE.MathUtils.lerp(CAMERA.CLOSE.position[2], CAMERA.FAR.position[2], eased),
-            ];
-            camFov = THREE.MathUtils.lerp(CAMERA.FOV_START, CAMERA.FOV_END, eased);
-          } else {
-            camPos = CAMERA.FAR.position;
-            camFov = CAMERA.FOV_END;
-          }
-
-          camera.position.set(camPos[0], camPos[1], camPos[2]);
-          camera.fov = fittedFov(camFov, camera.aspect);
-          camera.updateProjectionMatrix();
-
-          if (t >= CINEMATIC.TAIL_REVEAL_START) {
-            const lookT = clamp01((t - CINEMATIC.TAIL_REVEAL_START) / (CINEMATIC.TAIL_FULL - CINEMATIC.TAIL_REVEAL_START));
-            camera.lookAt(
-              THREE.MathUtils.lerp(0, CAMERA.FAR.lookAt[0], easeInOutCubic(lookT)),
-              THREE.MathUtils.lerp(0, CAMERA.FAR.lookAt[1], easeInOutCubic(lookT)),
-              THREE.MathUtils.lerp(0, CAMERA.FAR.lookAt[2], easeInOutCubic(lookT)),
-            );
-          } else {
-            camera.lookAt(0, 0, 0);
-          }
-        }
       } else if (cinematicPhase !== 'explore') {
         // The opening finished: hand over to free exploration. This has to live outside
         // the `t < EXPLORE_MODE` branch above, or the sequence never ends on its own and
-        // the viewer is stranded on the last cinematic frame until they press Skip.
+        // the viewer is stranded on the last cinematic frame.
         setCinematicPhase('explore');
         setIntroComplete(true);
       }
 
-      const cp = cinematicPhase;
-      const ct = t;
-      if (cp === 'dark' || cp === 'stars-appear') {
-        tailOpacityRef.current = 0;
-      } else if (cp === 'pull-back' && ct < CINEMATIC.TAIL_REVEAL_START) {
-        const ot = clamp01((ct - CINEMATIC.PULL_BACK_START) / (CINEMATIC.TAIL_REVEAL_START - CINEMATIC.PULL_BACK_START));
-        tailOpacityRef.current = ot * 0.15;
-      } else if (cp === 'pull-back' || cp === 'tail-reveal') {
-        const ot = clamp01((ct - CINEMATIC.TAIL_REVEAL_START) / (CINEMATIC.TAIL_FULL - CINEMATIC.TAIL_REVEAL_START));
-        tailOpacityRef.current = easeInOutCubic(ot) * 0.85;
-      } else {
-        tailOpacityRef.current = 0.85;
-      }
+      // The whole opening — hold, river pass, settle, and the reduced-motion pin — is
+      // resolved by the pure timeline so the frame loop only applies the pose.
+      const pose = resolveOpeningPose(t, { reduceMotion, portrait });
+      camera.position.set(pose.position[0], pose.position[1], pose.position[2]);
+      camera.fov = fittedFov(pose.fov, camera.aspect);
+      camera.updateProjectionMatrix();
+      camera.lookAt(pose.lookAt[0], pose.lookAt[1], pose.lookAt[2]);
+      tailOpacityRef.current = pose.tailOpacity;
     }
 
     // Capture mode parks the camera at the requested pose every frame — after the explore
