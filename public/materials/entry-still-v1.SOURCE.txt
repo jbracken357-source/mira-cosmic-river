@@ -1,7 +1,7 @@
 file: entry-still-v1.jpg
-source-scene-commit: 9273c7c5fe4924491ed769992937b0359560038d
-captured-on: 2026-09-17
+source-scene-commit: d601df101e71ecc296519fef4a4fc90cbb6522b1
+captured-on: 2026-09-18
 epoch: 2026-09-12T00:00:00Z
 view: default (1440x900, dpr 1, quality tier pinned high)
 captured-by: experiments/capture-entry-still.mjs
-note: recorded from the pre-01/02 scene; ticket 11 (#29) re-makes this still when the new art lands
+note: re-made from the post-01/02 scene by ticket 11 (#29); earlier versions predate the new art

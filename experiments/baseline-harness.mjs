@@ -126,6 +126,40 @@ export async function waitForExploreReady(page) {
   }
 }
 
+// The transient overlays (tail discovery hint, interaction hint) sit in every baseline
+// shot and animate in via Framer Motion — JS-driven, so FREEZE_CSS cannot stop them. On
+// a loaded machine the entry fade can still be mid-flight when the fixed settle window
+// ends, which is the intermittent verify-baseline "default: ~614 px, max diff 10"
+// signature (one shot's hint text a few opacity steps behind the other's). Settled means
+// three consecutive reads of every overlay's effective opacity agree; the returned
+// readout goes into the manifest as a per-run state fingerprint, so a future divergence
+// can be located directly instead of re-derived (the deferred hardening from #24/#26,
+// landed here as ticket 11's evidence-closing item).
+export async function waitForOverlaySettle(page, timeoutMs = 8000) {
+  const readout = await page.waitForFunction(async () => {
+    const ids = ['tail-hint', 'interaction-hint', 'interaction-hint-recall', 'milestone-hint'];
+    const read = () => ids.map((id) => {
+      const el = document.querySelector(`[data-testid="${id}"]`);
+      if (!el) return 'absent';
+      let opacity = 1;
+      let node = el;
+      while (node && node !== document.body) {
+        const o = parseFloat(getComputedStyle(node).opacity);
+        if (!Number.isNaN(o)) opacity = Math.min(opacity, o);
+        node = node.parentElement;
+      }
+      return opacity.toFixed(3);
+    }).join(',');
+    const a = read();
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    const b = read();
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    const c = read();
+    return a === b && b === c ? a : null;
+  }, null, { timeout: timeoutMs }).catch(() => null);
+  return readout;
+}
+
 // Kill animations and transitions (the explore UI has a pulsing dot) so the DOM overlay
 // is as frozen as the WebGL scene.
 const FREEZE_CSS = `
@@ -214,6 +248,9 @@ export async function captureViews({ baseUrl, outDir, views = VIEWS, epoch = BAS
       // Web fonts can swap after the settle window on a loaded machine; wait for the
       // font pipeline to be quiet so header text renders identically across runs.
       await page.evaluate(() => document.fonts.ready.then(() => undefined));
+      // The JS-animated overlays must be at rest before the shot (see
+      // waitForOverlaySettle); the readout doubles as a manifest fingerprint.
+      const overlaySettle = await waitForOverlaySettle(page);
       // Let the first frozen frames settle (bloom chain warm-up, font swap).
       await page.waitForTimeout(1200);
       const file = `${view.name}.png`;
@@ -241,6 +278,7 @@ export async function captureViews({ baseUrl, outDir, views = VIEWS, epoch = BAS
         texturesReady,
         cameraPose: pose,
         sky: skyAttrs,
+        overlaySettle,
         pageErrors: errors,
       });
       await context.close();

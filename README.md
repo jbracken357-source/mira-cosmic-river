@@ -15,19 +15,30 @@ See [the visual decision](docs/adr/0003-romantic-hybrid-visuals.md).
 ## What makes it worth returning to
 
 **Real-time binding.** Mira A's brightness uses a deterministic approximation based on
-its ~332-day cycle. The visible orbit is a slow artistic animation, not a prediction
+its ~332-day cycle. Beyond brightness, local colour temperature and the river's density
+now vary subtly with the same cycle — tonight's sky is a little different from last
+week's, reproducibly. The visible orbit is a slow artistic animation, not a prediction
 of the stars' observed positions. No live astronomy service is required.
 
 **Direct entry.** The full 15-second opening plays on a first visit only. After that the
 scene opens straight into the sky, with a very short title fade. The full opening stays
 available as a deliberate choice — for showing someone, or just watching it again.
 
+**Ambient sound.** Silent by default. One toggle starts an original synthesised ambient
+bed (no voices, no lyrics) that follows the viewing distance; the preference is
+remembered, and sound waits politely for a gesture if the browser requires one.
+
+**Tonight's Mira.** The save entry locks the current view at the moment it is pressed —
+frame, date, language and phase together — and exports a clean PNG with optional date
+and a fixed phrase. No controls in the image, no re-framing.
+
 **The tail.** The 13-light-year ultraviolet wake is the emotional centre of the scene,
 discovered by GALEX in 2007, interpreted here as the light left by a shared journey.
 
-Terminology (viewer, replayability, direct entry, ritual moment, real-time binding,
-pulsation phase, the tail, epilogue) is defined in [CONTEXT.md](./CONTEXT.md). Please use
-those words rather than code jargon.
+Terminology (viewer, replayability, direct entry, full cinematic, ritual moment,
+real-time binding, pulsation phase, the tail, info card, ambient sound, tonight's Mira,
+epilogue) is defined in [CONTEXT.md](./CONTEXT.md). Please use those words rather than
+code jargon.
 
 ## Running it
 
@@ -56,18 +67,22 @@ React 19 + TypeScript, three.js via react-three-fiber, Zustand for state, Tailwi
 Framer Motion for the interface. Local AI-generated density maps supply fine detail
 for the stellar surface and layered river; shaders provide colour, motion and depth.
 Procedural material fallbacks keep the scene usable if either image fails to load.
-The two WebP maps total about 662 KB; the full concept images are not runtime backgrounds.
+The two WebP maps total about 662 KB; the full concept images are not runtime
+backgrounds, and the recorded entry still ships alongside them for slow loads and
+draw failures.
 
 ```
 src/
   components/Scene/   the 3D scene: stars, tail, stream, orbit, star field
-  components/UI/      cinematic overlay, info cards, closing message
+  components/UI/      cinematic overlay, info cards, closing message, tonight save
   constants/          palette, physics, timings, translations, quality tiers
-  lib/                the star clock: pure functions, no rendering
+  lib/                pure seams, no rendering: star clock, river lighting,
+                      viewer control, quality governor, ambient graph, save flow
   shaders/            GLSL sources
   hooks/              store and device hooks
 tests/e2e/            Playwright specs (behaviour, not pixels)
-tests/unit/           star-clock and quality specs (same Playwright command)
+tests/unit/           pure-function specs (star clock, river lighting, viewer
+                      control, quality governor, save flow, entry readiness)
 docs/adr/             decisions worth not re-litigating
 docs/archive/         Gen 1 material, kept for history only
 ```

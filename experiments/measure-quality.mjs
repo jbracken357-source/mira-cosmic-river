@@ -17,7 +17,10 @@
 // All numbers come from the app's own always-on recorder (window.__miraQuality,
 // src/lib/qualityGovernor.ts): per-frame times, tier change events, and 5s
 // resource samples (geometries / textures / JS heap / dpr / resolution / tier).
-// Output: docs/design-audit-2026-09-17/evidence/quality-26.json + a console summary.
+// Output: docs/design-audit-2026-09-17/evidence/<label>-quality.json (default
+// label "quality-26", matching the #26 evidence; pass another label to record a
+// later run — e.g. `node experiments/measure-quality.mjs integration-29` for #29)
+// plus a console summary.
 //
 // QUALITY_MEASURE_PROFILE=short runs a ~2min smoke of the same protocol.
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -30,7 +33,8 @@ const PROFILE =
     : { idle: 120_000, drag: 30_000, background: 20_000, watch: 300_000, throttle: 30_000, recovery: 40_000 };
 
 const SAMPLE_EVERY_MS = 5000;
-const OUT_FILE = 'docs/design-audit-2026-09-17/evidence/quality-26.json';
+const LABEL = process.argv[2] && /^[a-z0-9-]+$/.test(process.argv[2]) ? process.argv[2] : 'quality-26';
+const OUT_FILE = `docs/design-audit-2026-09-17/evidence/${LABEL}-quality.json`;
 
 // A tiny pointer jiggle every sample keeps Windows from turning the display off
 // mid-run (a sleeping screen throttles the very frames being measured). It never
@@ -197,7 +201,8 @@ try {
 }
 
 const report = {
-  ticket: '#26 adaptive quality',
+  label: LABEL,
+  ticket: LABEL === 'quality-26' ? '#26 adaptive quality' : `re-run for ${LABEL} (#26 protocol)`,
   recordedAt: new Date().toISOString(),
   environment: {
     headed: true,

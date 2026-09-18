@@ -12,6 +12,7 @@
 | ../../public/materials/river-density-v1.webp | 光河正式场景素材 | 77766 bytes；随生产构建复制 |
 | ../../experiments/assets/surface-density-v1.png | 星体表面灰度原始素材 | 3257888 bytes；仅源文件 |
 | ../../public/materials/surface-density-v1.webp | 星体表面正式素材 | 584140 bytes；随生产构建复制 |
+| ../../public/materials/entry-still-v1.jpg | 加载遮罩与静态后备共用的记录静帧 | 本项目自身场景的基线法捕获（非外部素材，无第三方权利）；来源场景版本与捕获命令见同目录 entry-still-v1.SOURCE.txt；#24 引入、#29（11）按 01/02 后新美术重制 |
 
 密度图生成约束：纯黑底；单条水平银白薄雾，右窄左宽；细丝与涡流；四边柔和淡出；无星星、双星、文字、颜色或光源；用于弯曲网格的局部纹理。原始文件保持不变。无需假设 PNG 有 alpha，shader 直接读取灰度。
 
