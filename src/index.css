@@ -1,5 +1,23 @@
 @import "tailwindcss";
 
+/* Self-hosted font subsets (#20). Custom family names keep the OFL reserved font
+   names untouched; subset provenance lives in public/fonts/SOURCE.txt. */
+@font-face {
+  font-family: 'Mira Serif SC';
+  src: url('/fonts/mira-serif-sc.woff2') format('woff2');
+  font-weight: 200 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Mira WenKai';
+  src: url('/fonts/mira-wenkai.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* Design Tokens */
 @theme {
   /* Colors - Deep Space Sci-Fi Palette */
@@ -15,10 +33,12 @@
   --color-glass-border: rgba(255, 255, 255, 0.1);
   --color-glass-highlight: rgba(255, 255, 255, 0.15);
 
-  /* Typography */
-  --font-display: 'Cinzel', serif;
-  --font-body: 'Inter', sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
+  /* Typography: Latin runs on the system serif stack; CJK falls through to the
+     self-hosted "Mira Serif SC" subset. The epilogue (结语) alone uses "Mira WenKai". */
+  --font-display: Georgia, 'Times New Roman', 'Mira Serif SC', serif;
+  --font-body: Georgia, 'Times New Roman', 'Mira Serif SC', serif;
+  --font-epilogue: 'Mira WenKai', 'Mira Serif SC', Georgia, serif;
+  --font-mono: ui-monospace, 'Cascadia Mono', Consolas, monospace;
 
   /* Animation */
   --animation-fast: 150ms;
@@ -58,6 +78,10 @@ body {
   font-family: var(--font-body);
 }
 
+.font-epilogue {
+  font-family: var(--font-epilogue);
+}
+
 .font-mono {
   font-family: var(--font-mono);
 }
@@ -85,7 +109,11 @@ body {
   border-color: rgba(255, 255, 255, 0.2);
 }
 
-.glass-button:focus-visible {
+/* One focus ring for every interactive control (#20), .glass-button included:
+   the ring lives at the element level instead of being re-declared per class. */
+button:focus-visible,
+input:focus-visible,
+[role='button']:focus-visible {
   outline: 2px solid var(--color-nebula-violet);
   outline-offset: 2px;
 }

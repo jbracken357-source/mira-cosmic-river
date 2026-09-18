@@ -100,6 +100,14 @@ export const TRANSITIONS = {
   RETURN_CAMERA: 1.5,    // deliberate return to the main view; reduced motion places instantly
 } as const;
 
+// Info card (#20): snappy enough that the card reads as an answer to the tap, not a
+// scene change. Enter 180–240ms, exit 120–180ms; the windows are pinned by
+// tests/unit/animationTiming.spec.ts. Under reduced motion the card only fades.
+export const INFO_CARD = {
+  ENTER: 0.21,
+  EXIT: 0.15,
+} as const;
+
 // Spring physics for Framer Motion
 export const SPRING = {
   gentle: {

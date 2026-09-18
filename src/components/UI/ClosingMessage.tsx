@@ -69,8 +69,8 @@ export default function ClosingMessage() {
         >
           <p
             data-testid="epilogue-text"
-            className="text-white/50 text-lg md:text-2xl italic max-w-lg px-8 text-center leading-relaxed"
-            style={{ fontFamily: "'Caveat', 'Cinzel', serif", textShadow: '0 2px 12px #000' }}
+            className="font-epilogue text-white/50 text-lg md:text-2xl italic max-w-lg px-8 text-center leading-relaxed"
+            style={{ textShadow: '0 2px 12px #000' }}
           >
             {t.closingMessage}
           </p>

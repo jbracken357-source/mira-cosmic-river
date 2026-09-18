@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { useBinaryStar, useMobile, useEntryReadiness } from '../../hooks';
 import { TRANSLATIONS } from '../../constants/translations';
@@ -25,7 +26,7 @@ export default function CinematicOverlay({
     : cinematicTime < CINEMATIC.PULL_BACK_START ? t.cinematic1
       : cinematicTime < CINEMATIC.TAIL_REVEAL_START ? t.cinematic2 : t.cinematic3;
 
-  const handleSkip = () => {
+  const handleEnterEarly = () => {
     useBinaryStar.getState().setIntroComplete(true);
   };
 
@@ -46,15 +47,15 @@ export default function CinematicOverlay({
       data-testid="cinematic-overlay"
       className="relative z-10 flex h-dvh w-full pointer-events-none select-none overflow-hidden"
     >
-      {/* Skip button */}
+      {/* Direct entry mid-opening (#20): translated, full touch target */}
       <div className="absolute top-[max(1rem,env(safe-area-inset-top))] right-[max(1rem,env(safe-area-inset-right))] pointer-events-auto z-50 flex items-center gap-4">
         <AmbientToggle />
         <button
           data-testid="skip-cinematic"
-          onClick={handleSkip}
-          className="text-white/30 text-xs font-extralight tracking-widest uppercase hover:text-white/60 transition-colors"
+          onClick={handleEnterEarly}
+          className="min-h-11 min-w-11 inline-flex items-center justify-center text-white/30 text-xs font-extralight tracking-widest uppercase hover:text-white/60 transition-colors"
         >
-          Skip
+          {t.enterEarly}
         </button>
       </div>
 
@@ -100,14 +101,35 @@ export default function CinematicOverlay({
       {/* Language switch */}
       <div className="absolute bottom-[max(1rem,env(safe-area-inset-bottom))] left-[max(1rem,env(safe-area-inset-left))] pointer-events-auto z-50">
         <button
+          data-testid="language-toggle"
           onClick={() => setLanguage(language === 'en' ? 'ch' : 'en')}
-          className="text-white/30 text-xs font-extralight tracking-widest hover:text-white/60 transition-colors"
+          className="min-h-11 min-w-11 inline-flex items-center justify-center text-white/30 text-xs font-extralight tracking-widest hover:text-white/60 transition-colors"
         >
           {language === 'en' ? '中文' : 'EN'}
         </button>
       </div>
     </div>
   );
+}
+
+// Once the viewer has manipulated the scene, the interaction hint has done its
+// job — remembered across visits like the seen-opening flag.
+const LEARNED_CONTROLS_KEY = 'mira:learned-controls';
+
+function hasLearnedControls(): boolean {
+  try {
+    return globalThis.localStorage?.getItem(LEARNED_CONTROLS_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function persistLearnedControls(): void {
+  try {
+    globalThis.localStorage?.setItem(LEARNED_CONTROLS_KEY, '1');
+  } catch {
+    // Private mode / blocked storage: the hint simply returns next visit.
+  }
 }
 
 // Minimal explore-mode UI
@@ -118,6 +140,29 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
   const t = TRANSLATIONS[language];
   const isMobile = useMobile();
   const reduceMotion = Boolean(useReducedMotion());
+
+  // The interaction hint leaves once the viewer has actually manipulated the scene
+  // (drag/zoom land on the canvas; presses on UI buttons do not count), and stays
+  // gone on later visits. It stays rediscoverable: a quiet recall button takes its
+  // place in the footer.
+  const [hintVisible, setHintVisible] = useState(() => !hasLearnedControls());
+  useEffect(() => {
+    if (!hintVisible) return;
+    const dismiss = (event: Event) => {
+      if (event.target instanceof HTMLCanvasElement) {
+        persistLearnedControls();
+        setHintVisible(false);
+      }
+    };
+    window.addEventListener('pointerdown', dismiss, { passive: true });
+    window.addEventListener('wheel', dismiss, { passive: true });
+    window.addEventListener('touchstart', dismiss, { passive: true });
+    return () => {
+      window.removeEventListener('pointerdown', dismiss);
+      window.removeEventListener('wheel', dismiss);
+      window.removeEventListener('touchstart', dismiss);
+    };
+  }, [hintVisible]);
 
   return (
     <div
@@ -137,7 +182,7 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
           </motion.span>
         </div>
 
-        <div className="flex items-center gap-4 md:gap-6">
+        <div className="flex items-center justify-end flex-wrap gap-4 md:gap-6">
           <button
             data-testid="return-to-view"
             onClick={() => useBinaryStar.getState().requestReturnToExplore()}
@@ -150,6 +195,7 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
           <button
             data-testid="pause-toggle"
             aria-pressed={!isPlaying}
+            aria-label={isPlaying ? t.pause : t.resume}
             onClick={() => useBinaryStar.getState().setPlaying(!isPlaying)}
             className="pointer-events-auto min-h-11 min-w-11 inline-flex items-center justify-center text-white/30 text-xs font-extralight tracking-widest uppercase hover:text-white/60 transition-colors"
           >
@@ -157,14 +203,16 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
           </button>
           <button
             data-testid="replay-opening"
+            aria-label={t.replayOpening}
             onClick={() => useBinaryStar.getState().setIntroComplete(false)}
-            className="pointer-events-auto text-white/30 text-xs font-extralight tracking-widest uppercase hover:text-white/60 transition-colors"
+            className="pointer-events-auto min-h-11 min-w-11 inline-flex items-center justify-center text-white/30 text-xs font-extralight tracking-widest uppercase hover:text-white/60 transition-colors"
           >
             {t.replayOpening}
           </button>
           <button
+            data-testid="language-toggle"
             onClick={() => setLanguage(language === 'en' ? 'ch' : 'en')}
-            className="pointer-events-auto text-white/30 text-xs font-extralight tracking-widest hover:text-white/60 transition-colors"
+            className="pointer-events-auto min-h-11 min-w-11 inline-flex items-center justify-center text-white/30 text-xs font-extralight tracking-widest hover:text-white/60 transition-colors"
           >
             {language === 'en' ? '中文' : 'EN'}
           </button>
@@ -173,21 +221,62 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
 
       {/* Bottom hint — tail line on its own row so it does not collide with the pill on narrow viewports */}
       <footer className="absolute bottom-0 left-0 right-0 px-8 pb-[max(1rem,env(safe-area-inset-bottom))] md:pb-8 pt-2 flex flex-col items-center gap-3">
+        {/* Keyboard entry to the two stars (#20): the canvas itself is not
+            focusable, so these triggers stay screen-reader reachable and only
+            become visible when tabbed to. The tail already has a visible entry. */}
+        <div className="sr-only focus-within:not-sr-only pointer-events-auto flex items-center gap-3">
+          <button
+            data-testid="star-trigger-miraA"
+            onClick={() => onSelectStar('miraA')}
+            className="min-h-11 min-w-11 inline-flex items-center justify-center backdrop-blur-sm bg-white/5 border border-white/10 px-4 rounded-full text-[9px] tracking-[0.2em] uppercase text-white/55 font-extralight hover:text-white/80 transition-colors"
+          >
+            {t.miraA}
+          </button>
+          <button
+            data-testid="star-trigger-miraB"
+            onClick={() => onSelectStar('miraB')}
+            className="min-h-11 min-w-11 inline-flex items-center justify-center backdrop-blur-sm bg-white/5 border border-white/10 px-4 rounded-full text-[9px] tracking-[0.2em] uppercase text-white/55 font-extralight hover:text-white/80 transition-colors"
+          >
+            {t.miraB}
+          </button>
+        </div>
         <button
           data-testid="tail-hint"
+          aria-label={t.tailHint}
           onClick={() => onSelectStar('tail')}
-          className="pointer-events-auto text-[9px] tracking-[0.2em] uppercase text-white/30 font-extralight hover:text-white/55 transition-colors"
+          className="pointer-events-auto min-h-11 min-w-11 inline-flex items-center justify-center text-[9px] tracking-[0.2em] uppercase text-white/30 font-extralight hover:text-white/55 transition-colors"
         >
           {t.tailHint}
         </button>
-        <div className="backdrop-blur-sm bg-white/5 border border-white/10 px-4 py-2 rounded-full">
-          <div className="flex items-center gap-2">
-            <div className="w-1.5 h-1.5 rounded-full bg-orange-500/60 animate-pulse" />
-            <span className="text-[9px] tracking-[0.2em] uppercase text-white/40 font-extralight">
-              {isMobile ? t.interactionHintMobile : t.interactionHint}
-            </span>
-          </div>
-        </div>
+        <AnimatePresence mode="wait">
+          {hintVisible ? (
+            <motion.div
+              key="interaction-hint"
+              data-testid="interaction-hint"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0, transition: { duration: reduceMotion ? 0 : 0.3 } }}
+              className="backdrop-blur-sm bg-white/5 border border-white/10 px-4 py-2 rounded-full"
+            >
+              <div className="flex items-center gap-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-orange-500/60 animate-pulse" />
+                <span className="text-[9px] tracking-[0.2em] uppercase text-white/40 font-extralight">
+                  {isMobile ? t.interactionHintMobile : t.interactionHint}
+                </span>
+              </div>
+            </motion.div>
+          ) : (
+            <button
+              key="interaction-hint-recall"
+              data-testid="interaction-hint-recall"
+              aria-label={isMobile ? t.interactionHintMobile : t.interactionHint}
+              onClick={() => setHintVisible(true)}
+              className="pointer-events-auto min-h-11 min-w-11 inline-flex items-center justify-center text-white/20 text-xs font-extralight hover:text-white/50 transition-colors"
+            >
+              ?
+            </button>
+          )}
+        </AnimatePresence>
       </footer>
     </div>
   );

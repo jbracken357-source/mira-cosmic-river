@@ -1,7 +1,8 @@
+import { useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { useBinaryStar, useMobile } from '../../hooks';
 import { TRANSLATIONS } from '../../constants/translations';
-import { EASE } from '../../constants/animation';
+import { EASE, INFO_CARD } from '../../constants/animation';
 import { phaseReadout } from '../../lib/starClock';
 
 export type StarName = 'miraA' | 'miraB' | 'tail';
@@ -20,7 +21,12 @@ export default function InfoCards({ selectedStar, onSelectStar, showTailFound }:
   const t = TRANSLATIONS[language];
   const isMobile = useMobile();
   const reduceMotion = Boolean(useReducedMotion());
-  const cardFade = reduceMotion ? 0 : 0.5;
+  // #20: enter 180–240ms / exit 120–180ms; reduced motion fades instantly and
+  // never displaces (no y offset at all).
+  const enterDur = reduceMotion ? 0 : INFO_CARD.ENTER;
+  const exitDur = reduceMotion ? 0 : INFO_CARD.EXIT;
+  const riseEnter = reduceMotion ? 0 : isMobile ? 24 : 8;
+  const riseExit = reduceMotion ? 0 : isMobile ? 16 : 6;
   const toastFade = reduceMotion ? 0 : 0.8;
   const readout = phaseReadout(sky);
   const daysToMax = Math.round(readout.daysToNextMaximum);
@@ -33,6 +39,46 @@ export default function InfoCards({ selectedStar, onSelectStar, showTailFound }:
         : readout.direction === 'brightening'
           ? t.phaseDaysToMax.replace('{n}', String(daysToMax))
           : t.phaseDaysToMin.replace('{n}', String(daysToMin));
+
+  // Focus bookkeeping (#20): the card is non-modal (no focus lock), but opening it
+  // moves focus onto the card so Esc and Tab start from a sensible place, and
+  // closing returns focus to whatever opened it (canvas click → body, which is a
+  // no-op; keyboard trigger → the trigger button). The focus happens in the ref
+  // callback, not an effect: with AnimatePresence mode="wait", switching directly
+  // from one card to another mounts the new card only after the old one exits, and
+  // an effect would fire while the ref still points at the leaving node.
+  const returnFocusRef = useRef<Element | null>(null);
+  const hadCardRef = useRef(false);
+  const prevStarRef = useRef<StarName | null>(null);
+
+  const handleCardRef = useCallback((node: HTMLDivElement | null) => {
+    if (!node) return;
+    // The return target is captured on the FIRST open only; a card-to-card switch
+    // keeps the original entry so closing still lands back where reading started.
+    if (!hadCardRef.current) returnFocusRef.current = document.activeElement;
+    hadCardRef.current = true;
+    node.focus();
+  }, []);
+
+  useEffect(() => {
+    if (!selectedStar && prevStarRef.current) {
+      const el = returnFocusRef.current;
+      if (el instanceof HTMLElement && el.isConnected) el.focus();
+      returnFocusRef.current = null;
+      hadCardRef.current = false;
+    }
+    prevStarRef.current = selectedStar;
+  }, [selectedStar]);
+
+  // Esc closes from anywhere while a card is open; the listener only exists then.
+  useEffect(() => {
+    if (!selectedStar) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onSelectStar(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [selectedStar, onSelectStar]);
 
   const cardData: Record<StarName, { title: string; desc: string; color: string; accent: string }> = {
     miraA: {
@@ -58,11 +104,15 @@ export default function InfoCards({ selectedStar, onSelectStar, showTailFound }:
   const card = selectedStar ? (
     <motion.div
       key={selectedStar}
+      ref={handleCardRef}
+      tabIndex={-1}
+      role="region"
+      aria-label={cardData[selectedStar].title}
       data-testid="info-card"
-      initial={{ opacity: 0, y: isMobile ? 24 : 8 }}
+      initial={{ opacity: 0, y: riseEnter }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: isMobile ? 16 : 6 }}
-      transition={{ duration: cardFade, ease: EASE.OUT }}
+      exit={{ opacity: 0, y: riseExit, transition: { duration: exitDur, ease: EASE.OUT } }}
+      transition={{ duration: enterDur, ease: EASE.OUT }}
       className={
         isMobile
           ? 'relative z-20 pointer-events-auto w-full'
@@ -77,8 +127,10 @@ export default function InfoCards({ selectedStar, onSelectStar, showTailFound }:
         }`}
       >
         <button
+          data-testid="info-card-close"
+          aria-label={t.tonightClose}
           onClick={() => onSelectStar(null)}
-          className="absolute top-2 right-2 text-white/30 hover:text-white/60 transition-colors text-lg leading-none"
+          className="absolute top-1 right-1 min-h-11 min-w-11 inline-flex items-center justify-center text-white/30 hover:text-white/60 transition-colors text-lg leading-none"
         >
           ×
         </button>
@@ -112,10 +164,14 @@ export default function InfoCards({ selectedStar, onSelectStar, showTailFound }:
 
         {selectedStar === 'tail' && (
           <div className="flex items-center gap-3">
-            <span className="text-[9px] tracking-[0.2em] uppercase text-white/30 font-extralight">
+            <label
+              htmlFor="tail-time-speed"
+              className="text-[9px] tracking-[0.2em] uppercase text-white/30 font-extralight"
+            >
               {t.timeSpeed}
-            </span>
+            </label>
             <input
+              id="tail-time-speed"
               type="range"
               min="0.1"
               max="5"
