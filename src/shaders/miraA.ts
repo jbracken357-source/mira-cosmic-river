@@ -16,6 +16,17 @@ const PULSE_RATE = 0.785; // ~8s cycle
 /** Radius pulse of Mira A's decorative cycle. Exported so MiraA.tsx's shells breathe with it. */
 export const MIRA_A_PULSE_AMPLITUDE = 0.09; // 9% of the radius come and gone each cycle
 
+// Mirrors highlightShoulder in src/lib/binaryLighting.ts: linear up to the knee, then
+// an exponential approach to the ceiling, so hot patches keep their hue instead of
+// clipping to dead white. Shared by Mira A's surface and Mira B's core (MiraB.tsx).
+export const HIGHLIGHT_SHOULDER_GLSL = `
+  vec3 highlightShoulder(vec3 c) {
+    float head = ${HIGHLIGHT_CEILING - HIGHLIGHT_KNEE};
+    vec3 over = max(c - ${HIGHLIGHT_KNEE}, 0.0);
+    return min(c, vec3(${HIGHLIGHT_KNEE})) + head * (1.0 - exp(-over / head));
+  }
+`;
+
 // Noise GLSL utility - simplex noise for shader surface variation
 export const NOISE_GLSL = `
   vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
@@ -160,14 +171,7 @@ export const MiraA_Shader = {
 
     ${NOISE_GLSL}
 
-    // Mirrors highlightShoulder in src/lib/binaryLighting.ts: linear up to the knee, then
-    // an exponential approach to the ceiling, so hot patches keep their hue instead of
-    // clipping to dead white.
-    vec3 highlightShoulder(vec3 c) {
-      float head = ${HIGHLIGHT_CEILING - HIGHLIGHT_KNEE};
-      vec3 over = max(c - ${HIGHLIGHT_KNEE}, 0.0);
-      return min(c, vec3(${HIGHLIGHT_KNEE})) + head * (1.0 - exp(-over / head));
-    }
+    ${HIGHLIGHT_SHOULDER_GLSL}
 
     void main() {
       float mu = max(dot(normalize(vNormal), normalize(vViewDirection)), 0.0);

@@ -15,7 +15,7 @@ import {
   veilLightResponse,
 } from '../../src/lib/riverLighting';
 import { TailVertexShader, TailFragmentShader, createTailMaterial } from '../../src/shaders/tail';
-import { MiraA_Shader } from '../../src/shaders/miraA';
+import { MiraA_Shader, HIGHLIGHT_SHOULDER_GLSL } from '../../src/shaders/miraA';
 import { AccretionDisk_Shader } from '../../src/shaders/accretionDisk';
 import {
   SURFACE_DETAIL_FLOOR,
@@ -34,6 +34,11 @@ import {
 
 const veilSource = readFileSync(
   path.join(process.cwd(), 'src/components/Scene/RiverVeil.tsx'),
+  'utf8',
+);
+
+const miraBSource = readFileSync(
+  path.join(process.cwd(), 'src/components/Scene/MiraB.tsx'),
   'utf8',
 );
 
@@ -82,11 +87,15 @@ test.describe('Mira A shader stays in step with binaryLighting', () => {
     expect(f).toContain('.45 + .55 * smoothstep(.05, .5, mu)');
   });
 
-  test('the highlight shoulder mirrors the pure function', () => {
-    const f = MiraA_Shader.fragmentShader;
-    expect(f).toContain(`float head = ${HIGHLIGHT_CEILING - HIGHLIGHT_KNEE};`);
-    expect(f).toContain(`max(c - ${HIGHLIGHT_KNEE}, 0.0)`);
-    expect(f).toContain('1.0 - exp(-over / head)');
+  test('the highlight shoulder snippet mirrors the pure function', () => {
+    expect(HIGHLIGHT_SHOULDER_GLSL).toContain(`float head = ${HIGHLIGHT_CEILING - HIGHLIGHT_KNEE};`);
+    expect(HIGHLIGHT_SHOULDER_GLSL).toContain(`max(c - ${HIGHLIGHT_KNEE}, 0.0)`);
+    expect(HIGHLIGHT_SHOULDER_GLSL).toContain('1.0 - exp(-over / head)');
+    expect(MiraA_Shader.fragmentShader).toContain(HIGHLIGHT_SHOULDER_GLSL);
+  });
+
+  test('Mira B shares the same highlight shoulder snippet', () => {
+    expect(miraBSource).toContain('${HIGHLIGHT_SHOULDER_GLSL}');
   });
 });
 
@@ -101,6 +110,8 @@ test.describe('accretion disk shader stays in step with binaryLighting', () => {
 
   test('the clumps and the hot spot mirror the pure constants', () => {
     expect(f).toContain(`${ARC_CLUMP_FLOOR} + ${1 - ARC_CLUMP_FLOOR} * smoothstep(.2, .8,`);
+    // arcClump's two wave shapes: frequencies, phase offset, and drift rates pinned as written.
+    expect(f).toContain('(.5 + .5 * sin(angle * 3. + 1.7 + uTime * .22)) * (.5 + .5 * sin(angle * 7. - uTime * .9))');
     expect(f).toContain(`gaussFalloff(wrapAngle(angle - uImpactAngle), ${HOT_SPOT_ANGLE_WIDTH})`);
     expect(f).toContain(`gaussFalloff(r - ${HOT_SPOT_RADIUS}, ${HOT_SPOT_RADIAL_WIDTH})`);
   });

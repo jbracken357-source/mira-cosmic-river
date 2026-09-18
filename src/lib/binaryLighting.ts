@@ -2,9 +2,9 @@
 // between them (issue #25).
 //
 // As with riverLighting, the shaders in src/shaders/miraA.ts and
-// src/shaders/accretionDisk.ts mirror these formulas in GLSL, and
-// tests/unit/shaderParity.spec.ts guards the mirror; the material stream consumes
-// streamClump directly on the CPU. The numbers are unit-tested here, the visuals
+// src/shaders/accretionDisk.ts mirror these formulas in GLSL — MiraB.tsx shares the
+// HIGHLIGHT_SHOULDER_GLSL snippet from miraA.ts — and tests/unit/shaderParity.spec.ts
+// guards the mirror; the material stream consumes streamClump directly on the CPU. The numbers are unit-tested here, the visuals
 // are validated by the deterministic baselines in
 // docs/design-audit-2026-09-17/baselines/.
 

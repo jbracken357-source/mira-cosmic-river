@@ -2,8 +2,7 @@ import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { AccretionDisk_Shader, makeDiskUniforms } from '../../shaders/accretionDisk';
-import { MIRA_B_CORONA } from '../../shaders/miraA';
-import { HIGHLIGHT_KNEE, HIGHLIGHT_CEILING } from '../../lib/binaryLighting';
+import { MIRA_B_CORONA, HIGHLIGHT_SHOULDER_GLSL } from '../../shaders/miraA';
 import { COLORS } from '../../constants';
 import type { OrbitPositions } from '../../types';
 import GlowShell from './GlowShell';
@@ -46,11 +45,7 @@ const miraBShaderMaterial = {
 
     // Mirrors highlightShoulder in src/lib/binaryLighting.ts: the white dwarf stays a hot
     // blue-white point instead of clipping into a flat white bead.
-    vec3 highlightShoulder(vec3 c) {
-      float head = ${HIGHLIGHT_CEILING - HIGHLIGHT_KNEE};
-      vec3 over = max(c - ${HIGHLIGHT_KNEE}, 0.0);
-      return min(c, vec3(${HIGHLIGHT_KNEE})) + head * (1.0 - exp(-over / head));
-    }
+    ${HIGHLIGHT_SHOULDER_GLSL}
 
     void main() {
       // Strong Fresnel effect for intense edge glow
