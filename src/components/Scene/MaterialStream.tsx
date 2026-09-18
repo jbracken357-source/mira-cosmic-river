@@ -6,6 +6,7 @@ import { COLORS } from '../../constants';
 import type { OrbitPositions } from '../../types';
 import { useReducedMotion } from 'framer-motion';
 import { advanceTime } from '../../lib/captureMode';
+import { streamClump } from '../../lib/binaryLighting';
 
 export type OrbitPositionsRef = MutableRefObject<OrbitPositions>;
 
@@ -50,9 +51,12 @@ export default function MaterialStream({
 
   const geometry = useMemo(() => {
     const positions = new Float32Array(particleCount * 3);
+    // The color attribute is the working buffer: the useFrame pass dims each particle's
+    // copy of the base colour by its clump brightness (additive blending, so darker
+    // reads as more transparent).
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    geo.setAttribute('color', new THREE.BufferAttribute(colors.slice(), 3));
     geo.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
     return geo;
   }, [particleCount, colors, sizes]);
@@ -68,7 +72,9 @@ export default function MaterialStream({
     const dz = secondary[2] - primary[2];
     const startFraction = Math.min(.8, 2.4 / Math.hypot(dx, dy, dz));
     const posAttr = pts.geometry.attributes.position;
+    const colAttr = pts.geometry.attributes.color;
     const arr = posAttr.array as Float32Array;
+    const carr = colAttr.array as Float32Array;
 
     for (let i = 0; i < particleCount; i++) {
       const t = (i / particleCount + timeRef.current * .045) % 1;
@@ -77,9 +83,17 @@ export default function MaterialStream({
       arr[i * 3] = primary[0] + dx * along + (seededRandom(i * 3) - .5) * turbulence * .22;
       arr[i * 3 + 1] = primary[1] + dy * along + curve * .25;
       arr[i * 3 + 2] = primary[2] + dz * along + curve * .45 + (seededRandom(i * 3 + 2) - .5) * turbulence * .2;
+
+      // Soft, intermittent clumps drifting toward Mira B; both ends stay bright so the
+      // flow leaves Mira A and meets the hot spot without a break.
+      const clump = streamClump(t, seededRandom(i * 7 + 3) * 8);
+      carr[i * 3] = colors[i * 3] * clump;
+      carr[i * 3 + 1] = colors[i * 3 + 1] * clump;
+      carr[i * 3 + 2] = colors[i * 3 + 2] * clump;
     }
 
     posAttr.needsUpdate = true;
+    colAttr.needsUpdate = true;
     // The endpoints already live in world space; rotating the whole stream breaks
     // its connection to both stars.
   });

@@ -2,7 +2,7 @@ import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { AccretionDisk_Shader, makeDiskUniforms } from '../../shaders/accretionDisk';
-import { MIRA_B_CORONA } from '../../shaders/miraA';
+import { MIRA_B_CORONA, HIGHLIGHT_SHOULDER_GLSL } from '../../shaders/miraA';
 import { COLORS } from '../../constants';
 import type { OrbitPositions } from '../../types';
 import GlowShell from './GlowShell';
@@ -23,7 +23,7 @@ const miraBShaderMaterial = {
   uniforms: {
     time: { value: 0 },
     color: { value: new THREE.Color(COLORS.MIRA_B_CORE) },
-    intensity: { value: 0.85 },
+    intensity: { value: 0.72 },
   },
   vertexShader: `
     varying vec3 vNormal;
@@ -43,6 +43,10 @@ const miraBShaderMaterial = {
     varying vec3 vNormal;
     varying vec3 vPosition;
 
+    // Mirrors highlightShoulder in src/lib/binaryLighting.ts: the white dwarf stays a hot
+    // blue-white point instead of clipping into a flat white bead.
+    ${HIGHLIGHT_SHOULDER_GLSL}
+
     void main() {
       // Strong Fresnel effect for intense edge glow
       float fresnel = pow(1.0 - abs(dot(vNormal, vec3(0.0, 0.0, 1.0))), 4.0);
@@ -60,6 +64,7 @@ const miraBShaderMaterial = {
 
       // Slight blue tint for hot star
       finalColor = mix(finalColor, vec3(0.7, 0.85, 1.0), 0.15);
+      finalColor = highlightShoulder(finalColor);
 
       gl_FragColor = vec4(finalColor, 1.0);
       #include <tonemapping_fragment>

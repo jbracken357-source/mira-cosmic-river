@@ -3,6 +3,11 @@
 
 import * as THREE from 'three';
 import { COLORS } from '../constants/colors';
+import {
+  SURFACE_DETAIL_FLOOR,
+  HIGHLIGHT_KNEE,
+  HIGHLIGHT_CEILING,
+} from '../lib/binaryLighting';
 
 // One decorative pulsation rate for the whole star: the surface radius, the surface colour and
 // the atmosphere all breathe together, or the halo detaches from the star. (Shader strings are
@@ -10,6 +15,17 @@ import { COLORS } from '../constants/colors';
 const PULSE_RATE = 0.785; // ~8s cycle
 /** Radius pulse of Mira A's decorative cycle. Exported so MiraA.tsx's shells breathe with it. */
 export const MIRA_A_PULSE_AMPLITUDE = 0.09; // 9% of the radius come and gone each cycle
+
+// Mirrors highlightShoulder in src/lib/binaryLighting.ts: linear up to the knee, then
+// an exponential approach to the ceiling, so hot patches keep their hue instead of
+// clipping to dead white. Shared by Mira A's surface and Mira B's core (MiraB.tsx).
+export const HIGHLIGHT_SHOULDER_GLSL = `
+  vec3 highlightShoulder(vec3 c) {
+    float head = ${HIGHLIGHT_CEILING - HIGHLIGHT_KNEE};
+    vec3 over = max(c - ${HIGHLIGHT_KNEE}, 0.0);
+    return min(c, vec3(${HIGHLIGHT_KNEE})) + head * (1.0 - exp(-over / head));
+  }
+`;
 
 // Noise GLSL utility - simplex noise for shader surface variation
 export const NOISE_GLSL = `
@@ -155,28 +171,37 @@ export const MiraA_Shader = {
 
     ${NOISE_GLSL}
 
+    ${HIGHLIGHT_SHOULDER_GLSL}
+
     void main() {
       float mu = max(dot(normalize(vNormal), normalize(vViewDirection)), 0.0);
       vec3 p = normalize(vLocal);
       float cells = .5 + .5 * snoise(p * 14. + vec3(uTime * .025, 0., 0.));
       float fine = .5 + .5 * snoise(p * 43. - uTime * .02);
-      float procedural = cells * .65 + fine * .35;
+      // Mirrors surfaceDetailStrength in src/lib/binaryLighting.ts: the granulation lives
+      // in large-scale patches and calms toward the limb, instead of gritting the whole
+      // photosphere at one strength.
+      float region = .5 + .5 * snoise(p * 1.6 + vec3(0., uTime * .012, 0.));
+      float detailStrength = ${SURFACE_DETAIL_FLOOR} + ${1 - SURFACE_DETAIL_FLOOR} * smoothstep(.3, .75, region) * (.45 + .55 * smoothstep(.05, .5, mu));
+      float fineWeight = .35 * detailStrength;
+      float procedural = cells * (1. - fineWeight) + fine * fineWeight;
       // Blend to procedural detail at the seam and poles: the generated map is not
       // assumed to be perfectly periodic, and lighting is never baked into it.
       float seam = smoothstep(0., .045, vUv.x) * (1. - smoothstep(.955, 1., vUv.x));
       seam *= smoothstep(0., .07, vUv.y) * (1. - smoothstep(.93, 1., vUv.y));
       vec2 uv = vUv + vec2(sin(vUv.y * 18. + uTime * .07), cos(vUv.x * 17. - uTime * .05)) * .003 * seam;
       float density = procedural;
-      if (uSurfaceReady > .5) density = mix(procedural, texture2D(uSurfaceMap, uv).r, seam * .85);
+      if (uSurfaceReady > .5) density = mix(procedural, mix(.5, texture2D(uSurfaceMap, uv).r, detailStrength), seam * .85);
       float heat = smoothstep(.12, .73, density);
       vec3 ember = uColorCore * .15 + vec3(.055, .006, .001);
       vec3 amber = mix(uColorSurface, vec3(1., .38, .065), .65);
       vec3 color = mix(ember, amber, heat);
-      color += vec3(1.2, .58, .16) * pow(heat, 5.) * .6;
+      color += vec3(1.2, .58, .16) * pow(heat, 5.) * .6 * detailStrength;
       color *= .36 + .64 * pow(mu, .55);
       float pulse = .94 + .06 * sin(uTime * ${PULSE_RATE});
       color *= pulse * (.68 + .55 * uBrightness);
       color *= mix(vec3(1., .7, .5), vec3(1., 1., .94), uColorShift);
+      color = highlightShoulder(color);
       gl_FragColor = vec4(color, 1.0);
       #include <tonemapping_fragment>
       #include <colorspace_fragment>
@@ -222,11 +247,12 @@ export const MIRA_A_ATMOSPHERE = {
 } as const;
 
 // Mira B's corona: same shader, white dwarf colours, a much tighter shell. Kept small on
-// purpose — a broad halo around the companion buries the accretion disk behind it.
+// purpose — a broad halo around the companion buries the accretion disk behind it and
+// fattens the star into a white bead.
 export const MIRA_B_CORONA = {
   scale: 1.7,
-  opacity: 0.26,
-  falloff: 1.7,
+  opacity: 0.16,
+  falloff: 2.2,
   color: COLORS.MIRA_B_CORONA,
   pulseAmp: 0.015,
 } as const;

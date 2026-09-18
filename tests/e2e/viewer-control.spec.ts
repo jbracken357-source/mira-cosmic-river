@@ -23,6 +23,12 @@ async function gotoExplore(page: Page, url = APP) {
   // end of the first completed frame, so this proves the loop is actually running.
   await expect(page.getByTestId('loading')).toHaveCount(0);
   await expect(page.locator('canvas')).toHaveAttribute('data-camera-pose', /.+/, { timeout: 30000 });
+  // The shared idle clock starts at module load, and load time is NOT scaled by the
+  // idle overrides: under software rendering it can eat the whole scaled resume window
+  // before the first frame, landing the page in the epilogue state before the test ever
+  // looks. A viewer's first keypress restamps the clock; do the same now that the frame
+  // loop is proven running, so each test's idle count starts from a ready scene.
+  await page.keyboard.press('Shift');
 }
 
 test.describe('Viewer control', () => {
