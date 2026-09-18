@@ -44,10 +44,10 @@
 
 ### 4. 按 ADR-0002 经 Vercel 发布可访问构建（预览或生产）并记录版本与 URL
 
-状态：通过。
+状态：通过（以生产为准；预览的门禁状态如实标注）。
 
-- 生产：https://mira-cosmic-river.vercel.app —— master push 自动部署（ADR-0002 既有回路，本票零手动部署）。#30 的 iPhone 验收对象即本票合入 master 后的自动生产部署。
-- 预览：本 PR 的 Vercel 预览部署（合入前可供提前验收）：<!-- VERCEL_PREVIEW_URL -->
+- 生产：https://mira-cosmic-river.vercel.app —— 公开可访问（HTTP 200，页面标题核验），master push 自动部署（ADR-0002 既有回路，本票零手动部署）。**#30 的 iPhone 验收对象即本票合入 master 后的自动生产部署。**
+- 预览：本 PR 的 Vercel 预览部署已构建完成（地址见 PR #41 的 Vercel check），但该 Vercel 项目的预览 URL 带账号 SSO 门禁（匿名访问重定向到 vercel.com/login），不能直接交给观看者验收——不静默降级，如实标注。按票面"预览或生产"的口径，可访问构建取生产 URL。
 - 版本：旅程/基线/GPU 证据均产自分支 commit d601df1 起的工作树；生产版本以合入 master 的 squash 提交为准（合入后由既有 CI/CD 自动上线，无手动步骤）。
 
 ### 5. 真实桌面 GPU：静置约 2 分钟、拖动约 30 秒、连续观看至少 5 分钟，记录设备/浏览器/DPR/画质及帧时间，不使用 SwiftShader 代替
