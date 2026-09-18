@@ -40,7 +40,10 @@ const frameCount = (page: Page) =>
 
 test.describe('Adaptive quality', () => {
   test('sustained slow frames step down one rung at a time, cooldown apart', async ({ page }) => {
-    await gotoExplore(page, `quality-probe=slow&${SCALED}`);
+    // quality-start pins the OPENING tier (the governor still runs): the detected
+    // tier differs between machines (CI runners report 4 cores → mid), and these
+    // assertions must not depend on it.
+    await gotoExplore(page, `quality-start=high&quality-probe=slow&${SCALED}`);
 
     await expect(canvas(page)).toHaveAttribute('data-quality-tier', 'high');
     // Never a jump: the descent must pass through mid…
@@ -57,7 +60,8 @@ test.describe('Adaptive quality', () => {
   test('a long cooldown permits exactly one change', async ({ page }) => {
     // 10s: the first change must wait out the startup grace (initialisation counts
     // as a change), and a second change cannot land inside the observation window.
-    await gotoExplore(page, 'quality-probe=slow&quality-window=400&quality-cooldown=10000');
+    // quality-start keeps the opening tier off the CI runner's detected mid.
+    await gotoExplore(page, 'quality-start=high&quality-probe=slow&quality-window=400&quality-cooldown=10000');
 
     await expect(canvas(page)).toHaveAttribute('data-quality-tier', 'mid', { timeout: 30000 });
     // Well past two more slow windows: the cooldown must hold the tier at mid.
@@ -74,7 +78,7 @@ test.describe('Adaptive quality', () => {
   });
 
   test('frame times inside the hysteresis band never move the tier', async ({ page }) => {
-    await gotoExplore(page, `quality-probe=steady&${SCALED}`);
+    await gotoExplore(page, `quality-start=high&quality-probe=steady&${SCALED}`);
 
     await expect(canvas(page)).toHaveAttribute('data-quality-tier', 'high');
     await page.waitForTimeout(4000);
@@ -95,7 +99,7 @@ test.describe('Adaptive quality', () => {
     // Portrait but desktop-sized: the short side stays at or over the 640px mobile
     // rule, so the governor runs while the portrait camera path is active.
     await page.setViewportSize({ width: 700, height: 900 });
-    await gotoExplore(page, `quality-probe=slow&${SCALED}`);
+    await gotoExplore(page, `quality-start=high&quality-probe=slow&${SCALED}`);
 
     const poseBefore = await canvas(page).getAttribute('data-camera-pose');
     expect(poseBefore).toBeTruthy();

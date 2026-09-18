@@ -6,7 +6,7 @@
 
 ## 改动内容
 
-- **新增 `src/lib/qualityGovernor.ts`**（纯函数，模式照 viewerControl.ts）：`evaluateQuality` 逐帧喂入帧时间，按 2s 窗口取 P75 聚合（单帧毛刺不计），连续 2 个慢窗（P75>19ms）降一档、连续 2 个快窗（P75<13ms）升一档，每次换档步进一档并进入 8s 冷却；13–19ms 之间为滞回带，健康 60fps 落带内不换档。`stallFrameMs=250`：更慢的帧是 rAF 饥饿（最小化/遮挡窗口不会总是触发 visibilitychange，实测见第 3 条），不是 GPU 能力的度量，不计入证据。初始化视为一次换档，着色器编译期的慢帧有冷却保护。`resolveGovernorSetup`：显式 `?quality=` 钉死档位 governor 不启动；短边 <640px 的设备在 desktopOnly 下不设帧率门槛。`?quality-probe/window/cooldown/start` 为 dev-only 测试钩子（照 idleTiming 的 PROD 门控）。`window.__miraQuality` 常驻记录器（always-on）：帧时间环形缓冲、换档事件、每 5s 资源采样（几何体/纹理/JS 堆/dpr/分辨率/档位）——SPEC 要求"真实记录"，观测是交付物本身。
+- **新增 `src/lib/qualityGovernor.ts`**（纯函数，模式照 viewerControl.ts）：`evaluateQuality` 逐帧喂入帧时间，按 2s 窗口取 P75 聚合（单帧毛刺不计），连续 2 个慢窗（P75>19ms）降一档、连续 2 个快窗（P75<13ms）升一档，每次换档步进一档并进入 8s 冷却；13–19ms 之间为滞回带，健康 60fps 落带内不换档。`stallFrameMs=250`：更慢的帧是 rAF 饥饿（最小化/遮挡窗口不会总是触发 visibilitychange，实测见第 3 条），不是 GPU 能力的度量，不计入证据。`driveQualityGovernor` 入口约定：**entry gate 等待期不评估**——加载与着色器编译的帧时间不是稳态画质证据（CI 软渲下加载 10s+，探针帧会在场景呈现前把档位走穿，PR #37 CI 红的根因）；gate 落地那一帧才初始化 governor，启动宽限从此刻计。`resolveGovernorSetup`：显式 `?quality=` 钉死档位 governor 不启动；短边 <640px 的设备在 desktopOnly 下不设帧率门槛。`?quality-probe/window/cooldown/start` 为 dev-only 测试钩子（照 idleTiming 的 PROD 门控；`quality-start` 只定起始档、不钉死，与 gate 门控正交——前者是模块级一次性解析的初始值，后者决定何时开始评估）。`window.__miraQuality` 常驻记录器（always-on）：帧时间环形缓冲、换档事件、每 5s 资源采样（几何体/纹理/JS 堆/dpr/分辨率/档位）——SPEC 要求"真实记录"，观测是交付物本身。
 - **`src/constants/quality.ts`**：`detectQualityTier` 现在识别显式 `?quality=high|mid|low` 三档钉死（原仅 low）；新增 `explicitQualityPin` 与 `isMobileSized`（短边规则提取复用，governor 的手机判定与分档同源）。
 - **`src/components/Scene/Scene.tsx`**：档位从模块常量改为 React state（初值=探测档或 dev `?quality-start=`），governor 的 change verdict 才触发重渲染；LOD/bloom/dpr 随档切换（dpr 用 r3f 原生响应式 prop）。后台绘制控制：`visibilitychange` → Canvas `frameloop` 在 'always'/'never' 间切换（r3f 内部单循环管理，天然无双循环）；回前台时 governor 状态重置（同档、新窗口、新冷却宽限）。观测属性：canvas 上 `data-quality-tier`/`data-quality-last-change`（always-on，仅换档时写入）与 dev-only `data-frame-count`（帧心跳）。antialias 是上下文创建期参数，跟随初始档。
 - **降档顺序**（先砍高成本后处理/分辨率再砍装饰）由 LOD 表体现，review 修正后严格成立：high→mid **只**动 bloom levels 4→2 与 dpr 1.5→1，星野 5000、尾巴 10000、来流 600、球面 64 段全部保持；mid→low 才关 EffectComposer 并把装饰砍到 300/300/150/16。（首版 mid 档同时砍了 70% 装饰，不符合票面顺序，本轮修正；LOD 键名随之从 mobile/desktop 改为 mid/high 名实一致。）副带取舍：自动选档的手机落 mid 档，现在保留满装饰、只减 dpr 与 bloom——SPEC 明确手机无帧率门槛，观感优先。
@@ -18,7 +18,7 @@
 
 状态：通过。
 
-- 滞回与冷却：单测 `tests/unit/qualityGovernor.spec.ts` 17 例——滞回带内（16ms）永不换档、单慢窗不动、连续两窗才动、每次只步进一档（high→mid→low 不跳档）、冷却期内 verdict 为 cooldown 不换档、启动宽限、P75 抗 20% 尖刺、stall 帧不计证据也不断连击。
+- 滞回与冷却：单测 `tests/unit/qualityGovernor.spec.ts` 21 例——滞回带内（16ms）永不换档、单慢窗不动、连续两窗才动、每次只步进一档（high→mid→low 不跳档）、冷却期内 verdict 为 cooldown 不换档、启动宽限、P75 抗 20% 尖刺、stall 帧不计证据也不断连击、entry gate 等待期不评估且落地帧才开始计时（gate 门控 4 例）。
 - e2e `tests/e2e/quality-governor.spec.ts`：合成慢帧下档位 high→mid→low 逐级经过（`data-quality-last-change` 记录 `high>mid:sustained-slow` 再到 `mid>low:sustained-slow`）；10s 冷却下只发生一次换档；`?quality-start=mid` + 快帧探针观察到 mid→high 恢复换档；稳态探针（16ms）下档位不动。
 - 降档顺序由 LOD 表保证（见改动内容），先 bloom/dpr 后装饰。
 
@@ -70,13 +70,14 @@
 | `node experiments/measure-quality.mjs` | 真实 GPU 9.5 分钟协议完成，0 非预期换档 |
 | `node experiments/verify-baseline.mjs` | 见下方诚实备注 |
 
-**verify-baseline 诚实备注**：本机上该校验间歇性失败（两视图之一出现数百像素差异），已对照基线提交 6bac784（#25 合入点）复现完全相同的失败签名（default 视图 max diff 10/255、621/1296000 像素，逐字节一致地复现），确认与 #26 改动无关——属既有采集脚本在负载下的时机 flake（疑似 milestone-hint 的 JS 驱动淡出未被 FREEZE_CSS 冻结，waitForExploreReady 的 catch 兜底放行）。本分支安静环境下重跑 PASS（default/az90 逐字节一致）。是否加固采集脚本属父票 #18/#19 范围，本票不扩大。
+**verify-baseline 诚实备注**：该校验在本机热态下间歇失败——已确认与负载强相关：紧接 5 分钟以上的全量 SwiftShader 套件运行时必现（default 621/1296000 像素 max diff 10、az90 4780 像素 max diff 147 两种固定签名），安静环境下本分支 4/4 PASS（default/az90 逐字节一致）；且在基线提交 6bac784（#25 合入点，不含本票任何改动）上复现完全相同的失败签名，确认与 #26 无关。疑似既有采集脚本在热机上的时机问题（milestone-hint 的 JS 驱动淡出不被 FREEZE_CSS 冻结，waitForExploreReady 的 catch 兜底放行）。是否加固采集脚本属父票 #18/#19 范围，本票不扩大。
 
 ## TDD 记录
 
 - RED：`c48501a` 先提交 `tests/unit/qualityGovernor.spec.ts` 与 quality.spec.ts 扩展——运行报 `Cannot find module .../src/lib/qualityGovernor` 与缺 `explicitQualityPin` 导出。
 - GREEN：实现 qualityGovernor.ts + quality.ts 后 171/171 转绿；Scene 接线后 e2e 7/7 转绿。
 - 实测驱动的一次设计修正：第一轮真实 GPU 测量暴露"最小化不触发 visibilitychange → 饥饿帧误降档"，据此加入 stallFrameMs 阈（先补单测再改实现），第三轮测量确认 0 误换档。
+- CI 驱动的第二次修正：PR #37 在 GitHub runner（SwiftShader）上红——governor 在 entry gate 等待期就开始评估，加载期帧把档位走穿；且三条 e2e 断言依赖本机探测档（CI 4 核探测为 mid）。修为 gate 落地才开始评估（单测先行）+ 相关 e2e 显式 `quality-start=` 与环境解耦。
 
 ## 提交
 

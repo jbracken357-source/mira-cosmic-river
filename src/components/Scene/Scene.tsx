@@ -11,7 +11,7 @@ import { MATERIALS_TIMEOUT_MS, gateAllowsCinematic } from '../../lib/entryReadin
 import { advanceTime, captureMode, resolveCapturePose } from '../../lib/captureMode';
 import { collectViewerHolds, idleTiming, resolveViewerControl } from '../../lib/viewerControl';
 import {
-  evaluateQuality,
+  driveQualityGovernor,
   governorProbeFrameMs,
   governorSetup,
   initialGovernorState,
@@ -201,8 +201,9 @@ function SceneContent({
   const ambientLookRef = useRef(new THREE.Vector3());
   const firstFrameMarkedRef = useRef(false);
   // Quality governor (#26): the state lives outside React — it is fed every frame
-  // and only its rare "change" verdicts surface, through onTierChange. Lazily
-  // initialised on the first frame (ref writes and clocks belong off the render pass).
+  // and only its rare "change" verdicts surface, through onTierChange. It begins
+  // when the entry gate opens, not at first frame (driveQualityGovernor owns that
+  // contract), and resets on return from the background.
   const governorRef = useRef<GovernorState | null>(null);
   const frameCountRef = useRef(0);
   const lastResourceSampleAtRef = useRef(0);
@@ -493,13 +494,12 @@ function SceneContent({
     // about the viewer's machine — recording and governing both stand down. While
     // the tab is hidden the loop is stopped (frameloop="never" on the Canvas); the
     // document.hidden guard covers the frames before React applies that switch.
+    // While the entry gate waits, driveQualityGovernor holds the governor off:
+    // loading frames are not evidence.
     const recorder = qualityRecorder();
     if (!capture.active) {
       const frameMs = (governor.enabled ? governorProbeFrameMs() : null) ?? delta * 1000;
       const now = performance.now();
-      if (governorRef.current === null) {
-        governorRef.current = initialGovernorState(tier, now);
-      }
       recorder.noteFrame(frameMs);
       if (now - lastResourceSampleAtRef.current >= 5000) {
         lastResourceSampleAtRef.current = now;
@@ -515,10 +515,12 @@ function SceneContent({
             (performance as unknown as { memory?: { usedJSHeapSize: number } }).memory?.usedJSHeapSize ?? null,
         });
       }
-      if (governor.enabled && !document.hidden && governorRef.current !== null) {
-        const verdict = evaluateQuality(governorRef.current, frameMs, now, governor.config);
-        governorRef.current = verdict.state;
-        if (verdict.kind === 'change') {
+      if (governor.enabled && !document.hidden) {
+        const gateOpen = gateAllowsCinematic(useEntryReadiness.getState().gate);
+        const driven = driveQualityGovernor(governorRef.current, gateOpen, frameMs, now, governor.config, tier);
+        governorRef.current = driven.state;
+        const verdict = driven.verdict;
+        if (verdict !== null && verdict.kind === 'change') {
           recorder.noteChange({ at: now, from: verdict.from, to: verdict.to, reason: verdict.reason });
           onTierChange(verdict.from, verdict.to, verdict.reason);
         }

@@ -14,7 +14,12 @@
 //     slides high → mid → low over tens of seconds, never in one jump;
 //   - phones are exempt (desktopOnly): the SPEC sets no frame-rate bar for mobile;
 //   - an explicit ?quality= is the viewer's own decision and pins the tier: the
-//     governor stays off.
+//     governor stays off;
+//   - frames rendered while the entry gate is still waiting are not evidence:
+//     loading and shader compilation dominate them, and under software rendering
+//     the load alone would walk the tier off its start before the scene is even
+//     presented. The caller feeds frames through driveQualityGovernor, which
+//     evaluates nothing until the gate opens.
 //
 // The descent order "costly post-processing/resolution first, decoration last"
 // is not encoded here — it falls out of the tier table in Scene.tsx: high → mid
@@ -76,6 +81,25 @@ const TIERS: readonly QualityTier[] = ['high', 'mid', 'low'];
 // them would open every visit by punishing the viewer's first look.
 export function initialGovernorState(tier: QualityTier, now: number): GovernorState {
   return { tier, lastChangeAt: now, windowStartAt: now, slowWindows: 0, fastWindows: 0, samples: [] };
+}
+
+// The frame-feeding entry point the Scene uses. Until the entry gate opens the
+// governor does not exist (state stays null and nothing is evaluated); the
+// gate-land frame begins it — startup grace counted from that moment — and from
+// the next frame on this is exactly evaluateQuality. The gate-land frame itself
+// is not fed: it carries the last of the load, not a steady-state measurement.
+export function driveQualityGovernor(
+  state: GovernorState | null,
+  gateOpen: boolean,
+  frameMs: number,
+  now: number,
+  config: GovernorConfig,
+  tier: QualityTier,
+): { state: GovernorState | null; verdict: GovernorVerdict | null } {
+  if (!gateOpen) return { state, verdict: null };
+  if (state === null) return { state: initialGovernorState(tier, now), verdict: null };
+  const verdict = evaluateQuality(state, frameMs, now, config);
+  return { state: verdict.state, verdict };
 }
 
 // Shared percentile over an ascending-sorted array (window P75 below, recorder
