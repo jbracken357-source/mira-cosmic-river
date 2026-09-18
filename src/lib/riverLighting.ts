@@ -6,6 +6,8 @@
 // src/components/Scene/RiverVeil.tsx mirrors starLightFalloff and riverBrightness exactly;
 // keep the two sides in step when tuning.
 
+import type { SkyState } from './starClock';
+
 // Scene-scale reach of each star's light, in world units (Mira A radius 2.5, tail length 25).
 // The companion's pool is deliberately tighter: it lights its own neighbourhood, not the river.
 export const MIRA_A_REACH = 7.5;
@@ -73,6 +75,45 @@ export function skyRiverGain(
   };
 }
 
+// How tonight's sky sits on the river beyond the plain gain/warmth above (issue #27).
+// One deterministic sky in, four coordinated channels out, so local colour temperature,
+// brightness and material density move together and the same date always renders the
+// same river. gain composes the plain coupling's gain with the daily lift here, once, so
+// the component and the tests consume one formula; warmth is the curve the river already
+// follows, collected into this seam so every daily channel has one home. The lift and
+// the density are deliberately small — the sky modulates the river, it never re-tunes it.
+export interface DailySkyCoupling {
+  gain: number;
+  warmth: number;
+  brightnessLift: number;
+  density: number;
+}
+
+// The lift peaks near 1% of river gain; the density swing stays within ±4%. Both sit far
+// inside the protection of the gain floor above (0.8): the tail can thin or thicken with
+// the season, never empty.
+export const DAILY_LIFT_AMPLITUDE = 0.05;
+export const DAILY_DENSITY_AMPLITUDE = 0.08;
+
+export function dailySkyCoupling(sky: SkyState): DailySkyCoupling {
+  const brightness = clamp01(sky.brightness);
+  const colorShift = clamp01(sky.colorShift);
+  const plain = skyRiverGain(brightness, colorShift);
+  // Colour saturates ahead of luminosity (starClock), so their gap reads as the star
+  // running ahead of its own light: zero at maximum and minimum where the curves meet,
+  // peaking mid-cycle. A lift on top of the gain, not a second gain.
+  const brightnessLift = DAILY_LIFT_AMPLITUDE * Math.max(0, colorShift - brightness);
+  return {
+    gain: plain.gain + brightnessLift,
+    warmth: plain.warmth,
+    brightnessLift,
+    // A brighter Mira A drives a stronger wind and spreads the river slightly thinner; a
+    // faint one lets material settle. Centred on 0.5 — the exact cycle mean of the two
+    // half-cosines — so the year as a whole neither gains nor loses river.
+    density: 1 + DAILY_DENSITY_AMPLITUDE * (0.5 - brightness),
+  };
+}
+
 // Gold accents are local to the primary's full light: quadratic falloff kills them well
 // before the mid-river, so the blue-violet body keeps the palette.
 export function goldAccentStrength(lightA: number): number {
@@ -91,9 +132,12 @@ export function veilLayerWeight(index: number, count: number, accent: boolean): 
 
 // Base opacity for the tail points. With the density image the veil carries the body and the
 // points are texture; without it the points alone must keep the river visibly non-empty, and
-// lighter tiers thin the count so each point does more work.
-export function tailBaseOpacity(textureReady: boolean, particleCount: number): number {
-  return textureReady
+// lighter tiers thin the count so each point does more work. `density` is the daily-sky
+// modulation (issue #27): it scales texture and fallback alike, so a sparse night reads as
+// a sparser river, never as a broken one.
+export function tailBaseOpacity(textureReady: boolean, particleCount: number, density = 1): number {
+  const base = textureReady
     ? 0.16 * Math.min(1, 600 / particleCount)
     : 0.6 * Math.min(1, Math.sqrt(300 / particleCount));
+  return base * density;
 }

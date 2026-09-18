@@ -11,7 +11,7 @@ import {
   MIRA_B_GAIN,
   veilLayerWeight,
 } from '../../lib/riverLighting';
-import type { SkyRiverCoupling } from '../../lib/riverLighting';
+import type { DailySkyCoupling } from '../../lib/riverLighting';
 
 const vertexShader = `
   attribute vec3 aTangent;
@@ -146,7 +146,9 @@ export default function RiverVeil({ opacityRef, readyRef, length, reduceMotion, 
   length: number;
   reduceMotion: boolean;
   miraBRef: MutableRefObject<THREE.Group | null>;
-  sky: SkyRiverCoupling;
+  // The daily coupling (#27): gain/warmth as ever, plus a density that makes tonight's
+  // material a touch thicker or thinner, never absent.
+  sky: DailySkyCoupling;
 }) {
   const tier = resolveQualityTier();
   const groupRef = useRef<THREE.Group>(null);
@@ -199,7 +201,7 @@ export default function RiverVeil({ opacityRef, readyRef, length, reduceMotion, 
       const material = (child as THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMaterial>).material;
       material.uniforms.uTime.value = advanceTime(material.uniforms.uTime.value, delta, { reduceMotion });
       const isAccent = material.uniforms.uAccent.value === 1;
-      material.uniforms.uOpacity.value = opacityRef.current * veilLayerWeight(i, count, isAccent) / count;
+      material.uniforms.uOpacity.value = opacityRef.current * veilLayerWeight(i, count, isAccent) / count * sky.density;
       material.uniforms.uMiraBPos.value.copy(bWorldPos.current);
       material.uniforms.uSkyGain.value = sky.gain;
       material.uniforms.uSkyWarmth.value = sky.warmth;
