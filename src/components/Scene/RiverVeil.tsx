@@ -140,13 +140,15 @@ function createLayer(length: number, index: number, count: number, accent: boole
   return { geometry, material };
 }
 
-export default function RiverVeil({ opacityRef, readyRef, length, reduceMotion, miraBRef, sky }: {
+export default function RiverVeil({ opacityRef, readyRef, length, reduceMotion, miraBRef, sky, density }: {
   opacityRef: MutableRefObject<number>;
   readyRef: MutableRefObject<boolean>;
   length: number;
   reduceMotion: boolean;
   miraBRef: MutableRefObject<THREE.Group | null>;
   sky: SkyRiverCoupling;
+  // Daily-sky density (#27): tonight's material is a touch thicker or thinner, never absent.
+  density: number;
 }) {
   const tier = resolveQualityTier();
   const groupRef = useRef<THREE.Group>(null);
@@ -199,7 +201,7 @@ export default function RiverVeil({ opacityRef, readyRef, length, reduceMotion, 
       const material = (child as THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMaterial>).material;
       material.uniforms.uTime.value = advanceTime(material.uniforms.uTime.value, delta, { reduceMotion });
       const isAccent = material.uniforms.uAccent.value === 1;
-      material.uniforms.uOpacity.value = opacityRef.current * veilLayerWeight(i, count, isAccent) / count;
+      material.uniforms.uOpacity.value = opacityRef.current * veilLayerWeight(i, count, isAccent) / count * density;
       material.uniforms.uMiraBPos.value.copy(bWorldPos.current);
       material.uniforms.uSkyGain.value = sky.gain;
       material.uniforms.uSkyWarmth.value = sky.warmth;

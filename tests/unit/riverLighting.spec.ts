@@ -9,10 +9,23 @@ import {
   riverBrightness,
   veilLightResponse,
   skyRiverGain,
+  dailySkyCoupling,
   goldAccentStrength,
   veilLayerWeight,
   tailBaseOpacity,
 } from '../../src/lib/riverLighting';
+import {
+  MIRA_MAXIMUM_EPOCH_MS,
+  MIRA_PERIOD_DAYS,
+  MIRA_RISE_DAYS,
+  skyStateAt,
+} from '../../src/lib/starClock';
+
+const DAY_MS = 86_400_000;
+// Representative dates: the epoch anchors a documented maximum; the minimum follows the
+// decline fraction of the same cycle (the two half-cosines of the star clock).
+const MAXIMUM_DATE = new Date(MIRA_MAXIMUM_EPOCH_MS);
+const MINIMUM_DATE = new Date(MIRA_MAXIMUM_EPOCH_MS + (MIRA_PERIOD_DAYS - MIRA_RISE_DAYS) * DAY_MS);
 
 test.describe('star light falloff', () => {
   test('is brightest at the star and decays monotonically to zero', () => {
@@ -126,6 +139,60 @@ test.describe('sky coupling', () => {
   });
 });
 
+test.describe('daily sky coupling', () => {
+  test('the same date couples to the same river, value for value', () => {
+    // Determinism is the ticket's first promise: one deterministic clock in, one
+    // deterministic coupling out — no wall-clock reads inside the function.
+    const date = new Date(Date.UTC(2026, 8, 12));
+    const a = dailySkyCoupling(skyStateAt(date));
+    const b = dailySkyCoupling(skyStateAt(new Date(date.getTime())));
+    expect(b).toEqual(a);
+  });
+
+  test('a faint Mira lets the river settle denser; a bright one spreads it thinner', () => {
+    const atMaximum = dailySkyCoupling(skyStateAt(MAXIMUM_DATE));
+    const atMinimum = dailySkyCoupling(skyStateAt(MINIMUM_DATE));
+
+    expect(atMinimum.density).toBeGreaterThan(atMaximum.density);
+    expect(atMinimum.warmth).toBeGreaterThan(atMaximum.warmth);
+
+    // Colour and luminosity meet at both extremes of the cycle, so the lift is zero
+    // there; mid-cycle the colour runs ahead of the light and the lift peaks.
+    expect(atMaximum.brightnessLift).toBeCloseTo(0, 10);
+    expect(atMinimum.brightnessLift).toBeCloseTo(0, 10);
+    const midDecline = dailySkyCoupling(
+      skyStateAt(new Date(MIRA_MAXIMUM_EPOCH_MS + (MIRA_PERIOD_DAYS / 2) * DAY_MS)),
+    );
+    expect(midDecline.brightnessLift).toBeGreaterThan(0.004);
+  });
+
+  test('stays within its bounds across the whole cycle, so the tail never empties', () => {
+    for (let day = 0; day < MIRA_PERIOD_DAYS; day += 3) {
+      const sky = skyStateAt(new Date(MIRA_MAXIMUM_EPOCH_MS + day * DAY_MS));
+      const coupling = dailySkyCoupling(sky);
+      expect(coupling.density).toBeGreaterThanOrEqual(0.95);
+      expect(coupling.density).toBeLessThanOrEqual(1.05);
+      expect(coupling.brightnessLift).toBeGreaterThanOrEqual(0);
+      expect(coupling.brightnessLift).toBeLessThanOrEqual(0.01);
+      expect(coupling.warmth).toBeGreaterThanOrEqual(0);
+      expect(coupling.warmth).toBeLessThanOrEqual(0.25);
+      // Stacked on the dimmest night the lift never lifts the river past a few percent,
+      // and the gain floor from the plain coupling still holds.
+      const gain = skyRiverGain(sky.brightness, sky.colorShift).gain + coupling.brightnessLift;
+      expect(gain).toBeGreaterThanOrEqual(0.8);
+      expect(gain).toBeLessThanOrEqual(1.04);
+    }
+  });
+
+  test('keeps the baseline epoch at the calibration the visual direction was tuned on', () => {
+    // The 2026-09-12 capture epoch pins every committed baseline; the coupling's effect
+    // there must stay a small modulation, never a re-tuning.
+    const baseline = dailySkyCoupling(skyStateAt(new Date(Date.UTC(2026, 8, 12))));
+    expect(Math.abs(baseline.density - 1)).toBeLessThan(0.03);
+    expect(baseline.brightnessLift).toBeLessThan(0.01);
+  });
+});
+
 test.describe('gold accent stays local', () => {
   test('is zero in shadow and peaks only in the primary’s full light', () => {
     expect(goldAccentStrength(0)).toBe(0);
@@ -180,6 +247,16 @@ test.describe('tail base opacity', () => {
         expect(opacity).toBeLessThanOrEqual(0.6);
         previous = opacity;
       }
+    }
+  });
+
+  test('the daily density scales both texture and fallback paths without emptying either', () => {
+    for (const ready of [true, false]) {
+      const neutral = tailBaseOpacity(ready, 10000);
+      // A missing density argument is the neutral night: old callers keep their numbers.
+      expect(tailBaseOpacity(ready, 10000, 1)).toBe(neutral);
+      expect(tailBaseOpacity(ready, 10000, 0.96)).toBeCloseTo(neutral * 0.96, 10);
+      expect(tailBaseOpacity(ready, 10000, 1.04)).toBeCloseTo(neutral * 1.04, 10);
     }
   });
 });

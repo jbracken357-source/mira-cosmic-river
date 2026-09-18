@@ -1,0 +1,154 @@
+{
+  "label": "daily-sky-27",
+  "epoch": "<per view: see views[].epoch>",
+  "captureTimeSeconds": 8,
+  "seeds": {
+    "starField": "mulberry32:0x5eed1a",
+    "miraTail": "lcg:17",
+    "materialStream": "index-sin-hash"
+  },
+  "qualityTier": "high (navigator.deviceMemory/hardwareConcurrency pinned to 8)",
+  "url": "/?capture=1&epoch=%3Cper%20view%3A%20see%20views%5B%5D.epoch%3E&cam=<preset>",
+  "gitCommit": "d097d86493d8e0603b405fad1533c8be7b61d42d",
+  "views": [
+    {
+      "name": "near-maximum",
+      "file": "near-maximum.png",
+      "cam": "default",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "deviceScaleFactor": 1,
+      "reducedMotion": false,
+      "texturesReady": true,
+      "cameraPose": {
+        "position": [
+          8,
+          7,
+          28
+        ],
+        "fov": 45
+      },
+      "sky": {
+        "pulsationPhase": "0.0000",
+        "brightness": "1.0000",
+        "orbitalPhase": "0.0525",
+        "density": "0.9600"
+      },
+      "pageErrors": [],
+      "epoch": "2026-04-10T08:38:24.000Z",
+      "stats": {
+        "frameLuma": 9.0545214011505,
+        "tailLuma": 9.468374903167083,
+        "tailWarmth": -4.274482672650212
+      }
+    },
+    {
+      "name": "mid-decline",
+      "file": "mid-decline.png",
+      "cam": "default",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "deviceScaleFactor": 1,
+      "reducedMotion": false,
+      "texturesReady": true,
+      "cameraPose": {
+        "position": [
+          8,
+          7,
+          28
+        ],
+        "fov": 45
+      },
+      "sky": {
+        "pulsationPhase": "0.3494",
+        "brightness": "0.5000",
+        "orbitalPhase": "0.0532",
+        "density": "1.0000"
+      },
+      "pageErrors": [],
+      "epoch": "2026-08-04T08:09:36.000Z",
+      "stats": {
+        "frameLuma": 8.296319677073873,
+        "tailLuma": 9.104136357927214,
+        "tailWarmth": -3.9957429568686114
+      }
+    },
+    {
+      "name": "near-minimum",
+      "file": "near-minimum.png",
+      "cam": "default",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "deviceScaleFactor": 1,
+      "reducedMotion": false,
+      "texturesReady": true,
+      "cameraPose": {
+        "position": [
+          8,
+          7,
+          28
+        ],
+        "fov": 45
+      },
+      "sky": {
+        "pulsationPhase": "0.6988",
+        "brightness": "0.0000",
+        "orbitalPhase": "0.0538",
+        "density": "1.0400"
+      },
+      "pageErrors": [],
+      "epoch": "2026-11-28T07:40:48.000Z",
+      "stats": {
+        "frameLuma": 7.310584629232276,
+        "tailLuma": 8.609118541940866,
+        "tailWarmth": -3.5188460899193883
+      }
+    },
+    {
+      "name": "mid-rise",
+      "file": "mid-rise.png",
+      "cam": "default",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "deviceScaleFactor": 1,
+      "reducedMotion": false,
+      "texturesReady": true,
+      "cameraPose": {
+        "position": [
+          8,
+          7,
+          28
+        ],
+        "fov": 45
+      },
+      "sky": {
+        "pulsationPhase": "0.8494",
+        "brightness": "0.5000",
+        "orbitalPhase": "0.0541",
+        "density": "1.0000"
+      },
+      "pageErrors": [],
+      "epoch": "2027-01-17T07:40:48.000Z",
+      "stats": {
+        "frameLuma": 8.296319677073873,
+        "tailLuma": 9.104136357927214,
+        "tailWarmth": -3.9957429568686114
+      }
+    }
+  ],
+  "purpose": "Representative dates of one pulsation cycle (issue #27): same camera, same frozen animation phase, only the star clock differs.",
+  "tailRegion": {
+    "x0": 0.02,
+    "x1": 0.55,
+    "y0": 0.15,
+    "y1": 0.85
+  }
+}

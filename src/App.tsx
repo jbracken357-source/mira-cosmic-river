@@ -4,6 +4,8 @@ import { Scene } from './components/Scene';
 import { CinematicOverlay, InfoCards, ClosingMessage, MilestoneHint, SceneFallback } from './components/UI';
 import type { StarName } from './components/UI/InfoCards';
 import { hasFoundTail, persistFoundTail, useBinaryStar, useEntryReadiness, useIntentionalInput, initAmbientSound, useAmbientSound } from './hooks';
+import { currentSkyState } from './lib/starClock';
+import { dailySkyCoupling } from './lib/riverLighting';
 import './App.css';
 
 // If the canvas dies during creation (the probe passed but the real context
@@ -40,6 +42,18 @@ export default function App() {
   useIntentionalInput();
   // The ambient sound shell (visibility, gestures, the one graph). Idempotent.
   useEffect(() => initAmbientSound(), []);
+
+  // Re-read the star clock when the tab returns to the foreground (#27): the sky the
+  // viewer comes back to is tonight's sky, not the sky the tab was opened with. No
+  // polling — the sky moves on a daily scale; the no-catch-up motion policy on the same
+  // return path belongs to advanceTime, which this does not touch.
+  useEffect(() => {
+    const onVisible = () => {
+      if (!document.hidden) useBinaryStar.getState().setSky(currentSkyState());
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, []);
 
   const language = useBinaryStar((state) => state.language);
   // Keep the document language honest with the copy on screen (#20).
@@ -83,6 +97,8 @@ export default function App() {
         data-sky-phase={sky.pulsationPhase.toFixed(4)}
         data-sky-brightness={sky.brightness.toFixed(4)}
         data-sky-orbital-phase={sky.orbitalPhase.toFixed(4)}
+        // The daily river density (#27), readable without sampling pixels.
+        data-sky-density={dailySkyCoupling(sky).density.toFixed(4)}
         // Viewer-control observability for e2e: who owns the camera right now.
         data-auto-camera={autoCamera}
         data-epilogue={epilogueVisible ? 'true' : 'false'}

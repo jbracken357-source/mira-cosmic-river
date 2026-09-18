@@ -184,7 +184,9 @@ async function readCameraPose(page) {
 }
 
 // Capture the given views into outDir. Returns the manifest (also written by the caller).
-export async function captureViews({ baseUrl, outDir, views = VIEWS }) {
+// `epoch` pins the star clock for the whole set; the daily-sky evidence (#27) captures
+// several epochs through this one path so only the date varies.
+export async function captureViews({ baseUrl, outDir, views = VIEWS, epoch = BASELINE_EPOCH }) {
   await mkdir(outDir, { recursive: true });
   const browser = await chromium.launch({ headless: true });
   const manifestViews = [];
@@ -199,7 +201,7 @@ export async function captureViews({ baseUrl, outDir, views = VIEWS }) {
       const errors = [];
       page.on('pageerror', (error) => errors.push(error.message));
       await page.addInitScript(baselineInitScript);
-      const url = `${baseUrl}/?capture=1&epoch=${encodeURIComponent(BASELINE_EPOCH)}&cam=${view.cam}`;
+      const url = `${baseUrl}/?capture=1&epoch=${encodeURIComponent(epoch)}&cam=${view.cam}`;
       await page.goto(url, { waitUntil: 'networkidle' });
       await waitForExploreReady(page);
       await page.addStyleTag({ content: FREEZE_CSS });
@@ -217,6 +219,18 @@ export async function captureViews({ baseUrl, outDir, views = VIEWS }) {
       const file = `${view.name}.png`;
       await page.screenshot({ path: path.join(outDir, file) });
       const pose = await readCameraPose(page);
+      // The sky the page computed for this epoch, straight from the app's own
+      // observability attributes — the numbers the scene was actually driven by.
+      const skyAttrs = await page.evaluate(() => {
+        const el = document.querySelector('[data-sky-brightness]');
+        if (!el) return null;
+        return {
+          pulsationPhase: el.getAttribute('data-sky-phase'),
+          brightness: el.getAttribute('data-sky-brightness'),
+          orbitalPhase: el.getAttribute('data-sky-orbital-phase'),
+          density: el.getAttribute('data-sky-density'),
+        };
+      });
       manifestViews.push({
         name: view.name,
         file,
@@ -226,6 +240,7 @@ export async function captureViews({ baseUrl, outDir, views = VIEWS }) {
         reducedMotion: view.reducedMotion === 'reduce',
         texturesReady,
         cameraPose: pose,
+        sky: skyAttrs,
         pageErrors: errors,
       });
       await context.close();
@@ -244,10 +259,10 @@ export function gitCommit() {
   }
 }
 
-export function buildManifest({ label, views }) {
+export function buildManifest({ label, views, epoch = BASELINE_EPOCH }) {
   return {
     label,
-    epoch: BASELINE_EPOCH,
+    epoch,
     captureTimeSeconds: 8,
     seeds: {
       starField: 'mulberry32:0x5eed1a',
@@ -255,7 +270,7 @@ export function buildManifest({ label, views }) {
       materialStream: 'index-sin-hash',
     },
     qualityTier: 'high (navigator.deviceMemory/hardwareConcurrency pinned to 8)',
-    url: `/?capture=1&epoch=${encodeURIComponent(BASELINE_EPOCH)}&cam=<preset>`,
+    url: `/?capture=1&epoch=${encodeURIComponent(epoch)}&cam=<preset>`,
     gitCommit: gitCommit(),
     views,
   };
