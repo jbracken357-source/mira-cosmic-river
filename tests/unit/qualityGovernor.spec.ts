@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import {
   DEFAULT_GOVERNOR_CONFIG,
+  driveQualityGovernor,
   evaluateQuality,
   initialGovernorState,
   resolveGovernorSetup,
@@ -213,8 +214,86 @@ test.describe('evaluateQuality', () => {
   });
 });
 
-test.describe('resolveGovernorSetup', () => {
-  const desktopEnv = { qualityQuery: null, innerWidth: 1440, innerHeight: 900 };
+test.describe('driveQualityGovernor (entry-gate contract)', () => {
+  test('frames fed while the entry gate waits are never evaluated', () => {
+    // Software rendering makes page load slow; if those frames counted, the
+    // governor would walk off its starting tier before the scene is presented.
+    let state: GovernorState | null = null;
+    let now = 0;
+    for (let i = 0; i < 100; i += 1) {
+      const driven = driveQualityGovernor(state, false, SLOW, (now += 50), CONFIG, 'high');
+      state = driven.state;
+      expect(driven.verdict).toBeNull();
+    }
+    expect(state).toBeNull();
+  });
+
+  test('the governor begins on the gate-land frame, startup grace starting there', () => {
+    const driven = driveQualityGovernor(null, true, STEADY, 10_000, CONFIG, 'mid');
+    expect(driven.verdict).toBeNull();
+    const begun = driven.state;
+    expect(begun).not.toBeNull();
+    expect(begun!.tier).toBe('mid');
+    expect(begun!.lastChangeAt).toBe(10_000);
+    expect(begun!.windowStartAt).toBe(10_000);
+
+    // Two slow windows right after the gate lands: the grace period must hold,
+    // so loading-time slowness cannot immediately pull the tier down.
+    let state = begun;
+    let now = 10_000;
+    let sawChange = false;
+    for (let f = 0; f < 40; f += 1) {
+      now += CONFIG.windowMs / 20;
+      const next = driveQualityGovernor(state, true, SLOW, now, CONFIG, 'mid');
+      state = next.state;
+      if (next.verdict?.kind === 'change') sawChange = true;
+    }
+    expect(sawChange).toBe(false);
+    expect(state!.tier).toBe('mid');
+  });
+
+  test('loading slowness leaves no streak behind: steady frames after the gate stay put', () => {
+    let state: GovernorState | null = null;
+    let now = 0;
+    // A long, slow load (every frame past the down threshold)…
+    for (let i = 0; i < 60; i += 1) {
+      state = driveQualityGovernor(state, false, SLOW, (now += 100), CONFIG, 'high').state;
+    }
+    // …then the gate opens and the scene runs steady inside the band for a while:
+    // nothing may change, because no slow window from the load was counted.
+    state = driveQualityGovernor(state, true, STEADY, (now += 100), CONFIG, 'high').state;
+    for (let w = 0; w < 6; w += 1) {
+      for (let f = 0; f < 20; f += 1) {
+        now += CONFIG.windowMs / 20;
+        const driven = driveQualityGovernor(state, true, STEADY, now, CONFIG, 'high');
+        state = driven.state;
+        expect(driven.verdict?.kind ?? 'stable').toBe('stable');
+      }
+    }
+    expect(state!.tier).toBe('high');
+  });
+
+  test('once begun, frames evaluate exactly like evaluateQuality', () => {
+    // Begin at t=0, then feed two slow windows past the cooldown: a change.
+    let state = driveQualityGovernor(null, true, STEADY, 0, CONFIG, 'high').state;
+    let now = CONFIG.cooldownMs;
+    let change: Extract<GovernorVerdict, { kind: 'change' }> | null = null;
+    for (let w = 0; w < 2 && change === null; w += 1) {
+      for (let f = 0; f < 20; f += 1) {
+        now += CONFIG.windowMs / 20;
+        const driven = driveQualityGovernor(state, true, SLOW, now, CONFIG, 'high');
+        state = driven.state;
+        if (driven.verdict?.kind === 'change') change = driven.verdict;
+      }
+    }
+    expect(change).not.toBeNull();
+    expect(change!.from).toBe('high');
+    expect(change!.to).toBe('mid');
+    expect(state!.tier).toBe('mid');
+  });
+});
+
+test.describe('resolveGovernorSetup', () => {  const desktopEnv = { qualityQuery: null, innerWidth: 1440, innerHeight: 900 };
 
   test('an explicit ?quality= pin turns the governor off entirely', () => {
     for (const q of ['low', 'mid', 'high']) {
