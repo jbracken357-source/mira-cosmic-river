@@ -17,6 +17,7 @@
 // is still allowed at the 60s mark — it fades in place, no camera motion.
 import { TRANSITIONS } from '../constants/animation';
 import { captureMode } from './captureMode';
+import { easeInOutCubic } from './openingTimeline';
 
 // OrbitControls speed once the ramp completes (the pre-existing drift rate).
 export const AUTO_ROTATE_SPEED = 0.3;
@@ -54,6 +55,7 @@ export type ViewerControlReason =
   | 'background'
   | 'reading-card'
   | 'saving'
+  | 'return-settle'
   | 'reduced-motion'
   | 'epilogue'
   | 'idle';
@@ -66,10 +68,6 @@ export interface ViewerControl {
   epilogueText: boolean;
   holdsIdle: boolean;      // while true the caller keeps restamping the clock
   reason: ViewerControlReason;
-}
-
-function easeInOutCubic(t: number): number {
-  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 }
 
 function held(reason: ViewerControlReason): ViewerControl {
@@ -148,15 +146,22 @@ export function resolveViewerControl(
 }
 
 // Everything the assembled verdict needs from the store: the four hold fields plus
-// the shared idle clock. Narrower than the store itself, so tests pass a plain
-// object and call sites pass their snapshot unchanged.
+// the shared idle clock and the return request. Narrower than the store itself, so
+// tests pass a plain object and call sites pass their snapshot unchanged.
 export interface ViewerControlSnapshot {
   introComplete: boolean;
   isPlaying: boolean;
   cardOpen: boolean;
   tonightSaveOpen: boolean;
   lastIntentionalInputAt: number;
+  returnToExploreAt: number;
 }
+
+// A fresh return to the main view settles: for this long after the request the
+// camera stays exactly where the viewer asked to be — no drift, no closing
+// takeover. The window is anchored to the request timestamp, so the per-frame
+// hold-restamps cannot renew it.
+export const RETURN_SETTLE_MS = 10_000;
 
 // The assembled verdict from a whole store snapshot — one call instead of the
 // four-input assembly (now, clock, holds, timing) that used to be spelled out, word
@@ -167,6 +172,9 @@ export function viewerControlNow(
   reduceMotion: boolean,
   timing: IdleTiming = idleTiming(),
 ): ViewerControl {
+  if (state.introComplete && state.returnToExploreAt > 0 && Date.now() - state.returnToExploreAt < RETURN_SETTLE_MS) {
+    return held('return-settle');
+  }
   return resolveViewerControl(
     Date.now(),
     state.lastIntentionalInputAt,

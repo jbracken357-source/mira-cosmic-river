@@ -4,13 +4,15 @@ import { OrbitControls as DreiOrbitControls } from '@react-three/drei';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import { useReducedMotion } from 'framer-motion';
 import { useBinaryStar, ambientSpace, tonightFrame, useEntryReadiness } from '../../hooks';
-import { COLORS, PHYSICS, calculateOrbitalPosition, CINEMATIC, CAMERA as LANDSCAPE_CAMERA, TRANSITIONS, TRANSLATIONS, resolveQualityTier, ENTRY_STILL, ENTRY_STILL_BACKDROP } from '../../constants';
+import { COLORS, PHYSICS, calculateOrbitalPosition, CINEMATIC, CAMERA as LANDSCAPE_CAMERA, TRANSLATIONS, resolveQualityTier, ENTRY_STILL, ENTRY_STILL_BACKDROP } from '../../constants';
 import type { QualityTier } from '../../constants';
 import { PORTRAIT_CAMERA } from '../../constants/animation';
 import { MATERIALS_TIMEOUT_MS, gateAllowsCinematic } from '../../lib/entryReadiness';
 import { advanceTime, captureMode, resolveCapturePose } from '../../lib/captureMode';
-import { cinematicTimeScale, easeInOutCubic, openingCaptionMark, resolveOpeningPose, TAIL_FULL_OPACITY } from '../../lib/openingTimeline';
+import { cinematicTimeScale, openingCaptionMark, resolveOpeningPose, TAIL_FULL_OPACITY } from '../../lib/openingTimeline';
 import { viewerControlNow } from '../../lib/viewerControl';
+import { cancelReturnFlight, fittedFov, initialFreeViewState, stepFreeViewCamera } from '../../lib/freeViewCamera';
+import type { FlightPose } from '../../lib/freeViewCamera';
 import {
   driveQualityGovernor,
   governorProbeFrameMs,
@@ -62,60 +64,17 @@ const LOD = {
   },
 } as const;
 
-// Preserve the horizontal view on portrait screens instead of cropping the stars.
-function fittedFov(fov: number, aspect: number, fromAspect = 1) {
-  const scale = Math.min(1, fromAspect) / Math.min(1, aspect);
-  return THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(fov) / 2) * scale));
-}
-
 type OrbitControlsImpl = React.ElementRef<typeof DreiOrbitControls>;
 
-interface FlightPose {
-  position: readonly [number, number, number];
-  lookAt: readonly [number, number, number];
-  fov: number;
-}
-
-interface FlightOrigin {
-  pos: THREE.Vector3;
-  look: THREE.Vector3;
-  fov: number;
-}
-
-// Place the camera (and its orbit target) exactly on a pose: the explore landing,
-// the reduced-motion return, and the capture pin all share this.
+// Place the camera (and its orbit target) exactly on a pose lib/freeViewCamera has
+// already fitted for the current aspect: the explore landing, the reduced-motion
+// return, and the capture pin all share this.
 function applyPose(camera: THREE.PerspectiveCamera, controls: OrbitControlsImpl | null, pose: FlightPose) {
   camera.position.set(pose.position[0], pose.position[1], pose.position[2]);
-  camera.fov = fittedFov(pose.fov, camera.aspect);
+  camera.fov = pose.fov;
   camera.updateProjectionMatrix();
   camera.lookAt(pose.lookAt[0], pose.lookAt[1], pose.lookAt[2]);
   if (controls) controls.target.set(pose.lookAt[0], pose.lookAt[1], pose.lookAt[2]);
-}
-
-// Ease the camera from a captured origin toward a pose. The return-to-view and
-// closing flights share this so neither re-spells the lerp triplets.
-function blendFlight(
-  camera: THREE.PerspectiveCamera,
-  controls: OrbitControlsImpl | null,
-  from: FlightOrigin,
-  to: FlightPose,
-  k: number,
-  lookScratch: THREE.Vector3,
-) {
-  camera.position.set(
-    THREE.MathUtils.lerp(from.pos.x, to.position[0], k),
-    THREE.MathUtils.lerp(from.pos.y, to.position[1], k),
-    THREE.MathUtils.lerp(from.pos.z, to.position[2], k),
-  );
-  camera.fov = THREE.MathUtils.lerp(from.fov, fittedFov(to.fov, camera.aspect), k);
-  camera.updateProjectionMatrix();
-  lookScratch.set(
-    THREE.MathUtils.lerp(from.look.x, to.lookAt[0], k),
-    THREE.MathUtils.lerp(from.look.y, to.lookAt[1], k),
-    THREE.MathUtils.lerp(from.look.z, to.lookAt[2], k),
-  );
-  camera.lookAt(lookScratch);
-  if (controls) controls.target.copy(lookScratch);
 }
 
 function SceneContent({
@@ -167,30 +126,14 @@ function SceneContent({
   const cinematicStartRef = useRef(0);
   const cinematicElapsedRef = useRef(0);
   const captionMarkRef = useRef(0);
-  const exploreAppliedRef = useRef(false);
+  // The free-viewing camera (自由观看) state machine — flights, landing, capture
+  // pin — lives in lib/freeViewCamera; the frame loop only applies its verdicts.
+  const flightRef = useRef(initialFreeViewState());
   const orbitControlsRef = useRef<React.ElementRef<typeof DreiOrbitControls>>(null);
   const tailOpacityRef = useRef(0);
   const miraBGroupRef = useRef<THREE.Group>(null);
   const miraBTargetRef = useRef<THREE.Mesh>(null);
-  const closingFromPos = useRef(new THREE.Vector3());
-  const closingFromLook = useRef(new THREE.Vector3());
-  const closingFromFov = useRef<number>(CAMERA.EXPLORE.fov);
-  const closingBlend = useRef(0);
-  const closingArmed = useRef(false);
-  const closingLook = useRef(new THREE.Vector3());
-  const returnHandledRef = useRef(0);
-  // A flight is cancelled by fresh intentional input, detected by the input sequence:
-  // the flight restamps the idle clock every frame, so timestamps alone cannot tell
-  // "the viewer acted" apart from "the flight held the clock".
-  const returnArmedSeq = useRef(0);
-  const returnArmed = useRef(false);
-  const returnBlend = useRef(0);
-  const returnFromPos = useRef(new THREE.Vector3());
-  const returnFromLook = useRef(new THREE.Vector3());
-  const returnFromFov = useRef<number>(CAMERA.EXPLORE.fov);
-  const returnLook = useRef(new THREE.Vector3());
   const previousAspect = useRef(1);
-  const previousPortrait = useRef(portrait);
   const miraAScreenRef = useRef(new THREE.Vector3());
   const ambientLookRef = useRef(new THREE.Vector3());
   const firstFrameMarkedRef = useRef(false);
@@ -225,16 +168,10 @@ function SceneContent({
   // Main loop: cinematic + orbital animation
   useFrame((state, delta) => {
     const camera = state.camera as THREE.PerspectiveCamera;
-    if (previousPortrait.current !== portrait) {
-      exploreAppliedRef.current = false;
-      closingArmed.current = false;
-      returnArmed.current = false;
-      previousPortrait.current = portrait;
-    }
     if (camera.aspect !== previousAspect.current) {
-      // Undo the old portrait expansion, then apply the new aspect (including rotation).
+      // Undo the old portrait expansion, then apply the new aspect (including
+      // rotation). The flights' stored origin fovs refit inside the state machine.
       camera.fov = fittedFov(camera.fov, camera.aspect, previousAspect.current);
-      if (closingArmed.current) closingFromFov.current = fittedFov(closingFromFov.current, camera.aspect, previousAspect.current);
       camera.updateProjectionMatrix();
       previousAspect.current = camera.aspect;
     }
@@ -246,7 +183,31 @@ function SceneContent({
     // armed return flight holds the clock too — it is the camera's own business, and
     // this way it cannot land in an already-expired idle count.
     const control = viewerControlNow(store, reduceMotion);
-    if (control.holdsIdle || returnArmed.current) store.restampIdleClock();
+    // One step of the free-viewing camera: the live pose is fed in so flights can
+    // capture their origins, and the verdicts come back as a pose to apply, the
+    // controls enable state, and whether an armed flight holds the idle clock.
+    const orbit = orbitControlsRef.current;
+    const flight = stepFreeViewCamera(flightRef.current, {
+      delta,
+      aspect: camera.aspect,
+      portrait,
+      introComplete: store.introComplete,
+      openingFinished: cinematicStartRef.current !== 0 && cinematicElapsedRef.current >= CINEMATIC.EXPLORE_MODE,
+      returnToExploreAt: store.returnToExploreAt,
+      inputSeq: store.inputSeq,
+      epilogueCamera: control.epilogueCamera,
+      reduceMotion,
+      capturePose: capture.active && store.introComplete ? resolveCapturePose(capture.camera, CAMERA.EXPLORE) : null,
+      camera: {
+        position: [camera.position.x, camera.position.y, camera.position.z],
+        target: orbit
+          ? [orbit.target.x, orbit.target.y, orbit.target.z]
+          : [...CAMERA.EXPLORE.lookAt],
+        fov: camera.fov,
+      },
+    });
+    flightRef.current = flight.state;
+    if (control.holdsIdle || flight.holdsClock) store.restampIdleClock();
     store.setAutoCamera(control.autoCamera);
     // The frame loop is the epilogue's only clock-driven writer (the closing text
     // only renders): the verdict is applied write-on-change, exactly like the auto
@@ -260,104 +221,29 @@ function SceneContent({
       orbitControlsRef.current.autoRotate = control.autoRotateSpeed > 0;
       orbitControlsRef.current.autoRotateSpeed = control.autoRotateSpeed;
     }
-    const { introComplete, cinematicPhase, epilogueVisible } = store;
+    const { introComplete, cinematicPhase } = store;
+
+    // Apply the free-viewing verdicts: the pose (already fitted for the current
+    // aspect), the controls enable state, and the landing's one-shot bookkeeping —
+    // idle counts from the moment exploration starts, and the opening's start mark
+    // retires so a later re-landing takes the full explore framing again.
+    if (flight.pose) applyPose(camera, orbitControlsRef.current, flight.pose);
+    if (orbitControlsRef.current && orbitControlsRef.current.enabled !== flight.controlsEnabled) {
+      orbitControlsRef.current.enabled = flight.controlsEnabled;
+    }
+    if (flight.landedExplore) {
+      store.restampIdleClock();
+      cinematicStartRef.current = 0;
+    }
+    if (flight.landedReturn) {
+      // A completed return is a deliberate repositioning: the idle count restarts
+      // from the landing, so the closing takeover never chases a viewer who just
+      // asked for the main view (the click-time restamp alone leaves the flight's
+      // duration counted against the idle run).
+      store.restampIdleClock();
+    }
 
     if (introComplete) {
-      if (!exploreAppliedRef.current) {
-        // Idle counts from the moment exploration starts, not from module load, so
-        // the 30s/60s counts are not spent on the loading screen.
-        store.restampIdleClock();
-        // Return visits and early skip share the explore framing. A finished opening
-        // keeps the sequence-end camera.
-        const landExplore =
-          cinematicStartRef.current === 0 ||
-          cinematicElapsedRef.current < CINEMATIC.EXPLORE_MODE;
-        if (landExplore) applyPose(camera, orbitControlsRef.current, CAMERA.EXPLORE);
-        if (orbitControlsRef.current) {
-          if (!landExplore) {
-            // A finished opening has already settled onto the explore framing; the
-            // orbit target only has to join it (the far and explore framings share
-            // the look-at, so this cannot jump).
-            orbitControlsRef.current.target.set(...CAMERA.EXPLORE.lookAt);
-          }
-          orbitControlsRef.current.enabled = true;
-          cinematicStartRef.current = 0;
-          exploreAppliedRef.current = true;
-        }
-      }
-      // Return to the main view: a deliberate action, eased back to the explore
-      // framing. Reduced motion places the camera instantly — never a forced flight.
-      if (store.returnToExploreAt > returnHandledRef.current) {
-        returnHandledRef.current = store.returnToExploreAt;
-        if (reduceMotion) {
-          applyPose(camera, orbitControlsRef.current, CAMERA.EXPLORE);
-        } else {
-          returnFromPos.current.copy(camera.position);
-          if (orbitControlsRef.current) returnFromLook.current.copy(orbitControlsRef.current.target);
-          else returnFromLook.current.set(CAMERA.EXPLORE.lookAt[0], CAMERA.EXPLORE.lookAt[1], CAMERA.EXPLORE.lookAt[2]);
-          returnFromFov.current = camera.fov;
-          returnBlend.current = 0;
-          returnArmedSeq.current = store.inputSeq;
-          returnArmed.current = true;
-        }
-      }
-      if (returnArmed.current) {
-        // The epilogue or a fresh intentional input takes the camera back at once.
-        if (store.epilogueVisible || store.inputSeq !== returnArmedSeq.current) {
-          returnArmed.current = false;
-        } else {
-          returnBlend.current = Math.min(1, returnBlend.current + delta / TRANSITIONS.RETURN_CAMERA);
-          const k = easeInOutCubic(returnBlend.current);
-          blendFlight(
-            camera,
-            orbitControlsRef.current,
-            { pos: returnFromPos.current, look: returnFromLook.current, fov: returnFromFov.current },
-            CAMERA.EXPLORE,
-            k,
-            returnLook.current,
-          );
-          if (returnBlend.current >= 1) {
-            returnArmed.current = false;
-            // A completed return is a deliberate repositioning: the idle count
-            // restarts from the landing, so the epilogue never chases a viewer
-            // who just asked for the main view. The click-time restamp alone
-            // leaves the flight's duration counted against the idle run.
-            store.restampIdleClock();
-          }
-        }
-      }
-      if (epilogueVisible && !reduceMotion) {
-        const controls = orbitControlsRef.current;
-        if (!closingArmed.current) {
-          closingFromPos.current.copy(camera.position);
-          if (controls) closingFromLook.current.copy(controls.target);
-          else {
-            closingFromLook.current.set(
-              CAMERA.EXPLORE.lookAt[0],
-              CAMERA.EXPLORE.lookAt[1],
-              CAMERA.EXPLORE.lookAt[2],
-            );
-          }
-          closingFromFov.current = camera.fov;
-          closingBlend.current = 0;
-          closingArmed.current = true;
-        }
-        if (controls) controls.enabled = false;
-        closingBlend.current = Math.min(1, closingBlend.current + delta / TRANSITIONS.CLOSING_CAMERA);
-        const k = easeInOutCubic(closingBlend.current);
-        blendFlight(
-          camera,
-          controls,
-          { pos: closingFromPos.current, look: closingFromLook.current, fov: closingFromFov.current },
-          CAMERA.CLOSING,
-          k,
-          closingLook.current,
-        );
-      } else if (closingArmed.current) {
-        closingArmed.current = false;
-        closingBlend.current = 0;
-        if (orbitControlsRef.current) orbitControlsRef.current.enabled = true;
-      }
       // Free exploration holds the tail at full reveal — the same value the opening
       // timeline ramps to, so the hand-off never steps.
       tailOpacityRef.current = TAIL_FULL_OPACITY;
@@ -366,20 +252,8 @@ function SceneContent({
       // fallback — can actually be presented (#24). The clock stays at zero and
       // the loading still holds the screen; a hung load is bounded by the gate
       // timeout, never by the network's good will.
-      exploreAppliedRef.current = false;
-      closingArmed.current = false;
-      returnArmed.current = false;
-      if (orbitControlsRef.current) {
-        orbitControlsRef.current.enabled = false;
-      }
       tailOpacityRef.current = 0;
     } else {
-      exploreAppliedRef.current = false;
-      closingArmed.current = false;
-      returnArmed.current = false;
-      if (orbitControlsRef.current) {
-        orbitControlsRef.current.enabled = false;
-      }
       // Replay has to re-anchor here; keeping the old start time would skip the opening.
       if (cinematicStartRef.current === 0) cinematicStartRef.current = Date.now();
       // Two dev-only clock overrides: `?cinematic-t=` (with capture mode) freezes the
@@ -427,16 +301,6 @@ function SceneContent({
       camera.updateProjectionMatrix();
       camera.lookAt(pose.lookAt[0], pose.lookAt[1], pose.lookAt[2]);
       tailOpacityRef.current = pose.tailOpacity;
-    }
-
-    // Capture mode parks the camera at the requested pose every frame — after the explore
-    // hand-off above and after OrbitControls' own update — so nothing can drift between runs.
-    if (capture.active && introComplete) {
-      const pose = resolveCapturePose(capture.camera, CAMERA.EXPLORE);
-      applyPose(camera, orbitControlsRef.current, pose);
-      if (orbitControlsRef.current) {
-        orbitControlsRef.current.enabled = false;
-      }
     }
 
     // Orbital mechanics (always running unless the viewer paused the scene)
@@ -638,7 +502,10 @@ function SceneContent({
       <DreiOrbitControls
         ref={orbitControlsRef}
         onStart={() => {
-          returnArmed.current = false;
+          // OrbitControls updates before the frame loop runs, so the cancel has to
+          // be synchronous — the input-sequence check alone would let the flight
+          // fight the viewer's first pointer move for one frame.
+          flightRef.current = cancelReturnFlight(flightRef.current);
           useBinaryStar.getState().noteIntentionalInput();
         }}
         enablePan={false}

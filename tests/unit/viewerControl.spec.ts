@@ -5,6 +5,7 @@ import {
   idleTiming,
   resolveViewerControl,
   viewerControlNow,
+  RETURN_SETTLE_MS,
 } from '../../src/lib/viewerControl';
 import type { ViewerControlSnapshot, ViewerHolds } from '../../src/lib/viewerControl';
 import { TRANSITIONS } from '../../src/constants/animation';
@@ -239,6 +240,7 @@ test.describe('viewerControlNow (store snapshot assembly)', () => {
     cardOpen: false,
     tonightSaveOpen: false,
     lastIntentionalInputAt: Date.now(),
+    returnToExploreAt: 0,
     ...over,
   });
 
@@ -272,6 +274,24 @@ test.describe('viewerControlNow (store snapshot assembly)', () => {
     expect(reduce.reason).toBe('reduced-motion');
     expect(reduce.epilogueCamera).toBe(false);
     expect(reduce.epilogueText).toBe(true);
+  });
+
+  test('a fresh return to the main view holds the camera for its settle window', () => {
+    const settled = viewerControlNow(snapshot({ lastIntentionalInputAt: Date.now() - 61_000, returnToExploreAt: Date.now() - 5_000 }));
+    expect(settled.reason).toBe('return-settle');
+    expect(settled.holdsIdle).toBe(true);
+    expect(settled.autoCamera).toBe('off');
+    expect(settled.epilogueCamera).toBe(false);
+    expect(settled.epilogueText).toBe(false);
+
+    // The window is anchored to the request, not renewed by the hold's restamps.
+    const aged = viewerControlNow(snapshot({ lastIntentionalInputAt: Date.now() - 61_000, returnToExploreAt: Date.now() - RETURN_SETTLE_MS - 1_000 }));
+    expect(aged.reason).toBe('epilogue');
+  });
+
+  test('the settle window belongs to free viewing, not the opening', () => {
+    const opening = viewerControlNow(snapshot({ introComplete: false, returnToExploreAt: Date.now() }));
+    expect(opening.reason).toBe('cinematic');
   });
 });
 
