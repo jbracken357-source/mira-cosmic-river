@@ -21,6 +21,10 @@ interface BinaryStarStore extends StarSystemState {
   setSky: (sky: SkyState) => void;
   epilogueVisible: boolean;
   setEpilogueVisible: (visible: boolean) => void;
+  // The epilogue line's own visibility, published beside epilogueVisible (camera or
+  // text): under reduced motion the line arrives without the closing flight.
+  epilogueText: boolean;
+  setEpilogueText: (visible: boolean) => void;
   // Shared idle clock: the timestamp of the last intentional input. Drag, wheel,
   // touch, keys and control presses restamp it; mousemove and the auto camera do not.
   // inputSeq counts intentional inputs only (never the silent restamps), so a camera
@@ -94,6 +98,7 @@ export const useBinaryStar = create<BinaryStarStore>((set, get) => ({
   cinematicPhase: startInExplore ? 'explore' : 'dark',
   cinematicTime: 0,
   epilogueVisible: false,
+  epilogueText: false,
   lastIntentionalInputAt: Date.now(),
   inputSeq: 0,
   cardOpen: false,
@@ -113,17 +118,25 @@ export const useBinaryStar = create<BinaryStarStore>((set, get) => ({
       return;
     }
     // Replay: the seen flag stays. Clearing storage is how a first visit is restored.
-    set({ introComplete: false, cinematicPhase: 'dark', cinematicTime: 0, epilogueVisible: false, cardOpen: false });
+    set({ introComplete: false, cinematicPhase: 'dark', cinematicTime: 0, epilogueVisible: false, epilogueText: false, cardOpen: false });
   },
   setCinematicPhase: (phase) => set({ cinematicPhase: phase }),
   setCinematicTime: (time) => set({ cinematicTime: time }),
-  setEpilogueVisible: (epilogueVisible) => set({ epilogueVisible }),
+  // Written every frame by the scene's verdict application, so both setters are
+  // write-on-change (same as setAutoCamera): the per-frame writes stay free.
+  setEpilogueVisible: (epilogueVisible) => {
+    if (get().epilogueVisible !== epilogueVisible) set({ epilogueVisible });
+  },
+  setEpilogueText: (epilogueText) => {
+    if (get().epilogueText !== epilogueText) set({ epilogueText });
+  },
   // Intentional input restamps the clock and dismisses the epilogue in the same
   // event, so the interrupt never waits for a poll tick.
   noteIntentionalInput: () =>
     set((state) => ({
       lastIntentionalInputAt: Date.now(),
       epilogueVisible: false,
+      epilogueText: false,
       inputSeq: state.inputSeq + 1,
     })),
   // Hold bookkeeping: the clock restarts from zero when the hold ends, without
@@ -135,7 +148,7 @@ export const useBinaryStar = create<BinaryStarStore>((set, get) => ({
     if (get().autoCamera !== autoCamera) set({ autoCamera });
   },
   requestReturnToExplore: () =>
-    set({ returnToExploreAt: Date.now(), epilogueVisible: false, lastIntentionalInputAt: Date.now() }),
+    set({ returnToExploreAt: Date.now(), epilogueVisible: false, epilogueText: false, lastIntentionalInputAt: Date.now() }),
   setParameter: (key, value) => set((state) => ({
     parameters: { ...state.parameters, [key]: value },
   })),

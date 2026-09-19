@@ -147,9 +147,37 @@ export function resolveViewerControl(
   };
 }
 
+// Everything the assembled verdict needs from the store: the four hold fields plus
+// the shared idle clock. Narrower than the store itself, so tests pass a plain
+// object and call sites pass their snapshot unchanged.
+export interface ViewerControlSnapshot {
+  introComplete: boolean;
+  isPlaying: boolean;
+  cardOpen: boolean;
+  tonightSaveOpen: boolean;
+  lastIntentionalInputAt: number;
+}
+
+// The assembled verdict from a whole store snapshot — one call instead of the
+// four-input assembly (now, clock, holds, timing) that used to be spelled out, word
+// for word, at every caller. The frame loop is the epilogue's only clock-driven
+// writer, so this is the single place that assembly lives.
+export function viewerControlNow(
+  state: ViewerControlSnapshot,
+  reduceMotion: boolean,
+  timing: IdleTiming = idleTiming(),
+): ViewerControl {
+  return resolveViewerControl(
+    Date.now(),
+    state.lastIntentionalInputAt,
+    collectViewerHolds(state, reduceMotion),
+    timing,
+  );
+}
+
 // Snapshot the current holds from the store fields plus the environment. Adding a
 // hold (saving, #23) means one flag here and one line below.
-export function collectViewerHolds(
+function collectViewerHolds(
   state: { introComplete: boolean; isPlaying: boolean; cardOpen: boolean; tonightSaveOpen: boolean },
   reduceMotion: boolean,
 ): ViewerHolds {

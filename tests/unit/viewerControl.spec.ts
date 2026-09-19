@@ -4,8 +4,9 @@ import {
   DEFAULT_IDLE_TIMING,
   idleTiming,
   resolveViewerControl,
+  viewerControlNow,
 } from '../../src/lib/viewerControl';
-import type { ViewerHolds } from '../../src/lib/viewerControl';
+import type { ViewerControlSnapshot, ViewerHolds } from '../../src/lib/viewerControl';
 import { TRANSITIONS } from '../../src/constants/animation';
 import { useBinaryStar } from '../../src/hooks/useBinaryStar';
 
@@ -228,6 +229,52 @@ test.describe('custom timing (dev override shape)', () => {
   });
 });
 
+// The assembled entry the frame loop actually calls: one snapshot in, one verdict
+// out. These pin the assembly (clock, holds, reduced motion), not the rules — the
+// rules are covered above through resolveViewerControl directly.
+test.describe('viewerControlNow (store snapshot assembly)', () => {
+  const snapshot = (over: Partial<ViewerControlSnapshot> = {}): ViewerControlSnapshot => ({
+    introComplete: true,
+    isPlaying: true,
+    cardOpen: false,
+    tonightSaveOpen: false,
+    lastIntentionalInputAt: Date.now(),
+    ...over,
+  });
+
+  test('a fresh snapshot leaves the camera with the viewer', () => {
+    const control = viewerControlNow(snapshot());
+    expect(control.autoCamera).toBe('off');
+    expect(control.epilogueCamera).toBe(false);
+    expect(control.epilogueText).toBe(false);
+    expect(control.holdsIdle).toBe(false);
+  });
+
+  test('idle thresholds are measured against the snapshot clock', () => {
+    // Comfortable margins so the assertions cannot race Date.now(): 35s is past the
+    // 30s+3s ramp but well before the 52s closing-camera arm; 61s is past the 60s line.
+    const rested = viewerControlNow(snapshot({ lastIntentionalInputAt: Date.now() - 35_000 }));
+    expect(rested.autoCamera).toBe('on');
+    const epilogue = viewerControlNow(snapshot({ lastIntentionalInputAt: Date.now() - 61_000 }));
+    expect(epilogue.epilogueCamera).toBe(true);
+    expect(epilogue.epilogueText).toBe(true);
+  });
+
+  test('store holds map to their reasons in priority order', () => {
+    expect(viewerControlNow(snapshot({ isPlaying: false }), false).reason).toBe('manual-pause');
+    expect(viewerControlNow(snapshot({ cardOpen: true }), false).reason).toBe('reading-card');
+    expect(viewerControlNow(snapshot({ tonightSaveOpen: true }), false).reason).toBe('saving');
+    expect(viewerControlNow(snapshot({ introComplete: false }), false).reason).toBe('cinematic');
+  });
+
+  test('reduced motion holds the camera but not the epilogue line', () => {
+    const reduce = viewerControlNow(snapshot({ lastIntentionalInputAt: Date.now() - 61_000 }), true);
+    expect(reduce.reason).toBe('reduced-motion');
+    expect(reduce.epilogueCamera).toBe(false);
+    expect(reduce.epilogueText).toBe(true);
+  });
+});
+
 // The store-level contract a camera flight relies on: while a flight is armed the
 // scene restamps the idle clock every frame (an armed flight holds the idle count),
 // and interruption is detected by the input sequence, not by comparing timestamps —
@@ -247,8 +294,21 @@ test.describe('intentional input bookkeeping', () => {
   test('intentional input dismisses the epilogue in the same event', () => {
     const store = () => useBinaryStar.getState();
     store().setEpilogueVisible(true);
+    store().setEpilogueText(true);
     store().noteIntentionalInput();
     expect(store().epilogueVisible).toBe(false);
+    expect(store().epilogueText).toBe(false);
     store().setEpilogueVisible(false);
+    store().setEpilogueText(false);
+  });
+
+  test('replaying the opening clears both epilogue flags for the next landing', () => {
+    const store = () => useBinaryStar.getState();
+    store().setEpilogueVisible(true);
+    store().setEpilogueText(true);
+    store().setIntroComplete(false);
+    expect(store().epilogueVisible).toBe(false);
+    expect(store().epilogueText).toBe(false);
+    store().setIntroComplete(true);
   });
 });
