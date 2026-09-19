@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { StarSystemState, StarParameters, VisualMode, Language, CinematicPhase } from '../types';
+import type { StarSystemState, StarParameters, Language, CinematicPhase } from '../types';
 import type { SkyState } from '../lib/starClock';
 import { currentSkyState } from '../lib/starClock';
 import { captureMode, registerPauseSource } from '../lib/captureMode';
@@ -11,7 +11,6 @@ export const FOUND_TAIL_KEY = 'mira:found-tail';
 interface BinaryStarStore extends StarSystemState {
   parameters: StarParameters;
   sky: SkyState;
-  setMode: (mode: VisualMode) => void;
   setLanguage: (language: Language) => void;
   setPlaying: (isPlaying: boolean) => void;
   setIntroComplete: (complete: boolean) => void;
@@ -87,7 +86,6 @@ const capture = captureMode();
 const startInExplore = (capture.active && capture.cinematicT === null) || hasSeenOpening();
 
 export const useBinaryStar = create<BinaryStarStore>((set, get) => ({
-  mode: 'explore',
   language: 'ch',
   isPlaying: true,
   introComplete: startInExplore,
@@ -103,7 +101,6 @@ export const useBinaryStar = create<BinaryStarStore>((set, get) => ({
   parameters: defaultParameters,
   sky: initialSky,
 
-  setMode: (mode) => set({ mode }),
   setLanguage: (language) => set({ language }),
   setPlaying: (isPlaying) => set({ isPlaying }),
   setIntroComplete: (complete) => {
@@ -145,15 +142,3 @@ export const useBinaryStar = create<BinaryStarStore>((set, get) => ({
 // The scene clocks pause when the viewer pauses; the predicate lives in one place
 // (lib/captureMode) instead of being spelled out at every advanceTime call site.
 registerPauseSource(() => !useBinaryStar.getState().isPlaying);
-
-export function useTimeSpeed() {
-  return useBinaryStar((state) => state.parameters.timeSpeed);
-}
-
-export function useCinematicPhase() {
-  return useBinaryStar((state) => state.cinematicPhase);
-}
-
-export function useLanguage() {
-  return useBinaryStar((state) => state.language);
-}

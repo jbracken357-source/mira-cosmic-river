@@ -91,9 +91,6 @@ export const PORTRAIT_CAMERA = {
 // Transition durations
 export const TRANSITIONS = {
   FADE_IN: 1.5,          // Black → stars fade in
-  STAR_REVEAL: 2.0,      // Stars fully materialize
-  PULL_BACK: 8.0,        // Camera pull-back duration
-  TAIL_FADE_IN: 3.0,     // Tail opacity 0 → 1
   FINAL_TEXT_FADE: 1.5,  // Final title fade in
   EXPLORE_TRANSITION: 0.5,
   CLOSING_CAMERA: 8,     // idle pull-in; matches the lead before the epilogue line
@@ -106,20 +103,6 @@ export const TRANSITIONS = {
 export const INFO_CARD = {
   ENTER: 0.21,
   EXIT: 0.15,
-} as const;
-
-// Spring physics for Framer Motion
-export const SPRING = {
-  gentle: {
-    type: 'spring',
-    stiffness: 100,
-    damping: 15,
-  },
-  smooth: {
-    type: 'spring',
-    stiffness: 50,
-    damping: 20,
-  },
 } as const;
 
 // Easing functions

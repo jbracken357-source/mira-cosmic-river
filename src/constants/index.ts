@@ -1,5 +1,5 @@
-export { COLORS, COLOR_INFO, hexToThreeColor, getColorVariants, getHex, type ColorWithEmotion } from './colors';
-export { CINEMATIC, CAMERA, TRANSITIONS, INFO_CARD, SPRING, EASE } from './animation';
+export { COLORS } from './colors';
+export { CINEMATIC, CAMERA, TRANSITIONS, INFO_CARD, EASE } from './animation';
 export { PHYSICS, calculateOrbitalPosition } from './physics';
 export { TRANSLATIONS, type Language, type TranslationKey } from './translations';
 export { resolveQualityTier, detectQualityTier, type QualityTier } from './quality';
