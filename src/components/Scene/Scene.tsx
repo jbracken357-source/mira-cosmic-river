@@ -10,7 +10,7 @@ import { PORTRAIT_CAMERA } from '../../constants/animation';
 import { MATERIALS_TIMEOUT_MS, gateAllowsCinematic } from '../../lib/entryReadiness';
 import { advanceTime, captureMode, resolveCapturePose } from '../../lib/captureMode';
 import { cinematicTimeScale, easeInOutCubic, openingCaptionMark, resolveOpeningPose, TAIL_FULL_OPACITY } from '../../lib/openingTimeline';
-import { viewerControlNow } from '../../lib/viewerControl';
+import { viewerControlNow, RETURN_SETTLE_MS } from '../../lib/viewerControl';
 import {
   driveQualityGovernor,
   governorProbeFrameMs,
@@ -427,6 +427,21 @@ function SceneContent({
       camera.updateProjectionMatrix();
       camera.lookAt(pose.lookAt[0], pose.lookAt[1], pose.lookAt[2]);
       tailOpacityRef.current = pose.tailOpacity;
+    }
+
+    // The return-settle window pins the main view: whatever residual perturbs the
+    // camera — including a damped drag inertia persisting at low frame rates — it
+    // is re-placed every frame, the same parking discipline capture mode uses. The
+    // first intentional input (the sequence captured at arm time changing) releases
+    // the pin, so the viewer keeps the camera at any moment.
+    if (
+      introComplete &&
+      !capture.active &&
+      store.returnToExploreAt > 0 &&
+      Date.now() - store.returnToExploreAt < RETURN_SETTLE_MS &&
+      store.inputSeq === returnArmedSeq.current
+    ) {
+      applyPose(camera, orbitControlsRef.current, CAMERA.EXPLORE);
     }
 
     // Capture mode parks the camera at the requested pose every frame — after the explore
