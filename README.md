@@ -77,12 +77,14 @@ src/
   components/UI/      cinematic overlay, info cards, closing message, tonight save
   constants/          palette, physics, timings, translations, quality tiers
   lib/                pure seams, no rendering: star clock, river lighting,
-                      viewer control, quality governor, ambient graph, save flow
+                      viewer control, free view camera, quality governor,
+                      ambient graph, save flow
   shaders/            GLSL sources
   hooks/              store and device hooks
 tests/e2e/            Playwright specs (behaviour, not pixels)
 tests/unit/           pure-function specs (star clock, river lighting, viewer
-                      control, quality governor, save flow, entry readiness)
+                      control, free view camera, quality governor, save flow,
+                      entry readiness)
 docs/adr/             decisions worth not re-litigating
 docs/archive/         Gen 1 material, kept for history only
 ```
