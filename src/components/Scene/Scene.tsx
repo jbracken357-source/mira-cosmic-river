@@ -316,7 +316,14 @@ function SceneContent({
             k,
             returnLook.current,
           );
-          if (returnBlend.current >= 1) returnArmed.current = false;
+          if (returnBlend.current >= 1) {
+            returnArmed.current = false;
+            // A completed return is a deliberate repositioning: the idle count
+            // restarts from the landing, so the epilogue never chases a viewer
+            // who just asked for the main view. The click-time restamp alone
+            // leaves the flight's duration counted against the idle run.
+            store.restampIdleClock();
+          }
         }
       }
       if (epilogueVisible && !reduceMotion) {
