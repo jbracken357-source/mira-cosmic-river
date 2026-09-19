@@ -96,6 +96,9 @@ export interface FreeViewFrame {
   // The capture pin's resolved pose, or null when capture mode is not parking the
   // camera this frame. It overrides every other verdict.
   capturePose: FlightPose | null;
+  // The return-settle window is active (a fresh return to the main view, before
+  // the first intentional input): the main view is pinned every frame.
+  returnSettleActive: boolean;
   // The live camera, for capturing flight origins at arm time.
   camera: {
     position: Vec3;
@@ -230,6 +233,20 @@ export function stepFreeViewCamera(state: FreeViewState, frame: FreeViewFrame): 
   } else if (s.closingArmed) {
     s.closingArmed = false;
     s.closingBlend = 0;
+  }
+
+  // The settle window pins the main view: whatever residual perturbs the camera —
+  // including a damped drag inertia persisting at low frame rates — it is re-placed
+  // every frame, the same parking discipline capture mode uses. The first
+  // intentional input (the sequence captured at arm time changing) releases the
+  // pin, so the viewer keeps the camera at any moment.
+  if (
+    frame.returnSettleActive &&
+    frame.introComplete &&
+    frame.capturePose === null &&
+    s.returnArmedSeq === frame.inputSeq
+  ) {
+    pose = place('EXPLORE');
   }
 
   // Capture mode parks the camera at the requested pose every frame — after the

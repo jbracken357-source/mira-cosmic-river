@@ -10,7 +10,7 @@ import { PORTRAIT_CAMERA } from '../../constants/animation';
 import { MATERIALS_TIMEOUT_MS, gateAllowsCinematic } from '../../lib/entryReadiness';
 import { advanceTime, captureMode, resolveCapturePose } from '../../lib/captureMode';
 import { cinematicTimeScale, openingCaptionMark, resolveOpeningPose, TAIL_FULL_OPACITY } from '../../lib/openingTimeline';
-import { viewerControlNow } from '../../lib/viewerControl';
+import { viewerControlNow, RETURN_SETTLE_MS } from '../../lib/viewerControl';
 import { cancelReturnFlight, fittedFov, initialFreeViewState, stepFreeViewCamera } from '../../lib/freeViewCamera';
 import type { FlightPose } from '../../lib/freeViewCamera';
 import {
@@ -194,6 +194,8 @@ function SceneContent({
       introComplete: store.introComplete,
       openingFinished: cinematicStartRef.current !== 0 && cinematicElapsedRef.current >= CINEMATIC.EXPLORE_MODE,
       returnToExploreAt: store.returnToExploreAt,
+      returnSettleActive:
+        store.returnToExploreAt > 0 && Date.now() - store.returnToExploreAt < RETURN_SETTLE_MS,
       inputSeq: store.inputSeq,
       epilogueCamera: control.epilogueCamera,
       reduceMotion,

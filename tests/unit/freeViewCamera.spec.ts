@@ -28,6 +28,7 @@ function frame(over: Partial<FreeViewFrame> = {}): FreeViewFrame {
     introComplete: true,
     openingFinished: false,
     returnToExploreAt: 0,
+    returnSettleActive: false,
     inputSeq: 0,
     epilogueCamera: false,
     reduceMotion: false,
@@ -148,6 +149,29 @@ test.describe('return to the main view', () => {
     expect(settled.landedReturn).toBe(false);
     const interrupted = stepFreeViewCamera(armed.state, { ...f, inputSeq: 1 });
     expect(interrupted.landedReturn).toBe(false);
+  });
+
+  test('the settle window pins the main view until the first input', () => {
+    const f = frame({ returnToExploreAt: 1000, returnSettleActive: true, camera: DRAGGED });
+    const first = stepFreeViewCamera(initialFreeViewState(), f);
+    // The pin overrides even the just-armed flight: the pose is the explore framing.
+    expect(first.pose!.position).toEqual([...CAMERA.EXPLORE.position]);
+    expect(first.pose!.lookAt).toEqual([...CAMERA.EXPLORE.lookAt]);
+
+    // A perturbation (e.g. damped drag inertia) is re-placed the next frame.
+    const disturbed = stepFreeViewCamera(first.state, {
+      ...f,
+      camera: { position: [3, 9, 26], target: [0, 0, 0], fov: 46 },
+    });
+    expect(disturbed.pose!.position).toEqual([...CAMERA.EXPLORE.position]);
+
+    // The first intentional input releases the pin.
+    const touched = stepFreeViewCamera(first.state, { ...f, inputSeq: 1 });
+    expect(touched.pose).toBeNull();
+
+    // Once the window expires the flights own the camera again.
+    const expired = stepFreeViewCamera(first.state, { ...f, returnSettleActive: false });
+    expect(expired.pose).not.toBeNull();
   });
 
   test('reduced motion places the camera instantly instead of flying', () => {
