@@ -10,7 +10,7 @@ import { PORTRAIT_CAMERA } from '../../constants/animation';
 import { MATERIALS_TIMEOUT_MS, gateAllowsCinematic } from '../../lib/entryReadiness';
 import { advanceTime, captureMode, resolveCapturePose } from '../../lib/captureMode';
 import { cinematicTimeScale, easeInOutCubic, openingCaptionMark, resolveOpeningPose, TAIL_FULL_OPACITY } from '../../lib/openingTimeline';
-import { collectViewerHolds, idleTiming, resolveViewerControl } from '../../lib/viewerControl';
+import { viewerControlNow, RETURN_SETTLE_MS } from '../../lib/viewerControl';
 import {
   driveQualityGovernor,
   governorProbeFrameMs,
@@ -245,14 +245,15 @@ function SceneContent({
     // 30s/60s count from zero instead of cashing in time spent reading or away. An
     // armed return flight holds the clock too — it is the camera's own business, and
     // this way it cannot land in an already-expired idle count.
-    const control = resolveViewerControl(
-      Date.now(),
-      store.lastIntentionalInputAt,
-      collectViewerHolds(store, reduceMotion),
-      idleTiming(),
-    );
+    const control = viewerControlNow(store, reduceMotion);
     if (control.holdsIdle || returnArmed.current) store.restampIdleClock();
     store.setAutoCamera(control.autoCamera);
+    // The frame loop is the epilogue's only clock-driven writer (the closing text
+    // only renders): the verdict is applied write-on-change, exactly like the auto
+    // camera above. epilogueVisible keeps its camera-or-text meaning for the closing
+    // flight and e2e; epilogueText is the line's own visibility.
+    store.setEpilogueVisible(control.epilogueCamera || control.epilogueText);
+    store.setEpilogueText(control.epilogueText);
     if (orbitControlsRef.current) {
       // Driven per frame rather than by prop: the 3s ramp is a continuous value, and
       // the epilogue hands rotation off instead of snapping it.
@@ -263,6 +264,9 @@ function SceneContent({
 
     if (introComplete) {
       if (!exploreAppliedRef.current) {
+        // Idle counts from the moment exploration starts, not from module load, so
+        // the 30s/60s counts are not spent on the loading screen.
+        store.restampIdleClock();
         // Return visits and early skip share the explore framing. A finished opening
         // keeps the sequence-end camera.
         const landExplore =
@@ -312,7 +316,14 @@ function SceneContent({
             k,
             returnLook.current,
           );
-          if (returnBlend.current >= 1) returnArmed.current = false;
+          if (returnBlend.current >= 1) {
+            returnArmed.current = false;
+            // A completed return is a deliberate repositioning: the idle count
+            // restarts from the landing, so the epilogue never chases a viewer
+            // who just asked for the main view. The click-time restamp alone
+            // leaves the flight's duration counted against the idle run.
+            store.restampIdleClock();
+          }
         }
       }
       if (epilogueVisible && !reduceMotion) {
@@ -416,6 +427,21 @@ function SceneContent({
       camera.updateProjectionMatrix();
       camera.lookAt(pose.lookAt[0], pose.lookAt[1], pose.lookAt[2]);
       tailOpacityRef.current = pose.tailOpacity;
+    }
+
+    // The return-settle window pins the main view: whatever residual perturbs the
+    // camera — including a damped drag inertia persisting at low frame rates — it
+    // is re-placed every frame, the same parking discipline capture mode uses. The
+    // first intentional input (the sequence captured at arm time changing) releases
+    // the pin, so the viewer keeps the camera at any moment.
+    if (
+      introComplete &&
+      !capture.active &&
+      store.returnToExploreAt > 0 &&
+      Date.now() - store.returnToExploreAt < RETURN_SETTLE_MS &&
+      store.inputSeq === returnArmedSeq.current
+    ) {
+      applyPose(camera, orbitControlsRef.current, CAMERA.EXPLORE);
     }
 
     // Capture mode parks the camera at the requested pose every frame — after the explore

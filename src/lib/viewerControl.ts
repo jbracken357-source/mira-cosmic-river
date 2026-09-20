@@ -54,6 +54,7 @@ export type ViewerControlReason =
   | 'background'
   | 'reading-card'
   | 'saving'
+  | 'return-settle'
   | 'reduced-motion'
   | 'epilogue'
   | 'idle';
@@ -147,9 +148,47 @@ export function resolveViewerControl(
   };
 }
 
+// Everything the assembled verdict needs from the store: the four hold fields plus
+// the shared idle clock and the return request. Narrower than the store itself, so
+// tests pass a plain object and call sites pass their snapshot unchanged.
+export interface ViewerControlSnapshot {
+  introComplete: boolean;
+  isPlaying: boolean;
+  cardOpen: boolean;
+  tonightSaveOpen: boolean;
+  lastIntentionalInputAt: number;
+  returnToExploreAt: number;
+}
+
+// A fresh return to the main view settles: for this long after the request the
+// camera stays exactly where the viewer asked to be — no drift, no closing
+// takeover. The window is anchored to the request timestamp, so the per-frame
+// hold-restamps cannot renew it.
+export const RETURN_SETTLE_MS = 10_000;
+
+// The assembled verdict from a whole store snapshot — one call instead of the
+// four-input assembly (now, clock, holds, timing) that used to be spelled out, word
+// for word, at every caller. The frame loop is the epilogue's only clock-driven
+// writer, so this is the single place that assembly lives.
+export function viewerControlNow(
+  state: ViewerControlSnapshot,
+  reduceMotion: boolean,
+  timing: IdleTiming = idleTiming(),
+): ViewerControl {
+  if (state.introComplete && state.returnToExploreAt > 0 && Date.now() - state.returnToExploreAt < RETURN_SETTLE_MS) {
+    return held('return-settle');
+  }
+  return resolveViewerControl(
+    Date.now(),
+    state.lastIntentionalInputAt,
+    collectViewerHolds(state, reduceMotion),
+    timing,
+  );
+}
+
 // Snapshot the current holds from the store fields plus the environment. Adding a
 // hold (saving, #23) means one flag here and one line below.
-export function collectViewerHolds(
+function collectViewerHolds(
   state: { introComplete: boolean; isPlaying: boolean; cardOpen: boolean; tonightSaveOpen: boolean },
   reduceMotion: boolean,
 ): ViewerHolds {
