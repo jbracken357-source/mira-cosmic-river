@@ -19,6 +19,7 @@ import {
   initialTonightSaveState,
   tonightFilename,
   tonightPhrase,
+  tonightTextLayout,
   transition,
 } from '../lib/tonightSave';
 import type {
@@ -158,8 +159,7 @@ async function compose(snap: TonightSnapshot, on: TonightOverlays): Promise<HTML
   ctx.drawImage(image, 0, 0, size.width, size.height);
 
   if (on.date || on.phrase) {
-    const minEdge = Math.min(size.width, size.height);
-    const margin = Math.max(12, Math.round(minEdge * 0.045));
+    const { margin } = tonightTextLayout(size);
     const fontOf = (fontSize: number) =>
       `300 ${fontSize}px Inter, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif`;
     const lines: string[] = [];

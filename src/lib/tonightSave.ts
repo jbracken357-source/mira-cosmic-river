@@ -86,22 +86,45 @@ export function tonightPhrase(language: Language): string {
 // the frame without a canvas.
 export const TONIGHT_TEXT_MIN_SIZE = 10;
 
+export interface TonightTextLayout {
+  margin: number;
+  ideal: number;
+  floor: number;
+  available: number;
+}
+
+export function tonightTextLayout(frame: { width: number; height: number }): TonightTextLayout {
+  const minEdge = Math.min(frame.width, frame.height);
+  const margin = Math.max(12, Math.round(minEdge * 0.045));
+  return {
+    margin,
+    ideal: Math.max(14, Math.round(minEdge * 0.032)),
+    floor: TONIGHT_TEXT_MIN_SIZE,
+    available: Math.max(1, frame.width - 2 * margin),
+  };
+}
+
 export function fitTonightFontSize(
   lines: string[],
   frame: { width: number; height: number },
   measure: (line: string, fontSize: number) => number,
 ): number {
-  const minEdge = Math.min(frame.width, frame.height);
-  const margin = Math.max(12, Math.round(minEdge * 0.045));
-  const available = Math.max(1, frame.width - 2 * margin);
-  const ideal = Math.max(14, Math.round(minEdge * 0.032));
-  for (let size = ideal; size > TONIGHT_TEXT_MIN_SIZE; size -= 1) {
+  const { ideal, floor, available } = tonightTextLayout(frame);
+  for (let size = ideal; size > floor; size -= 1) {
     if (lines.every((line) => measure(line, size) <= available)) return size;
   }
-  return TONIGHT_TEXT_MIN_SIZE;
+  return floor;
 }
 
 export type TonightSavePhase = 'idle' | 'capturing' | 'preview' | 'exporting' | 'success' | 'failed';
+
+export type TonightPrimaryAction = 'retry' | 'save' | 'disabled';
+
+export function primaryAction(phase: TonightSavePhase): TonightPrimaryAction {
+  if (phase === 'failed') return 'retry';
+  if (phase === 'capturing' || phase === 'exporting') return 'disabled';
+  return 'save';
+}
 
 // Why the flow failed: 'capture' (no frame could be taken), 'context-lost' (the
 // WebGL context is gone — restore the scene first, never fake a live capture),

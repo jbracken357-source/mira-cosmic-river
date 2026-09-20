@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useBinaryStar, useTonightSave } from '../../hooks';
 import { TRANSLATIONS } from '../../constants/translations';
+import { primaryAction } from '../../lib/tonightSave';
 
 // 今晚的 Mira (#23): a quiet header entry plus the save panel. Pressing the entry
 // captures the current frame in that same task (the shell forces one render and
@@ -91,7 +92,7 @@ export default function TonightSave() {
             </div>
 
             <div className="flex items-center gap-4">
-              {phase === 'failed' ? (
+              {primaryAction(phase) === 'retry' ? (
                 <button
                   data-testid="tonight-export"
                   onClick={retry}
@@ -102,7 +103,7 @@ export default function TonightSave() {
               ) : (
                 <button
                   data-testid="tonight-export"
-                  disabled={phase === 'capturing' || phase === 'exporting'}
+                  disabled={primaryAction(phase) === 'disabled'}
                   onClick={save}
                   className="min-h-11 inline-flex items-center text-white/60 text-xs font-extralight tracking-widest uppercase hover:text-white/85 transition-colors disabled:text-white/25"
                 >

@@ -6,8 +6,10 @@ import {
   fitTonightFontSize,
   formatTonightDate,
   initialTonightSaveState,
+  primaryAction,
   tonightFilename,
   tonightPhrase,
+  tonightTextLayout,
   transition,
 } from '../../src/lib/tonightSave';
 import type { TonightSaveState } from '../../src/lib/tonightSave';
@@ -108,13 +110,13 @@ test.describe('overlay text fit', () => {
 
   test('short lines keep the ideal size for the frame', () => {
     const size = fitTonightFontSize(['彼此牵引，共同前行'], { width: 1280, height: 720 }, measure(0.6));
-    expect(size).toBe(Math.max(14, Math.round(720 * 0.032)));
+    expect(size).toBe(tonightTextLayout({ width: 1280, height: 720 }).ideal);
   });
 
   test('a long line shrinks until it fits inside the margins', () => {
     const frame = { width: 1280, height: 720 };
     const size = fitTonightFontSize(['x'.repeat(100)], frame, measure(1));
-    const margin = Math.max(12, Math.round(720 * 0.045));
+    const margin = tonightTextLayout(frame).margin;
     expect(size).toBeLessThan(Math.round(720 * 0.032));
     expect(size).toBeGreaterThan(TONIGHT_TEXT_MIN_SIZE);
     expect(100 * size * 1).toBeLessThanOrEqual(frame.width - 2 * margin);
@@ -124,7 +126,7 @@ test.describe('overlay text fit', () => {
     const frame = { width: 800, height: 800 };
     const lines = ['short', 'a much longer overlay line that must also fit'];
     const size = fitTonightFontSize(lines, frame, measure(0.6));
-    const margin = Math.max(12, Math.round(800 * 0.045));
+    const margin = tonightTextLayout(frame).margin;
     for (const line of lines) {
       expect(line.length * size * 0.6).toBeLessThanOrEqual(frame.width - 2 * margin);
     }
@@ -137,7 +139,28 @@ test.describe('overlay text fit', () => {
 
   test('no lines means no shrink', () => {
     const size = fitTonightFontSize([], { width: 390, height: 844 }, measure(1));
-    expect(size).toBe(Math.max(14, Math.round(390 * 0.032)));
+    expect(size).toBe(tonightTextLayout({ width: 390, height: 844 }).ideal);
+  });
+});
+
+test.describe('tonight text layout', () => {
+  test('margin, ideal and floor come from the short edge', () => {
+    const layout = tonightTextLayout({ width: 1280, height: 720 });
+    expect(layout.margin).toBe(Math.max(12, Math.round(720 * 0.045)));
+    expect(layout.ideal).toBe(Math.max(14, Math.round(720 * 0.032)));
+    expect(layout.floor).toBe(TONIGHT_TEXT_MIN_SIZE);
+    expect(layout.available).toBe(1280 - 2 * layout.margin);
+  });
+});
+
+test.describe('primary action routing', () => {
+  test('failed retries; capturing and exporting wait; everything else saves', () => {
+    expect(primaryAction('failed')).toBe('retry');
+    expect(primaryAction('capturing')).toBe('disabled');
+    expect(primaryAction('exporting')).toBe('disabled');
+    expect(primaryAction('idle')).toBe('save');
+    expect(primaryAction('preview')).toBe('save');
+    expect(primaryAction('success')).toBe('save');
   });
 });
 
