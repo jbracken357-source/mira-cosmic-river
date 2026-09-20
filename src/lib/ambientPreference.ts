@@ -32,6 +32,8 @@
 // toggles or gestures while enabling/playing return the same state with no
 // effects, so the shell can never build a second graph.
 
+import { rememberFlag, rememberedFlag } from './rememberedFlag';
+
 export const AMBIENT_SOUND_KEY = 'mira:ambient-sound';
 
 export type AmbientPhase = 'off' | 'pending-gesture' | 'enabling' | 'playing' | 'failed';
@@ -83,19 +85,19 @@ export function initialAmbientState(preferenceOn: boolean): AmbientSoundState {
 }
 
 export function loadAmbientPreference(): boolean {
-  try {
-    return globalThis.localStorage?.getItem(AMBIENT_SOUND_KEY) === '1';
-  } catch {
-    return false;
-  }
+  return rememberedFlag(AMBIENT_SOUND_KEY);
 }
 
 export function persistAmbientPreference(on: boolean): void {
-  try {
-    globalThis.localStorage?.setItem(AMBIENT_SOUND_KEY, on ? '1' : '0');
-  } catch {
-    // Private mode / blocked storage: the session still works, it just won't remember.
-  }
+  rememberFlag(AMBIENT_SOUND_KEY, on);
+}
+
+// Maps a thrown AudioContext constructor / resume failure onto the machine.
+// NotAllowedError is a denial (never auto-retried); everything else is an error.
+export function classifyAmbientContextError(error: unknown): 'start-denied' | 'start-error' {
+  return error instanceof DOMException && error.name === 'NotAllowedError'
+    ? 'start-denied'
+    : 'start-error';
 }
 
 function silent(state: AmbientSoundState, patch: Partial<AmbientSoundState> = {}): AmbientTransition {

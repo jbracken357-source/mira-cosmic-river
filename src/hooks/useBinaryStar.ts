@@ -4,6 +4,7 @@ import type { SkyState } from '../lib/starClock';
 import { currentSkyState } from '../lib/starClock';
 import { captureMode, registerPauseSource } from '../lib/captureMode';
 import type { AutoCameraState } from '../lib/viewerControl';
+import { rememberFlag, rememberedFlag } from '../lib/rememberedFlag';
 
 export const SEEN_OPENING_KEY = 'mira:seen-opening';
 export const FOUND_TAIL_KEY = 'mira:found-tail';
@@ -49,35 +50,19 @@ const defaultParameters: StarParameters = {
 };
 
 function hasSeenOpening(): boolean {
-  try {
-    return globalThis.localStorage?.getItem(SEEN_OPENING_KEY) === '1';
-  } catch {
-    return false;
-  }
+  return rememberedFlag(SEEN_OPENING_KEY);
 }
 
 function persistOpeningSeen() {
-  try {
-    globalThis.localStorage?.setItem(SEEN_OPENING_KEY, '1');
-  } catch {
-    // Private mode / blocked storage: the session still works, it just won't remember.
-  }
+  rememberFlag(SEEN_OPENING_KEY);
 }
 
 export function hasFoundTail(): boolean {
-  try {
-    return globalThis.localStorage?.getItem(FOUND_TAIL_KEY) === '1';
-  } catch {
-    return false;
-  }
+  return rememberedFlag(FOUND_TAIL_KEY);
 }
 
 export function persistFoundTail() {
-  try {
-    globalThis.localStorage?.setItem(FOUND_TAIL_KEY, '1');
-  } catch {
-    // Private mode / blocked storage: the session still works, it just won't remember.
-  }
+  rememberFlag(FOUND_TAIL_KEY);
 }
 
 // The clock is read at load and only carried forward from there, so nothing has to read it
