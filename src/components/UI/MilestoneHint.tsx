@@ -3,23 +3,16 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useBinaryStar } from '../../hooks';
 import { TRANSLATIONS } from '../../constants/translations';
 import { milestoneStorageKey, phaseMilestone } from '../../lib/starClock';
+import { rememberFlag, rememberedFlag } from '../../lib/rememberedFlag';
 
 const HINT_MS = 8000;
 
 function readShown(key: string): boolean {
-  try {
-    return localStorage.getItem(key) === '1';
-  } catch {
-    return false;
-  }
+  return rememberedFlag(key);
 }
 
 function writeShown(key: string): void {
-  try {
-    localStorage.setItem(key, '1');
-  } catch {
-    // Private mode still gets one shot this session.
-  }
+  rememberFlag(key);
 }
 
 export default function MilestoneHint() {

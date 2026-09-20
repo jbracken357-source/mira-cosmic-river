@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import {
   AMBIENT_SOUND_KEY,
+  classifyAmbientContextError,
   initialAmbientState,
   loadAmbientPreference,
   persistAmbientPreference,
@@ -8,6 +9,7 @@ import {
   transition,
   distanceTone,
 } from '../../src/lib/ambientPreference';
+import { TRANSLATIONS } from '../../src/constants/translations';
 import type { AmbientSoundState } from '../../src/lib/ambientPreference';
 
 // Ambient sound (#22): the pure half of the feature. The machine separates the
@@ -151,6 +153,21 @@ test.describe('ambient sound state machine', () => {
       const visible = transition(hidden.state, 'visible');
       expect(visible.effects).toEqual([]);
     }
+  });
+
+  test('a thrown AudioContext maps onto the honest start event', () => {
+    expect(classifyAmbientContextError(new DOMException('blocked', 'NotAllowedError'))).toBe('start-denied');
+    expect(classifyAmbientContextError(new Error('offline'))).toBe('start-error');
+    const denied = transition(transition(OFF, 'toggle-on').state, 'start-denied');
+    const failed = transition(transition(OFF, 'toggle-on').state, 'start-error');
+    expect(denied.state.phase).toBe('failed');
+    expect(denied.state.failure).toBe('denied');
+    expect(failed.state.phase).toBe('failed');
+    expect(failed.state.failure).toBe('error');
+    // The toggle never claims to be playing: the failed label is retry.
+    expect(TRANSLATIONS.en.ambientRetry.toLowerCase()).toContain('retry');
+    expect(TRANSLATIONS.ch.ambientRetry).toContain('重试');
+    expect(TRANSLATIONS.en.ambientSound.toLowerCase()).not.toContain('retry');
   });
 
   test('a denial is never auto-retried on foreground return', () => {

@@ -79,14 +79,14 @@ src/
   lib/                pure seams, no rendering: star clock, river lighting,
                       pulsation lighting, tail path, viewer control, free view
                       camera, quality governor, quality budget, ambient graph,
-                      save flow
+                      remembered flag, save flow
   shaders/            GLSL sources
   hooks/              store and device hooks
 tests/e2e/            Playwright specs (behaviour, not pixels)
 tests/unit/           pure-function specs (star clock, river lighting,
                       pulsation lighting, tail path, viewer control, free
-                      view camera, quality governor, quality budget, save
-                      flow, entry readiness)
+                      view camera, quality governor, quality budget,
+                      remembered flag, save flow, entry readiness)
 docs/adr/             decisions worth not re-litigating
 docs/archive/         Gen 1 material, kept for history only
 ```

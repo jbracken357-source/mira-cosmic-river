@@ -15,6 +15,7 @@
 
 import { create } from 'zustand';
 import {
+  classifyAmbientContextError,
   distanceTone,
   initialAmbientState,
   loadAmbientPreference,
@@ -40,6 +41,15 @@ interface AmbientSoundStore {
   toggle: () => void;
   retry: () => void;
 }
+
+// Context factory: default is the live constructor. Tests inject a throwing
+// factory so denial/error land without monkey-patching the global. The factory
+// is only ever called from startGraph, which itself only runs on a 'start'
+// effect — i.e. inside a viewer gesture (ADR-0004). initAmbientSound must not
+// call it.
+export type AmbientContextFactory = () => AudioContext;
+
+let createAmbientContext: AmbientContextFactory = () => new AudioContext();
 
 // Module-level singletons: the machine state, the one graph slot, and its context.
 let machine = initialAmbientState(false);
@@ -107,7 +117,7 @@ async function startGraph() {
   // inside that gesture's call stack, which is what autoplay policies allow.
   try {
     if (!audioContext) {
-      audioContext = new AudioContext();
+      audioContext = createAmbientContext();
       probe.created += 1;
       syncProbe();
       graph = createAmbientGraph(audioContext);
@@ -124,8 +134,7 @@ async function startGraph() {
     if (settled.phase === 'playing' && !settled.backgrounded) fadeInGraph();
   } catch (error) {
     teardownGraph();
-    const denied = error instanceof DOMException && error.name === 'NotAllowedError';
-    dispatch(denied ? 'start-denied' : 'start-error');
+    dispatch(classifyAmbientContextError(error));
   }
 }
 
@@ -163,8 +172,7 @@ function applyEffect(effect: AmbientEffect) {
           if (machine.phase === 'playing') fadeInGraph();
         })
         .catch((error: unknown) => {
-          const denied = error instanceof DOMException && error.name === 'NotAllowedError';
-          dispatch(denied ? 'start-denied' : 'start-error');
+          dispatch(classifyAmbientContextError(error));
         });
       break;
     }
@@ -195,9 +203,10 @@ function onVisibility() {
 // Idempotent: App calls this once on mount; remounts must not double-register
 // listeners or reset a running graph (SPEC: restored interaction/sound never
 // registers twice).
-export function initAmbientSound() {
+export function initAmbientSound(options?: { createContext?: AmbientContextFactory }) {
   if (initialized || typeof window === 'undefined') return;
   initialized = true;
+  if (options?.createContext) createAmbientContext = options.createContext;
   machine = initialAmbientState(loadAmbientPreference());
   machine = { ...machine, backgrounded: document.hidden };
   publish();

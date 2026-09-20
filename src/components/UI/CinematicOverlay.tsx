@@ -4,6 +4,7 @@ import { useBinaryStar, useMobile, useEntryReadiness } from '../../hooks';
 import { TRANSLATIONS } from '../../constants/translations';
 import { TRANSITIONS } from '../../constants/animation';
 import { openingSegment } from '../../lib/openingTimeline';
+import { rememberFlag, rememberedFlag } from '../../lib/rememberedFlag';
 import type { StarName } from './InfoCards';
 import AmbientToggle from './AmbientToggle';
 import TonightSave from './TonightSave';
@@ -120,19 +121,11 @@ export default function CinematicOverlay({
 const LEARNED_CONTROLS_KEY = 'mira:learned-controls';
 
 function hasLearnedControls(): boolean {
-  try {
-    return globalThis.localStorage?.getItem(LEARNED_CONTROLS_KEY) === '1';
-  } catch {
-    return false;
-  }
+  return rememberedFlag(LEARNED_CONTROLS_KEY);
 }
 
 function persistLearnedControls(): void {
-  try {
-    globalThis.localStorage?.setItem(LEARNED_CONTROLS_KEY, '1');
-  } catch {
-    // Private mode / blocked storage: the hint simply returns next visit.
-  }
+  rememberFlag(LEARNED_CONTROLS_KEY);
 }
 
 // Minimal explore-mode UI
