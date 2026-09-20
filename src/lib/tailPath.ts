@@ -146,14 +146,21 @@ export function tailClickVolume(): CenterSize {
   // to the far wake; an AABB around that swallows Mira A and steals its ray.
   // Covering the existing target is the occupancy contract; bending the path
   // updates generation bounds here so the mismatch is visible in one file.
-  return { position: [...LEGACY_CLICK.position], size: [...LEGACY_CLICK.size] };
+  return LEGACY_CLICK;
 }
+
+// Stable occupancy Scene consumes. Computing generation bounds on every render
+// allocated a new click/haze identity and rebuilt the (invisible) box geometry
+// each frame — enough to make two frozen visits disagree on CI software GL.
+export const TAIL_OCCUPANCY = {
+  yaw: TAIL_YAW,
+  click: LEGACY_CLICK,
+  haze: TAIL_HAZE,
+} as const;
 
 export function tailOccupancy(length: number) {
   return {
-    yaw: TAIL_YAW,
-    click: tailClickVolume(),
-    haze: TAIL_HAZE,
+    ...TAIL_OCCUPANCY,
     generation: tailWorldBounds(length),
   };
 }

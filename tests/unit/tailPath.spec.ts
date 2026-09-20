@@ -3,6 +3,7 @@ import { PHYSICS } from '../../src/constants/physics';
 import {
   boxContains,
   boxFromCenterSize,
+  TAIL_OCCUPANCY,
   tailCenterline,
   tailClickVolume,
   tailGenerationBounds,
@@ -54,10 +55,11 @@ test.describe('tail path', () => {
   });
 
   test('occupancy hands Scene the yaw, click, and haze from one place', () => {
+    expect(TAIL_OCCUPANCY.yaw).toBe(Math.PI * 0.12);
+    expect(TAIL_OCCUPANCY.haze).toEqual({ position: [-6, 1, 4], radius: 5 });
+    expect(TAIL_OCCUPANCY.click).toBe(tailClickVolume());
     const occupancy = tailOccupancy(LENGTH);
-    expect(occupancy.yaw).toBe(Math.PI * 0.12);
-    expect(occupancy.haze).toEqual({ position: [-6, 1, 4], radius: 5 });
-    expect(occupancy.click.position).toHaveLength(3);
-    expect(occupancy.click.size.every((n) => n > 0)).toBe(true);
+    expect(occupancy.click).toBe(TAIL_OCCUPANCY.click);
+    expect(occupancy.generation).toEqual(tailWorldBounds(LENGTH));
   });
 });

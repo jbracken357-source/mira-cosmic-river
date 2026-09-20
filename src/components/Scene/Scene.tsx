@@ -23,7 +23,7 @@ import {
 import type { GovernorConfig, GovernorState } from '../../lib/qualityGovernor';
 import { qualityBudget } from '../../lib/qualityBudget';
 import { pulsationLighting } from '../../lib/pulsationLighting';
-import { tailOccupancy } from '../../lib/tailPath';
+import { TAIL_OCCUPANCY } from '../../lib/tailPath';
 import * as THREE from 'three';
 import type { StarName } from '../UI/InfoCards';
 import MiraA from './MiraA';
@@ -71,7 +71,7 @@ function SceneContent({
   const setCinematicTime = useBinaryStar((state) => state.setCinematicTime);
   const setIntroComplete = useBinaryStar((state) => state.setIntroComplete);
   const lod = qualityBudget(tier);
-  const occupancy = tailOccupancy(PHYSICS.TAIL.length);
+  const occupancy = TAIL_OCCUPANCY;
   const capture = captureMode();
 
   // 今晚的 Mira (#23) bridge: the save flow presses capture synchronously inside
