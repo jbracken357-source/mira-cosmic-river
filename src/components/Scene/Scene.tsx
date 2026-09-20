@@ -22,6 +22,7 @@ import {
 } from '../../lib/qualityGovernor';
 import type { GovernorConfig, GovernorState } from '../../lib/qualityGovernor';
 import { qualityBudget } from '../../lib/qualityBudget';
+import { pulsationLighting } from '../../lib/pulsationLighting';
 import * as THREE from 'three';
 import type { StarName } from '../UI/InfoCards';
 import MiraA from './MiraA';
@@ -493,8 +494,8 @@ function SceneContent({
 }
 
 function PostProcessing({ tier }: { tier: QualityTier }) {
-  const brightness = useBinaryStar((state) => state.sky.brightness);
-  const colorShift = useBinaryStar((state) => state.sky.colorShift);
+  const sky = useBinaryStar((state) => state.sky);
+  const light = pulsationLighting(sky);
   // Bloom is a stack of full-screen passes: keep it off the light tier.
   // Low quality has no bloom — StarField carries the same envelope there.
   if (tier === 'low') return null;
@@ -505,8 +506,8 @@ function PostProcessing({ tier }: { tier: QualityTier }) {
       <Bloom
         luminanceThreshold={0.9}
         mipmapBlur
-        intensity={0.18 + 0.62 * brightness}
-        radius={0.28 + 0.44 * colorShift}
+        intensity={light.bloomIntensity}
+        radius={light.bloomRadius}
         levels={levels}
       />
     </EffectComposer>
