@@ -2,8 +2,9 @@ import { useEffect, useMemo, useRef } from 'react';
 import type { MutableRefObject } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { resolveQualityTier } from '../../constants';
+import type { QualityTier } from '../../constants';
 import { useEntryReadiness } from '../../hooks';
+import { qualityBudget } from '../../lib/qualityBudget';
 import { advanceTime } from '../../lib/captureMode';
 import {
   MIRA_A_REACH,
@@ -140,7 +141,7 @@ function createLayer(length: number, index: number, count: number, accent: boole
   return { geometry, material };
 }
 
-export default function RiverVeil({ opacityRef, readyRef, length, reduceMotion, miraBRef, sky }: {
+export default function RiverVeil({ opacityRef, readyRef, length, reduceMotion, miraBRef, sky, tier }: {
   opacityRef: MutableRefObject<number>;
   readyRef: MutableRefObject<boolean>;
   length: number;
@@ -149,12 +150,12 @@ export default function RiverVeil({ opacityRef, readyRef, length, reduceMotion, 
   // The daily coupling (#27): gain/warmth as ever, plus a density that makes tonight's
   // material a touch thicker or thinner, never absent.
   sky: DailySkyCoupling;
+  // The governed tier — same source Scene spends the rest of the budget from.
+  tier: QualityTier;
 }) {
-  const tier = resolveQualityTier();
   const groupRef = useRef<THREE.Group>(null);
   const bWorldPos = useRef(new THREE.Vector3());
-  const volumeCount = tier === 'low' ? 2 : tier === 'mid' ? 4 : 7;
-  const accentCount = tier === 'low' ? 0 : tier === 'mid' ? 1 : 2;
+  const { veilVolumes: volumeCount, veilAccents: accentCount } = qualityBudget(tier);
   const count = volumeCount + accentCount;
   const layers = useMemo(() => Array.from({ length: count }, (_, i) => (
     createLayer(length, i, count, i >= volumeCount)
