@@ -2,8 +2,9 @@ import { useEffect, useMemo, useRef } from 'react';
 import type { MutableRefObject } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { resolveQualityTier } from '../../constants';
+import type { QualityTier } from '../../constants';
 import { useEntryReadiness } from '../../hooks';
+import { qualityBudget } from '../../lib/qualityBudget';
 import { advanceTime } from '../../lib/captureMode';
 import {
   MIRA_A_REACH,
@@ -140,7 +141,7 @@ function createLayer(length: number, index: number, count: number, accent: boole
   return { geometry, material };
 }
 
-export default function RiverVeil({ opacityRef, readyRef, length, reduceMotion, miraBRef, sky }: {
+export default function RiverVeil({ opacityRef, readyRef, length, reduceMotion, miraBRef, sky, tier }: {
   opacityRef: MutableRefObject<number>;
   readyRef: MutableRefObject<boolean>;
   length: number;
@@ -149,29 +150,32 @@ export default function RiverVeil({ opacityRef, readyRef, length, reduceMotion, 
   // The daily coupling (#27): gain/warmth as ever, plus a density that makes tonight's
   // material a touch thicker or thinner, never absent.
   sky: DailySkyCoupling;
+  // The governed tier — same source Scene spends the rest of the budget from.
+  tier: QualityTier;
 }) {
-  const tier = resolveQualityTier();
   const groupRef = useRef<THREE.Group>(null);
   const bWorldPos = useRef(new THREE.Vector3());
-  const volumeCount = tier === 'low' ? 2 : tier === 'mid' ? 4 : 7;
-  const accentCount = tier === 'low' ? 0 : tier === 'mid' ? 1 : 2;
+  const { veilVolumes: volumeCount, veilAccents: accentCount } = qualityBudget(tier);
   const count = volumeCount + accentCount;
   const layers = useMemo(() => Array.from({ length: count }, (_, i) => (
     createLayer(length, i, count, i >= volumeCount)
   )), [length, count, volumeCount]);
+  const mapRef = useRef<THREE.Texture | null>(null);
 
+  // Density image: one load for the component's life. A governed tier change
+  // rebuilds the ribbons, not the texture — otherwise the river would drop to
+  // the procedural fallback while the same image is fetched again, and a
+  // transient reload failure would take it away for the rest of the visit.
+  // Binding happens in the frame loop so replacement layers pick up the retained
+  // map without a second fetch.
   useEffect(() => {
     let active = true;
-    readyRef.current = false;
     const texture = new THREE.TextureLoader().load(`${import.meta.env.BASE_URL}materials/river-density-v1.webp`, (loaded) => {
       if (!active) return;
       loaded.colorSpace = THREE.NoColorSpace; // Grayscale density, not display RGB.
       loaded.wrapS = THREE.RepeatWrapping;
       loaded.wrapT = THREE.RepeatWrapping;
-      for (const { material } of layers) {
-        material.uniforms.uMap.value = loaded;
-        material.uniforms.uReady.value = 1;
-      }
+      mapRef.current = loaded;
       readyRef.current = true;
       useEntryReadiness.getState().noteMaterial('river', 'ready');
     }, undefined, () => {
@@ -186,19 +190,31 @@ export default function RiverVeil({ opacityRef, readyRef, length, reduceMotion, 
     return () => {
       active = false;
       readyRef.current = false;
+      mapRef.current = null;
       texture.dispose();
-      for (const { geometry, material } of layers) {
+    };
+  }, [readyRef]);
+
+  useEffect(() => {
+    const current = layers;
+    return () => {
+      for (const { geometry, material } of current) {
         material.uniforms.uReady.value = 0;
         geometry.dispose();
         material.dispose();
       }
     };
-  }, [layers, readyRef]);
+  }, [layers]);
 
   useFrame((_, delta) => {
     if (miraBRef.current) miraBRef.current.getWorldPosition(bWorldPos.current);
+    const map = mapRef.current;
     for (const [i, child] of (groupRef.current?.children ?? []).entries()) {
       const material = (child as THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMaterial>).material;
+      if (map && material.uniforms.uMap.value !== map) {
+        material.uniforms.uMap.value = map;
+        material.uniforms.uReady.value = 1;
+      }
       material.uniforms.uTime.value = advanceTime(material.uniforms.uTime.value, delta, { reduceMotion });
       const isAccent = material.uniforms.uAccent.value === 1;
       material.uniforms.uOpacity.value = opacityRef.current * veilLayerWeight(i, count, isAccent) / count * sky.density;

@@ -21,6 +21,7 @@ import {
   qualityRecorder,
 } from '../../lib/qualityGovernor';
 import type { GovernorConfig, GovernorState } from '../../lib/qualityGovernor';
+import { qualityBudget } from '../../lib/qualityBudget';
 import * as THREE from 'three';
 import type { StarName } from '../UI/InfoCards';
 import MiraA from './MiraA';
@@ -33,36 +34,6 @@ import GlowShell from './GlowShell';
 interface SceneProps {
   onSelectStar: (star: StarName | null) => void;
 }
-
-// Level of Detail settings. The descent order is the ticket's contract (#26):
-// high → mid touches ONLY the costly post-processing (bloom levels) and
-// resolution (dpr) — the star field, the tail and the stream keep their full
-// counts; mid → low is where decoration is cut, after post-processing is
-// already off (PostProcessing returns null for low).
-const LOD = {
-  high: {
-    starCount: 5000,
-    sphereSegments: 64,
-    bloomLevels: 4,
-    tailParticles: 10000,
-    streamParticles: 600,
-  },
-  mid: {
-    starCount: 5000,
-    sphereSegments: 64,
-    bloomLevels: 2,
-    tailParticles: 10000,
-    streamParticles: 600,
-  },
-  // Software-rendered environments (headless CI, very weak devices)
-  low: {
-    starCount: 300,
-    sphereSegments: 16,
-    bloomLevels: 1,
-    tailParticles: 300,
-    streamParticles: 150,
-  },
-} as const;
 
 type OrbitControlsImpl = React.ElementRef<typeof DreiOrbitControls>;
 
@@ -97,7 +68,7 @@ function SceneContent({
   const setCinematicPhase = useBinaryStar((state) => state.setCinematicPhase);
   const setCinematicTime = useBinaryStar((state) => state.setCinematicTime);
   const setIntroComplete = useBinaryStar((state) => state.setIntroComplete);
-  const lod = LOD[tier];
+  const lod = qualityBudget(tier);
   const capture = captureMode();
 
   // 今晚的 Mira (#23) bridge: the save flow presses capture synchronously inside
@@ -459,6 +430,7 @@ function SceneContent({
           particleCount={lod.tailParticles}
           tailLength={PHYSICS.TAIL.length}
           miraBRef={miraBGroupRef}
+          tier={tier}
         />
       </group>
       {/* Invisible click target for tail card */}
@@ -532,7 +504,7 @@ function PostProcessing({ tier }: { tier: QualityTier }) {
   // Bloom is a stack of full-screen passes: keep it off the light tier.
   // Low quality has no bloom — StarField carries the same envelope there.
   if (tier === 'low') return null;
-  const levels = tier === 'mid' ? LOD.mid.bloomLevels : LOD.high.bloomLevels;
+  const levels = qualityBudget(tier).bloomLevels;
 
   return (
     <EffectComposer enableNormalPass={false}>
@@ -679,7 +651,7 @@ export default function Scene({ onSelectStar }: SceneProps) {
         stencil: false,
         depth: true,
       }}
-      dpr={tier === 'high' ? [1, 1.5] : 1}
+      dpr={qualityBudget(tier).dpr}
       style={{
         position: 'fixed',
         top: 0,

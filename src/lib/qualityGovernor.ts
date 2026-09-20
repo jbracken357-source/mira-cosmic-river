@@ -22,11 +22,11 @@
 //     evaluates nothing until the gate opens.
 //
 // The descent order "costly post-processing/resolution first, decoration last"
-// is not encoded here — it falls out of the tier table in Scene.tsx: high → mid
-// cuts ONLY bloom levels and dpr (the star field, the tail and the stream keep
-// their full counts); mid → low drops post-processing entirely and only then
-// thins the decoration. The governor only ever moves one step along that fixed
-// ladder.
+// is not encoded here — it falls out of lib/qualityBudget: high → mid cuts ONLY
+// bloom levels and dpr (the star field, the tail, the stream and the river veil
+// keep their full counts); mid → low drops post-processing entirely and only
+// then thins the decoration. The governor only ever moves one step along that
+// fixed ladder.
 import { explicitQualityPin, isMobileSized } from '../constants/quality';
 import type { QualityTier } from '../constants/quality';
 

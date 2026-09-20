@@ -8,12 +8,16 @@ import RiverVeil from './RiverVeil';
 import { advanceTime, captureMode } from '../../lib/captureMode';
 import { dailySkyCoupling, tailBaseOpacity } from '../../lib/riverLighting';
 import { useBinaryStar } from '../../hooks';
+import type { QualityTier } from '../../constants';
 
 interface MiraTailProps {
   opacityRef: React.MutableRefObject<number>;
   particleCount?: number;
   tailLength?: number;
   miraBRef: MutableRefObject<THREE.Group | null>;
+  // The governed tier, not the load-time sniff: the veil must follow the same
+  // descent as the tail points (#26 / #50).
+  tier: QualityTier;
 }
 
 // Generate tail particle positions - curved stream behind Mira A
@@ -63,6 +67,7 @@ export default function MiraTail({
   particleCount = 10000,
   tailLength = 25,
   miraBRef,
+  tier,
 }: MiraTailProps) {
   const textureReadyRef = useRef(false);
   const pointsRef = useRef<THREE.Points<THREE.BufferGeometry, THREE.ShaderMaterial>>(null);
@@ -126,7 +131,7 @@ export default function MiraTail({
   return (
     <group>
       <points ref={pointsRef} geometry={geometry} material={material} raycast={() => {}} />
-      <RiverVeil opacityRef={opacityRef} readyRef={textureReadyRef} length={tailLength} reduceMotion={reduceMotion} miraBRef={miraBRef} sky={coupling} />
+      <RiverVeil opacityRef={opacityRef} readyRef={textureReadyRef} length={tailLength} reduceMotion={reduceMotion} miraBRef={miraBRef} sky={coupling} tier={tier} />
     </group>
   );
 }
