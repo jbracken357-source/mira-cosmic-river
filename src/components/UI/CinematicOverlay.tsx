@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { useBinaryStar, useMobile, useEntryReadiness } from '../../hooks';
 import { TRANSLATIONS } from '../../constants/translations';
-import { CINEMATIC, TRANSITIONS } from '../../constants/animation';
+import { TRANSITIONS } from '../../constants/animation';
+import { openingSegment } from '../../lib/openingTimeline';
 import type { StarName } from './InfoCards';
 import AmbientToggle from './AmbientToggle';
 import TonightSave from './TonightSave';
@@ -21,10 +22,12 @@ export default function CinematicOverlay({
   const reduceMotion = Boolean(useReducedMotion());
   const fade = reduceMotion ? 0 : TRANSITIONS.FADE_IN;
   const finalFade = reduceMotion ? 0 : TRANSITIONS.FINAL_TEXT_FADE;
-  const caption = cinematicTime < CINEMATIC.STARS_APPEAR || cinematicTime >= CINEMATIC.FINAL_TEXT
-    ? null
-    : cinematicTime < CINEMATIC.PULL_BACK_START ? t.cinematic1
-      : cinematicTime < CINEMATIC.TAIL_REVEAL_START ? t.cinematic2 : t.cinematic3;
+  // cinematicTime is the quantized mark, not the raw clock. openingSegment of a
+  // mark is identical to openingSegment of any t in that beat — including title,
+  // which is true because the mark has landed on FINAL_TEXT, not because the
+  // overlay re-compares the constant.
+  const segment = openingSegment(cinematicTime);
+  const caption = segment.caption ? t[segment.caption] : null;
 
   const handleEnterEarly = () => {
     useBinaryStar.getState().setIntroComplete(true);
@@ -77,9 +80,9 @@ export default function CinematicOverlay({
         )}
       </AnimatePresence>
 
-      {/* Final text (12.5-15s) */}
+      {/* Final text (12.5-15s) — visibility is the segment's title field. */}
       <AnimatePresence>
-        {cinematicTime >= CINEMATIC.FINAL_TEXT && (
+        {segment.title && (
           <motion.div
             key="text-final"
             initial={{ opacity: 0 }}
