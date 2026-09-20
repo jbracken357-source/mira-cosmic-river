@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { SKY_SPECTRAL } from '../../constants/colors';
 import { useBinaryStar } from '../../hooks';
 import { advanceTime } from '../../lib/captureMode';
+import { pulsationLighting } from '../../lib/pulsationLighting';
 
 interface StarFieldProps {
   count?: number;
@@ -60,7 +61,7 @@ export default function StarField({ count = 5000 }: StarFieldProps) {
   const materialRef = useRef<THREE.ShaderMaterial>(null);
   const timeRef = useRef(0);
   const reduceMotion = Boolean(useReducedMotion());
-  const brightness = useBinaryStar((state) => state.sky.brightness);
+  const sky = useBinaryStar((state) => state.sky);
 
   const { geometry } = useMemo(() => {
     const rand = mulberry32(STARFIELD_SEED);
@@ -132,7 +133,7 @@ export default function StarField({ count = 5000 }: StarFieldProps) {
       timeRef.current = advanceTime(timeRef.current, delta, { reduceMotion });
       materialRef.current.uniforms.uTime.value = timeRef.current;
       // Low quality has no bloom, so the field carries the sky envelope.
-      materialRef.current.uniforms.uSky.value = 0.35 + 0.65 * brightness;
+      materialRef.current.uniforms.uSky.value = pulsationLighting(sky).starFieldSky;
     }
   });
 

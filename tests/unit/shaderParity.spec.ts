@@ -15,7 +15,8 @@ import {
   veilLightResponse,
 } from '../../src/lib/riverLighting';
 import { TailVertexShader, TailFragmentShader, createTailMaterial } from '../../src/shaders/tail';
-import { MiraA_Shader, HIGHLIGHT_SHOULDER_GLSL } from '../../src/shaders/miraA';
+import { MiraA_Shader, Atmosphere_Shader, HIGHLIGHT_SHOULDER_GLSL } from '../../src/shaders/miraA';
+import { pulsationLighting } from '../../src/lib/pulsationLighting';
 import { AccretionDisk_Shader } from '../../src/shaders/accretionDisk';
 import {
   SURFACE_DETAIL_FLOOR,
@@ -96,6 +97,14 @@ test.describe('Mira A shader stays in step with binaryLighting', () => {
 
   test('Mira B shares the same highlight shoulder snippet', () => {
     expect(miraBSource).toContain('${HIGHLIGHT_SHOULDER_GLSL}');
+  });
+});
+
+test.describe('Mira A halo clock stays in step with pulsationLighting', () => {
+  test('the GLSL envelope is the same curve the rest of the scene consumes', () => {
+    expect(Atmosphere_Shader.fragmentShader).toContain('0.38 + 0.62 * uBrightness');
+    expect(pulsationLighting({ brightness: 0, colorShift: 0 }).miraAClock).toBe(0.38);
+    expect(pulsationLighting({ brightness: 1, colorShift: 0 }).miraAClock).toBe(1);
   });
 });
 
