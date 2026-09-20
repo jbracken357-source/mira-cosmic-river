@@ -9,7 +9,7 @@ import type { QualityTier } from '../../constants';
 import { PORTRAIT_CAMERA } from '../../constants/animation';
 import { MATERIALS_TIMEOUT_MS, gateAllowsCinematic } from '../../lib/entryReadiness';
 import { advanceTime, captureMode, resolveCapturePose } from '../../lib/captureMode';
-import { cinematicTimeScale, openingCaptionMark, resolveOpeningPose, TAIL_FULL_OPACITY } from '../../lib/openingTimeline';
+import { cinematicTimeScale, openingSegment, resolveOpeningPose, TAIL_FULL_OPACITY } from '../../lib/openingTimeline';
 import { viewerControlNow, RETURN_SETTLE_MS } from '../../lib/viewerControl';
 import { cancelReturnFlight, fittedFov, initialFreeViewState, stepFreeViewCamera } from '../../lib/freeViewCamera';
 import type { FlightPose } from '../../lib/freeViewCamera';
@@ -240,28 +240,22 @@ function SceneContent({
       const t = elapsed / timeSpeed;
       cinematicElapsedRef.current = t;
 
-      if (t < CINEMATIC.EXPLORE_MODE) {
-        // The overlay only reacts at its caption boundaries, so publish the boundary
-        // value (openingCaptionMark) instead of the raw clock: the store updates on
-        // segment changes only, never per frame (SPEC 界面订阅离散阶段).
-        const mark = openingCaptionMark(t);
-        if (mark !== captionMarkRef.current) {
-          captionMarkRef.current = mark;
-          setCinematicTime(mark);
+      const segment = openingSegment(t);
+      if (segment.phase !== 'explore') {
+        // The overlay only reacts at its caption boundaries, so publish the
+        // quantized mark instead of the raw clock: the store updates on segment
+        // changes only, never per frame (SPEC 界面订阅离散阶段).
+        if (segment.mark !== captionMarkRef.current) {
+          captionMarkRef.current = segment.mark;
+          setCinematicTime(segment.mark);
         }
-        if (t >= CINEMATIC.STARS_APPEAR && cinematicPhase === 'dark') {
-          setCinematicPhase('stars-appear');
-        }
-        if (t >= CINEMATIC.PULL_BACK_START && cinematicPhase !== 'pull-back' && cinematicPhase !== 'tail-reveal') {
-          setCinematicPhase('pull-back');
-        }
-        if (t >= CINEMATIC.TAIL_REVEAL_START && cinematicPhase === 'pull-back') {
-          setCinematicPhase('tail-reveal');
+        if (segment.phase !== cinematicPhase) {
+          setCinematicPhase(segment.phase);
         }
       } else if (cinematicPhase !== 'explore') {
-        // The opening finished: hand over to free exploration. This has to live outside
-        // the `t < EXPLORE_MODE` branch above, or the sequence never ends on its own and
-        // the viewer is stranded on the last cinematic frame.
+        // The opening finished: hand over to free exploration. This has to live
+        // outside the in-opening branch above, or the sequence never ends on its
+        // own and the viewer is stranded on the last cinematic frame.
         setCinematicPhase('explore');
         setIntroComplete(true);
       }

@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { CINEMATIC, CAMERA, PORTRAIT_CAMERA } from '../../src/constants/animation';
-import { cinematicTimeScale, openingCaptionMark, resolveOpeningPose } from '../../src/lib/openingTimeline';
+import { cinematicTimeScale, openingCaptionMark, openingSegment, resolveOpeningPose } from '../../src/lib/openingTimeline';
 
 // Opening timeline (#28, ticket 03): the full cinematic as a pure function of time.
 // The three beats are 起 hold (CLOSE) → 中 pull-back with the river pass (MID bow)
@@ -171,6 +171,47 @@ test.describe('caption marks', () => {
     expect(openingCaptionMark(12.49)).toBe(CINEMATIC.TAIL_REVEAL_START);
     expect(openingCaptionMark(CINEMATIC.FINAL_TEXT)).toBe(CINEMATIC.FINAL_TEXT);
     expect(openingCaptionMark(15)).toBe(CINEMATIC.FINAL_TEXT);
+  });
+});
+
+test.describe('opening segments (caption ↔ phase)', () => {
+  test('each beat names its phase, caption and title together', () => {
+    expect(openingSegment(0)).toEqual({ phase: 'dark', caption: null, title: false, mark: 0 });
+    expect(openingSegment(CINEMATIC.STARS_APPEAR)).toEqual({
+      phase: 'stars-appear', caption: 'cinematic1', title: false, mark: CINEMATIC.STARS_APPEAR,
+    });
+    expect(openingSegment(CINEMATIC.PULL_BACK_START)).toEqual({
+      phase: 'pull-back', caption: 'cinematic2', title: false, mark: CINEMATIC.PULL_BACK_START,
+    });
+    expect(openingSegment(CINEMATIC.TAIL_REVEAL_START)).toEqual({
+      phase: 'tail-reveal', caption: 'cinematic3', title: false, mark: CINEMATIC.TAIL_REVEAL_START,
+    });
+    // Title is explicit: the mark has quantized to FINAL_TEXT while the phase is
+    // still tail-reveal. Explore only begins at EXPLORE_MODE.
+    expect(openingSegment(CINEMATIC.FINAL_TEXT)).toEqual({
+      phase: 'tail-reveal', caption: null, title: true, mark: CINEMATIC.FINAL_TEXT,
+    });
+    expect(openingSegment(CINEMATIC.EXPLORE_MODE)).toEqual({
+      phase: 'explore', caption: null, title: true, mark: CINEMATIC.FINAL_TEXT,
+    });
+  });
+
+  test('the published mark is a faithful stand-in for any time in the beat', () => {
+    // The overlay consumes the quantized mark, not the raw clock. Segment of the
+    // mark must match segment of every t that produces that mark — otherwise
+    // title visibility would be a coincidence of the overlay's second comparison.
+    for (let t = 0; t <= CINEMATIC.EXPLORE_MODE + 1; t += 0.25) {
+      const live = openingSegment(t);
+      const fromMark = openingSegment(live.mark);
+      expect(fromMark.caption).toBe(live.caption);
+      expect(fromMark.title).toBe(live.title);
+      expect(fromMark.mark).toBe(live.mark);
+      // Phase is the one field that can still move after the last mark: 12.5–15s
+      // share FINAL_TEXT, then explore begins. Caption and title stay put.
+      if (live.phase !== 'explore') {
+        expect(fromMark.phase).toBe(live.phase);
+      }
+    }
   });
 });
 

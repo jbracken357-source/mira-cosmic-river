@@ -17,6 +17,7 @@
 // and MID on its own — the pair stays the subject and the river keeps its direction
 // below it, rather than cropping the desktop framing.
 import { CINEMATIC, CAMERA, PORTRAIT_CAMERA } from '../constants/animation';
+import type { CinematicPhase } from '../types';
 
 type Vec3 = [number, number, number];
 
@@ -113,15 +114,44 @@ export function resolveOpeningPose(
   };
 }
 
-// The caption overlay only reacts at its four segment boundaries (CinematicOverlay),
-// so the frame loop publishes the boundary value instead of the raw clock — the
-// store updates on segment changes only, never per frame.
+// One opening beat: the discrete phase the store may publish, the caption the
+// overlay shows, and whether the title is visible. The overlay used to re-compare
+// CINEMATIC.* against the published mark; title visibility then only worked
+// because the mark quantizes to FINAL_TEXT while the phase is still tail-reveal
+// (12.5–15s). That quantization is the contract — `title` states it.
+export type OpeningCaption = 'cinematic1' | 'cinematic2' | 'cinematic3' | null;
+
+export interface OpeningSegment {
+  phase: CinematicPhase;
+  caption: OpeningCaption;
+  title: boolean;
+  mark: number;
+}
+
+export function openingSegment(t: number): OpeningSegment {
+  if (t >= CINEMATIC.EXPLORE_MODE) {
+    return { phase: 'explore', caption: null, title: true, mark: CINEMATIC.FINAL_TEXT };
+  }
+  if (t >= CINEMATIC.FINAL_TEXT) {
+    return { phase: 'tail-reveal', caption: null, title: true, mark: CINEMATIC.FINAL_TEXT };
+  }
+  if (t >= CINEMATIC.TAIL_REVEAL_START) {
+    return { phase: 'tail-reveal', caption: 'cinematic3', title: false, mark: CINEMATIC.TAIL_REVEAL_START };
+  }
+  if (t >= CINEMATIC.PULL_BACK_START) {
+    return { phase: 'pull-back', caption: 'cinematic2', title: false, mark: CINEMATIC.PULL_BACK_START };
+  }
+  if (t >= CINEMATIC.STARS_APPEAR) {
+    return { phase: 'stars-appear', caption: 'cinematic1', title: false, mark: CINEMATIC.STARS_APPEAR };
+  }
+  return { phase: 'dark', caption: null, title: false, mark: 0 };
+}
+
+// The caption overlay only reacts at segment boundaries, so the frame loop
+// publishes this mark instead of the raw clock — the store updates on segment
+// changes only, never per frame.
 export function openingCaptionMark(t: number): number {
-  if (t < CINEMATIC.STARS_APPEAR) return 0;
-  if (t < CINEMATIC.PULL_BACK_START) return CINEMATIC.STARS_APPEAR;
-  if (t < CINEMATIC.TAIL_REVEAL_START) return CINEMATIC.PULL_BACK_START;
-  if (t < CINEMATIC.FINAL_TEXT) return CINEMATIC.TAIL_REVEAL_START;
-  return CINEMATIC.FINAL_TEXT;
+  return openingSegment(t).mark;
 }
 
 let cachedScale: number | null = null;
