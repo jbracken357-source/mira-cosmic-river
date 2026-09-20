@@ -5,13 +5,7 @@ export {
   NOISE_GLSL,
   MiraA_Shader,
   Atmosphere_Shader,
-  Stream_Shader,
 } from './miraA';
-
-export {
-  StarTail_Shader,
-  FlowStream_Shader,
-} from './starTail';
 
 export {
   TailVertexShader,

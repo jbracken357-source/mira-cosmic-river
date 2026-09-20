@@ -89,12 +89,6 @@ export function advanceTime(
   return current;
 }
 
-// The wall-clock-driven variant (the StarField twinkle reads the shared clock rather
-// than accumulating): capture mode parks it at the same fixed phase.
-export function captureClock(elapsed: number): number {
-  return captureMode().active ? CAPTURE_TIME : elapsed;
-}
-
 // Rotate a camera position around its look-at on the ground plane (Y-up), so the rotated
 // azimuths keep the explore framing's height and distance.
 function rotateAroundLookAt(position: Vec3, lookAt: Vec3, radians: number): Vec3 {

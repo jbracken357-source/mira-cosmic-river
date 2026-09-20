@@ -9,7 +9,6 @@ export const PHYSICS = {
     temperature: 3000,     // Kelvin (cool red giant)
     luminosity: 9000,      // Solar luminosities (variable)
     pulsationPeriod: 331.96, // Days (mean period)
-    variabilityRange: [2.0, 10.0], // Visual magnitude range
   },
 
   // Mira B - White Dwarf companion
@@ -27,29 +26,6 @@ export const PHYSICS = {
     eccentricity: 0.15,    // Slight ellipse
     inclination: 30,       // Degrees from viewer
     period: 0.5,           // Orbital period (visual seconds)
-    separation: 70,        // AU (real distance, simplified)
-  },
-
-  // Material stream (accretion)
-  STREAM: {
-    particleCount: 5000,
-    flowSpeed: 0.3,
-    spreadAngle: 15,       // Degrees
-    densityVariation: 0.5,
-  },
-
-  // Gravitational effects
-  GRAVITY: {
-    waveAmplitude: 0.1,
-    waveFrequency: 2,
-    waveDecay: 0.5,
-  },
-
-  // Simulation defaults
-  SIMULATION: {
-    timeScale: 1,
-    gravityConstant: 0.001,
-    orbitalVelocity: 0.3,
   },
 
   // The Tail - Mira's 13-light-year UV bow shock (scaled)
