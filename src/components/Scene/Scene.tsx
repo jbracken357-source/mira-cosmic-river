@@ -23,6 +23,7 @@ import {
 import type { GovernorConfig, GovernorState } from '../../lib/qualityGovernor';
 import { qualityBudget } from '../../lib/qualityBudget';
 import { pulsationLighting } from '../../lib/pulsationLighting';
+import { TAIL_OCCUPANCY } from '../../lib/tailPath';
 import * as THREE from 'three';
 import type { StarName } from '../UI/InfoCards';
 import MiraA from './MiraA';
@@ -70,6 +71,7 @@ function SceneContent({
   const setCinematicTime = useBinaryStar((state) => state.setCinematicTime);
   const setIntroComplete = useBinaryStar((state) => state.setIntroComplete);
   const lod = qualityBudget(tier);
+  const occupancy = TAIL_OCCUPANCY;
   const capture = captureMode();
 
   // 今晚的 Mira (#23) bridge: the save flow presses capture synchronously inside
@@ -418,8 +420,8 @@ function SceneContent({
         turbulence={0.3}
       />
 
-      {/* The Tail — hero feature, rotated for visibility from default camera angle */}
-      <group rotation={[0, Math.PI * 0.12, 0]}>
+      {/* The Tail — hero feature. Occupancy (yaw, click, haze) lives in lib/tailPath. */}
+      <group rotation={[0, occupancy.yaw, 0]}>
         <MiraTail
           opacityRef={tailOpacityRef}
           particleCount={lod.tailParticles}
@@ -430,22 +432,22 @@ function SceneContent({
       </group>
       {/* Invisible click target for tail card */}
       <mesh
-        position={[-8, 2, 6]}
+        position={occupancy.click.position}
         userData={{ starName: 'tail' }}
         onClick={(e) => {
           e.stopPropagation();
           if (cinematicPhase === 'explore') onSelectStar('tail');
         }}
       >
-        <boxGeometry args={[12, 8, 2]} />
+        <boxGeometry args={occupancy.click.size} />
         <meshBasicMaterial visible={false} side={THREE.DoubleSide} />
       </mesh>
 
       {/* Ambient haze around the tail — anchors it against the star field in explore mode. */}
       {cinematicPhase === 'explore' && (
-        <group position={[-6, 1, 4]}>
+        <group position={occupancy.haze.position}>
           <GlowShell
-            shellRadius={5}
+            shellRadius={occupancy.haze.radius}
             color={COLORS.STELLAR_ORANGE}
             opacity={0.042}
             falloff={2.4}
