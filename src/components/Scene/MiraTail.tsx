@@ -7,6 +7,7 @@ import { useReducedMotion } from 'framer-motion';
 import RiverVeil from './RiverVeil';
 import { advanceTime, captureMode } from '../../lib/captureMode';
 import { dailySkyCoupling, tailBaseOpacity } from '../../lib/riverLighting';
+import { tailCenterline, tailSpread } from '../../lib/tailPath';
 import { useBinaryStar } from '../../hooks';
 import type { QualityTier } from '../../constants';
 
@@ -37,21 +38,13 @@ function generateTailData(count: number, length: number) {
   };
   for (let i = 0; i < count; i++) {
     const t = i / count; // 0 = near star, 1 = far end
-    const l = t * length;
-
-    // Curved tail: matter streams behind Mira A
-    // Extends diagonally (-X, -Z) so it's visible from the camera
-    const spread = 0.3 + t * 3.0;
-    const curve = Math.sin(t * Math.PI * 0.8) * 2.0; // upward curve
-
-    // Random position within the cone
+    const [cx, cy, cz] = tailCenterline(t, length);
+    const spread = tailSpread(t);
     const angle = random() * Math.PI * 2;
     const radius = Math.sqrt(random()) * spread;
-
-    // Tail extends in -X direction with +Z offset toward the camera
-    positions[i * 3] = -l * 0.6;     // behind Mira A (reduced for visibility)
-    positions[i * 3 + 1] = Math.cos(angle) * radius + curve;
-    positions[i * 3 + 2] = Math.sin(angle) * radius + l * 0.5; // +Z toward camera
+    positions[i * 3] = cx;
+    positions[i * 3 + 1] = Math.cos(angle) * radius + cy;
+    positions[i * 3 + 2] = Math.sin(angle) * radius + cz;
 
     seeds[i] = random();
     sizes[i] = 0.5 + random() * 1.5;

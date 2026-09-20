@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import type { QualityTier } from '../../constants';
 import { useEntryReadiness } from '../../hooks';
 import { qualityBudget } from '../../lib/qualityBudget';
+import { veilRibbon, veilSide } from '../../lib/tailPath';
 import { advanceTime } from '../../lib/captureMode';
 import {
   MIRA_A_REACH,
@@ -103,18 +104,12 @@ function createLayer(length: number, index: number, count: number, accent: boole
   const uv = geometry.attributes.uv;
   const tangents = new Float32Array(positions.count * 3);
   const sides = new Float32Array(positions.count);
-  const offset = index - (count - 1) / 2;
   for (let i = 0; i < positions.count; i++) {
     const t = 1 - uv.getX(i); // The density image is narrow on the right.
-    const wave = t * Math.PI * .8;
-    const curl = t * 5 + index * .7;
-    positions.setXYZ(i, -t * length * .56,
-      Math.sin(wave) * 2.2 + Math.sin(curl) * t * .55 + offset * t * .62,
-      t * length * .62 + offset * t * 1.05);
-    tangents.set([-length * .56,
-      Math.cos(wave) * Math.PI * 1.6 + (.45 * Math.sin(curl) + 2.25 * t * Math.cos(curl)) + offset * .45,
-      length * .62 + offset * 1.05], i * 3);
-    sides[i] = (uv.getY(i) - .5) * (accent ? 5.5 + t * 5 : 7 + t * 7);
+    const { position, tangent } = veilRibbon(t, length, index, count);
+    positions.setXYZ(i, position[0], position[1], position[2]);
+    tangents.set(tangent, i * 3);
+    sides[i] = veilSide(t, accent, uv.getY(i));
   }
   geometry.setAttribute('aTangent', new THREE.BufferAttribute(tangents, 3));
   geometry.setAttribute('aSide', new THREE.BufferAttribute(sides, 1));
