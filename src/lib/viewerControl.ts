@@ -17,6 +17,7 @@
 // is still allowed at the 60s mark — it fades in place, no camera motion.
 import { TRANSITIONS } from '../constants/animation';
 import { captureMode } from './captureMode';
+import { easeInOutCubic } from './openingTimeline';
 
 // OrbitControls speed once the ramp completes (the pre-existing drift rate).
 export const AUTO_ROTATE_SPEED = 0.3;
@@ -67,10 +68,6 @@ export interface ViewerControl {
   epilogueText: boolean;
   holdsIdle: boolean;      // while true the caller keeps restamping the clock
   reason: ViewerControlReason;
-}
-
-function easeInOutCubic(t: number): number {
-  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 }
 
 function held(reason: ViewerControlReason): ViewerControl {
