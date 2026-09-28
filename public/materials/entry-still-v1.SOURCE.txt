@@ -1,7 +1,0 @@
-file: entry-still-v1.jpg
-source-scene-commit: d601df101e71ecc296519fef4a4fc90cbb6522b1
-captured-on: 2026-09-18
-epoch: 2026-09-12T00:00:00Z
-view: default (1440x900, dpr 1, quality tier pinned high)
-captured-by: experiments/capture-entry-still.mjs
-note: re-made from the post-01/02 scene by ticket 11 (#29); earlier versions predate the new art

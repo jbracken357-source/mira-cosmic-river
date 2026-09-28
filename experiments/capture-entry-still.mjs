@@ -7,8 +7,9 @@
 // Provenance matters (TICKETS.md: the fallback still records its source scene
 // version): the capture is pinned to the baseline epoch/pose like every
 // baseline, and the scene commit it was captured from is written next to the
-// image as entry-still-v1.SOURCE.txt. Ticket 11 (#29) re-made this still from
-// the 01/02 art; re-running the script keeps the provenance trail honest.
+// image as entry-still-v2.SOURCE.txt. Ticket 11 (#29) re-made v1 from the
+// 01/02 art; #62 re-made v2 from the accepted b53ed9e scene. Re-running the
+// script keeps the provenance trail honest.
 import path from 'node:path';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
@@ -23,7 +24,7 @@ import {
   waitForExploreReady,
 } from './baseline-harness.mjs';
 
-const STILL_FILE = 'entry-still-v1.jpg';
+const STILL_FILE = 'entry-still-v2.jpg';
 
 const port = await freePort();
 const server = await startDevServer(port);
@@ -52,10 +53,10 @@ try {
     `epoch: ${BASELINE_EPOCH}`,
     `view: default (${DESKTOP_VIEWPORT.width}x${DESKTOP_VIEWPORT.height}, dpr 1, quality tier pinned high)`,
     'captured-by: experiments/capture-entry-still.mjs',
-    'note: re-made from the post-01/02 scene by ticket 11 (#29); earlier versions predate the new art',
+    'note: re-made from the accepted b53ed9e scene by #62; v1 came from d601df1 via ticket 11 (#29)',
     '',
   ].join('\n');
-  await writeFile(path.join(outDir, 'entry-still-v1.SOURCE.txt'), provenance);
+  await writeFile(path.join(outDir, 'entry-still-v2.SOURCE.txt'), provenance);
   console.log(`entry still written to ${path.join(outDir, STILL_FILE)}`);
   console.log(provenance);
 } finally {

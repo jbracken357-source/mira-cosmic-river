@@ -1,6 +1,8 @@
 import { test, expect } from '@playwright/test';
 import {
+  ENTRY_FADE_MS,
   MATERIALS_TIMEOUT_MS,
+  materialFade,
   initialMaterials,
   noteMaterial,
   timeoutMaterials,
@@ -129,5 +131,22 @@ test.describe('scene access transitions', () => {
   test('a failed canvas creation lands in unavailable from any state', () => {
     expect(reduceSceneAccess('available', 'create-failed')).toBe('unavailable');
     expect(reduceSceneAccess('lost', 'create-failed')).toBe('unavailable');
+  });
+});
+
+test.describe('arrival fade', () => {
+  test('is zero until the texture binds, then rises linearly to exactly one', () => {
+    expect(materialFade(null, 10_000)).toBe(0);
+    const boundAt = 10_000;
+    expect(materialFade(boundAt, boundAt)).toBe(0);
+    expect(materialFade(boundAt, boundAt + ENTRY_FADE_MS / 2)).toBeCloseTo(0.5);
+    expect(materialFade(boundAt, boundAt + ENTRY_FADE_MS)).toBe(1);
+    // Clamped, never past one — the baseline harness reads exactly 1 as ready.
+    expect(materialFade(boundAt, boundAt + ENTRY_FADE_MS * 10)).toBe(1);
+  });
+
+  test('the fade is a real duration, not a token constant', () => {
+    expect(ENTRY_FADE_MS).toBeGreaterThanOrEqual(150);
+    expect(ENTRY_FADE_MS).toBeLessThanOrEqual(1500);
   });
 });
