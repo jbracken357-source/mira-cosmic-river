@@ -2,7 +2,7 @@ import { useRef, useState, useEffect, useCallback } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls as DreiOrbitControls } from '@react-three/drei';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
-import { useReducedMotion, AnimatePresence, motion } from 'framer-motion';
+import { useReducedMotion } from 'framer-motion';
 import { useBinaryStar, ambientSpace, tonightFrame, useEntryReadiness } from '../../hooks';
 import { COLORS, PHYSICS, calculateOrbitalPosition, CINEMATIC, CAMERA as LANDSCAPE_CAMERA, TRANSLATIONS, resolveQualityTier, ENTRY_STILL, ENTRY_STILL_BACKDROP } from '../../constants';
 import type { QualityTier } from '../../constants';
@@ -614,29 +614,42 @@ export default function Scene({ onSelectStar }: SceneProps) {
   // The handoff is explicit: the loading still lifts when the canvas exists, and
   // — for the full cinematic only — when the gate has opened. Direct entry adds
   // no waiting ceremony beyond the canvas itself. The lift is a dissolve over
-  // ENTRY_FADE_MS (#62), not a hard cut: AnimatePresence keeps the still mounted
-  // while it fades, so the reveal reads as one gesture with the material fades.
+  // ENTRY_FADE_MS (#62) — CSS opacity, which the compositor drives even under a
+  // starved main thread — and the element's removal is on a wall-clock timer,
+  // never on an animation callback: CI renders in software at seconds per frame,
+  // and no frame-loop condition may keep a loading screen on screen (#63).
   const veilUp = !canvasReady || (!introComplete && gate === 'waiting');
+  const [veilMounted, setVeilMounted] = useState(true);
+  useEffect(() => {
+    if (veilUp) {
+      // One-way in practice (canvasReady and introComplete never revert); the
+      // reset only keeps an impossible resurrection honest.
+      setVeilMounted(true);
+      return;
+    }
+    const id = window.setTimeout(() => setVeilMounted(false), ENTRY_FADE_MS + 250);
+    return () => window.clearTimeout(id);
+  }, [veilUp]);
 
   return (
     <>
-      <AnimatePresence>
-        {veilUp && (
-          <motion.div
-            data-testid="loading"
-            data-still-source={ENTRY_STILL.version}
-            className="fixed inset-0 z-[5] flex items-center justify-center pointer-events-none select-none"
-            style={ENTRY_STILL_BACKDROP}
-            initial={{ opacity: 1 }}
-            exit={{ opacity: 0, transition: { duration: ENTRY_FADE_MS / 1000, ease: 'easeOut' } }}
-          >
-            <div className="absolute inset-0 bg-black/60" />
-            <p className="relative text-white/35 text-sm font-extralight italic tracking-[0.25em]">
-              {TRANSLATIONS[language].loading}
-            </p>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {veilMounted && (
+        <div
+          data-testid="loading"
+          data-still-source={ENTRY_STILL.version}
+          className="fixed inset-0 z-[5] flex items-center justify-center pointer-events-none select-none"
+          style={{
+            ...ENTRY_STILL_BACKDROP,
+            opacity: veilUp ? 1 : 0,
+            transition: `opacity ${ENTRY_FADE_MS}ms ease-out`,
+          }}
+        >
+          <div className="absolute inset-0 bg-black/60" />
+          <p className="relative text-white/35 text-sm font-extralight italic tracking-[0.25em]">
+            {TRANSLATIONS[language].loading}
+          </p>
+        </div>
+      )}
     <Canvas
       frameloop={background ? 'never' : 'always'}
       onCreated={(state) => {
