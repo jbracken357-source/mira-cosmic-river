@@ -26,7 +26,10 @@ async function gotoExplore(page: Page, query: string) {
   });
   await page.goto(`/?${query}`);
   await expect(page.getByTestId('explore-ui')).toBeVisible({ timeout: 15000 });
-  await expect(page.getByTestId('loading')).toHaveCount(0);
+  // The dissolve removes the veil on a wall clock (#63's fix); software GL can still
+  // hold the unmount commit behind one seconds-long frame, so the no-ceremony bound
+  // stays honest but generous.
+  await expect(page.getByTestId('loading')).toHaveCount(0, { timeout: 10000 });
   // The pose attribute lands at the end of the first completed frame: the loop is
   // really running before any governor assertion is made.
   await expect(canvas(page)).toHaveAttribute('data-camera-pose', /.+/, { timeout: 30000 });
@@ -38,6 +41,16 @@ async function gotoExplore(page: Page, query: string) {
 const frameCount = (page: Page) =>
   canvas(page).evaluate((el) => Number((el as HTMLElement).dataset.frameCount ?? 0));
 
+// The full tier-change history, read from the same recorder the shipped canvas log
+// uses (window.__miraQuality). Observing a specific rung from a standing start is
+// inherently racy on slow runners — the synthetic frames may complete a step before
+// the first poll — so the path is asserted after the fact, from history.
+const qualityChanges = (page: Page) =>
+  page.evaluate(() =>
+    (window as unknown as { __miraQuality?: { changes: { at: number; from: string; to: string; reason: string }[] } })
+      .__miraQuality?.changes.map(({ at, from, to, reason }) => ({ at, from, to, reason })) ?? [],
+  );
+
 test.describe('Adaptive quality', () => {
   test('sustained slow frames step down one rung at a time, cooldown apart', async ({ page }) => {
     // quality-start pins the OPENING tier (the governor still runs): the detected
@@ -45,15 +58,22 @@ test.describe('Adaptive quality', () => {
     // assertions must not depend on it.
     await gotoExplore(page, `quality-start=high&quality-probe=slow&${SCALED}`);
 
-    await expect(canvas(page)).toHaveAttribute('data-quality-tier', 'high');
-    // Never a jump: the descent must pass through mid…
-    await expect(canvas(page)).toHaveAttribute('data-quality-tier', 'mid', { timeout: 30000 });
-    await expect(canvas(page)).toHaveAttribute('data-quality-last-change', 'high>mid:sustained-slow');
-    // …and only later reach low, one cooldown and two windows further on.
-    await expect(canvas(page)).toHaveAttribute('data-quality-tier', 'low', { timeout: 30000 });
+    // Never a jump and never in a hurry: exactly two changes, high → mid → low,
+    // with the compressed cooldown (1200ms) between them. Read from history —
+    // the descent may legitimately finish before a first poll could see 'high'.
+    await expect(async () => {
+      const changes = await qualityChanges(page);
+      expect(changes.map(({ from, to, reason }) => ({ from, to, reason }))).toEqual([
+        { from: 'high', to: 'mid', reason: 'sustained-slow' },
+        { from: 'mid', to: 'low', reason: 'sustained-slow' },
+      ]);
+      expect(changes[1].at - changes[0].at).toBeGreaterThanOrEqual(1200);
+    }).toPass({ timeout: 30000 });
+    await expect(canvas(page)).toHaveAttribute('data-quality-tier', 'low');
     await expect(canvas(page)).toHaveAttribute('data-quality-last-change', 'mid>low:sustained-slow');
     // The floor holds: no further change, however long the slow frames continue.
     await page.waitForTimeout(3000);
+    expect(await qualityChanges(page)).toHaveLength(2);
     await expect(canvas(page)).toHaveAttribute('data-quality-tier', 'low');
   });
 
@@ -72,8 +92,15 @@ test.describe('Adaptive quality', () => {
   test('sustained fast frames step back up one rung', async ({ page }) => {
     await gotoExplore(page, `quality-start=mid&quality-probe=fast&${SCALED}`);
 
-    await expect(canvas(page)).toHaveAttribute('data-quality-tier', 'mid');
-    await expect(canvas(page)).toHaveAttribute('data-quality-tier', 'high', { timeout: 30000 });
+    // One step up, proven from history: the opening 'mid' cannot be observed from
+    // a standing start when the synthetic fast frames finish the climb first.
+    await expect(async () => {
+      const changes = await qualityChanges(page);
+      expect(changes.map(({ from, to, reason }) => ({ from, to, reason }))).toEqual([
+        { from: 'mid', to: 'high', reason: 'sustained-fast' },
+      ]);
+    }).toPass({ timeout: 30000 });
+    await expect(canvas(page)).toHaveAttribute('data-quality-tier', 'high');
     await expect(canvas(page)).toHaveAttribute('data-quality-last-change', 'mid>high:sustained-fast');
   });
 
@@ -103,8 +130,16 @@ test.describe('Adaptive quality', () => {
 
     const poseBefore = await canvas(page).getAttribute('data-camera-pose');
     expect(poseBefore).toBeTruthy();
-    await expect(canvas(page)).toHaveAttribute('data-quality-tier', 'mid', { timeout: 30000 });
-    await expect(canvas(page)).toHaveAttribute('data-quality-tier', 'low', { timeout: 30000 });
+    // The two-rung descent is proven from history (a standing start may miss it);
+    // what matters here is that the tier moved twice while the camera never did.
+    await expect(async () => {
+      const changes = await qualityChanges(page);
+      expect(changes.map(({ from, to, reason }) => ({ from, to, reason }))).toEqual([
+        { from: 'high', to: 'mid', reason: 'sustained-slow' },
+        { from: 'mid', to: 'low', reason: 'sustained-slow' },
+      ]);
+    }).toPass({ timeout: 30000 });
+    await expect(canvas(page)).toHaveAttribute('data-quality-tier', 'low');
     expect(await canvas(page).getAttribute('data-camera-pose')).toBe(poseBefore);
   });
 
