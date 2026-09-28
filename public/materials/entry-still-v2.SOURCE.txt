@@ -1,0 +1,7 @@
+file: entry-still-v2.jpg
+source-scene-commit: b53ed9e15cbf7ab5112146e84dbb1e97c9efcb53
+captured-on: 2026-09-28
+epoch: 2026-09-12T00:00:00Z
+view: default (1440x900, dpr 1, quality tier pinned high)
+captured-by: experiments/capture-entry-still.mjs
+note: re-made from the accepted b53ed9e scene by #62; v1 came from d601df1 via ticket 11 (#29)

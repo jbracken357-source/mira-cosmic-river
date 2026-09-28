@@ -2,19 +2,20 @@
 //
 // Provenance is part of the contract (TICKETS.md, ticket 08): a static image
 // that stands in for the scene must record which scene version it came from,
-// and must never be passed off as newer art. Ticket 11 (#29) re-made this
-// still from the 01/02 art (see public/materials/entry-still-v1.SOURCE.txt for
+// and must never be passed off as newer art. Ticket 11 (#29) made v1 from the
+// 01/02 art; #62 re-made it from the accepted b53ed9e scene — byte-identical
+// pixels, refreshed provenance (public/materials/entry-still-v2.SOURCE.txt has
 // the commit, epoch, and capture command). `version` is what the UI stamps
 // into data-still-source.
 import type { CSSProperties } from 'react';
 import { COLORS } from './colors';
 
 export const ENTRY_STILL = {
-  src: 'materials/entry-still-v1.jpg',
-  version: 'entry-still-v1',
+  src: 'materials/entry-still-v2.jpg',
+  version: 'entry-still-v2',
   sourceEpoch: '2026-09-12T00:00:00Z',
-  capturedOn: '2026-09-18',
-  sourceSceneCommit: 'd601df1',
+  capturedOn: '2026-09-28',
+  sourceSceneCommit: 'b53ed9e',
 } as const;
 
 // The one backdrop for every place the still holds the screen — the loading

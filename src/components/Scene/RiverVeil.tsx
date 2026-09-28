@@ -4,6 +4,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { QualityTier } from '../../constants';
 import { useEntryReadiness } from '../../hooks';
+import { materialFade } from '../../lib/entryReadiness';
 import { qualityBudget } from '../../lib/qualityBudget';
 import { veilRibbon, veilSide } from '../../lib/tailPath';
 import { advanceTime } from '../../lib/captureMode';
@@ -156,6 +157,10 @@ export default function RiverVeil({ opacityRef, readyRef, length, reduceMotion, 
     createLayer(length, i, count, i >= volumeCount)
   )), [length, count, volumeCount]);
   const mapRef = useRef<THREE.Texture | null>(null);
+  // When the density map bound (performance.now clock), for the arrival fade (#62).
+  // Null until the first bind; a governed tier change keeps the stamp, so rebuilt
+  // ribbons arrive already faded in.
+  const mapBoundAtRef = useRef<number | null>(null);
 
   // Density image: one load for the component's life. A governed tier change
   // rebuilds the ribbons, not the texture — otherwise the river would drop to
@@ -171,6 +176,7 @@ export default function RiverVeil({ opacityRef, readyRef, length, reduceMotion, 
       loaded.wrapS = THREE.RepeatWrapping;
       loaded.wrapT = THREE.RepeatWrapping;
       mapRef.current = loaded;
+      mapBoundAtRef.current = performance.now();
       readyRef.current = true;
       useEntryReadiness.getState().noteMaterial('river', 'ready');
     }, undefined, () => {
@@ -186,6 +192,7 @@ export default function RiverVeil({ opacityRef, readyRef, length, reduceMotion, 
       active = false;
       readyRef.current = false;
       mapRef.current = null;
+      mapBoundAtRef.current = null;
       texture.dispose();
     };
   }, [readyRef]);
@@ -204,12 +211,16 @@ export default function RiverVeil({ opacityRef, readyRef, length, reduceMotion, 
   useFrame((_, delta) => {
     if (miraBRef.current) miraBRef.current.getWorldPosition(bWorldPos.current);
     const map = mapRef.current;
+    // The arrival fade (#62): uReady rises to exactly 1 over ENTRY_FADE_MS instead
+    // of switching in one frame. A rebuilt layer set picks up the retained map's
+    // stamp and therefore arrives already faded in.
+    const ready = materialFade(mapBoundAtRef.current, performance.now());
     for (const [i, child] of (groupRef.current?.children ?? []).entries()) {
       const material = (child as THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMaterial>).material;
       if (map && material.uniforms.uMap.value !== map) {
         material.uniforms.uMap.value = map;
-        material.uniforms.uReady.value = 1;
       }
+      material.uniforms.uReady.value = ready;
       material.uniforms.uTime.value = advanceTime(material.uniforms.uTime.value, delta, { reduceMotion });
       const isAccent = material.uniforms.uAccent.value === 1;
       material.uniforms.uOpacity.value = opacityRef.current * veilLayerWeight(i, count, isAccent) / count * sky.density;

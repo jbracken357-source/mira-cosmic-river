@@ -190,8 +190,11 @@ export const MiraA_Shader = {
       float seam = smoothstep(0., .045, vUv.x) * (1. - smoothstep(.955, 1., vUv.x));
       seam *= smoothstep(0., .07, vUv.y) * (1. - smoothstep(.93, 1., vUv.y));
       vec2 uv = vUv + vec2(sin(vUv.y * 18. + uTime * .07), cos(vUv.x * 17. - uTime * .05)) * .003 * seam;
-      float density = procedural;
-      if (uSurfaceReady > .5) density = mix(procedural, mix(.5, texture2D(uSurfaceMap, uv).r, detailStrength), seam * .85);
+      // uSurfaceReady ramps 0 to 1 over ENTRY_FADE_MS (#62): the procedural granulation
+      // dissolves into the mapped surface instead of switching in one frame. Both
+      // endpoints match the old hard switch value for value; sampling the unbound map
+      // at weight zero yields defined black that never reaches the mix.
+      float density = mix(procedural, mix(.5, texture2D(uSurfaceMap, uv).r, detailStrength), seam * .85 * uSurfaceReady);
       float heat = smoothstep(.12, .73, density);
       vec3 ember = uColorCore * .15 + vec3(.055, .006, .001);
       vec3 amber = mix(uColorSurface, vec3(1., .38, .065), .65);

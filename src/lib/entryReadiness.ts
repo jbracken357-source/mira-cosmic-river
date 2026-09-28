@@ -39,6 +39,22 @@ export type SceneAccessEvent = 'context-lost' | 'context-restored' | 'create-fai
 // never reads as an infinite wait. Bounded by the unit tests on both ends.
 export const MATERIALS_TIMEOUT_MS = 5000;
 
+// The arrival fade (#62): one duration for every hand-off at the end of loading —
+// the loading veil's dissolve and the river/star material fades — so the entry
+// settles as one gesture instead of three one-frame switches. A presence fade is
+// not motion; it stays under reduced motion.
+export const ENTRY_FADE_MS = 500;
+
+// The gentle counterpart of a material's 'ready': 0 until the texture binds
+// (boundAt null), then a linear rise that lands on exactly 1 after ENTRY_FADE_MS.
+// The endpoints reproduce the old hard switch value for value, so a settled scene
+// renders identically — only the middle half-second is new. Exact 1 matters beyond
+// aesthetics: the baseline harness reads uReady === 1 as "resources ready".
+export function materialFade(boundAt: number | null, now: number): number {
+  if (boundAt === null) return 0;
+  return Math.max(0, Math.min(1, (now - boundAt) / ENTRY_FADE_MS));
+}
+
 export function initialMaterials(): MaterialSet {
   return { river: 'pending', surface: 'pending' };
 }

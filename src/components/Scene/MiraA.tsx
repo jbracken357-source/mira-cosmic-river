@@ -10,6 +10,7 @@ import {
 import { COLORS } from '../../constants';
 import { useBinaryStar, useEntryReadiness } from '../../hooks';
 import { advanceTime } from '../../lib/captureMode';
+import { materialFade } from '../../lib/entryReadiness';
 import GlowShell from './GlowShell';
 
 interface MiraAProps {
@@ -25,6 +26,9 @@ export default function MiraA({ position, radius, turbulence, segments = 64 }: M
   const innerAtmosphereRef = useRef<THREE.ShaderMaterial>(null);
   const outerAtmosphereRef = useRef<THREE.ShaderMaterial>(null);
   const timeRef = useRef(0);
+  // When the surface map bound, for the arrival fade (#62). Null until then; the
+  // frame loop ramps uSurfaceReady from the stamp.
+  const surfaceBoundAtRef = useRef<number | null>(null);
   const reduceMotion = Boolean(useReducedMotion());
   const uniforms = useMemo(() => THREE.UniformsUtils.clone(MiraA_Shader.uniforms), []);
 
@@ -34,7 +38,8 @@ export default function MiraA({ position, radius, turbulence, segments = 64 }: M
       if (!active || !materialRef.current) return;
       loaded.colorSpace = THREE.NoColorSpace;
       materialRef.current.uniforms.uSurfaceMap.value = loaded;
-      materialRef.current.uniforms.uSurfaceReady.value = 1;
+      // The arrival fade (#62): stamp the bind; the frame loop ramps uSurfaceReady.
+      surfaceBoundAtRef.current = performance.now();
       useEntryReadiness.getState().noteMaterial('surface', 'ready');
     }, undefined, () => {
       // Procedural convection remains visible without the map — the live
@@ -44,6 +49,7 @@ export default function MiraA({ position, radius, turbulence, segments = 64 }: M
     });
     return () => {
       active = false;
+      surfaceBoundAtRef.current = null;
       texture.dispose();
     };
   }, []);
@@ -75,6 +81,11 @@ export default function MiraA({ position, radius, turbulence, segments = 64 }: M
       materialRef.current.uniforms.uColorSurface.value = colors.colorSurface;
       materialRef.current.uniforms.uBrightness.value = brightness;
       materialRef.current.uniforms.uColorShift.value = colorShift;
+      // Rises to exactly 1 over ENTRY_FADE_MS once the map binds (#62).
+      materialRef.current.uniforms.uSurfaceReady.value = materialFade(
+        surfaceBoundAtRef.current,
+        performance.now(),
+      );
     }
 
     for (const ref of [innerAtmosphereRef, outerAtmosphereRef]) {

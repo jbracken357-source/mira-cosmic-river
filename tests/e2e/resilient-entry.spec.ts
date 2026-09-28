@@ -15,7 +15,7 @@ import type { Page } from '@playwright/test';
 // luminance is neither flat nor black — never by the mere presence of a canvas.
 
 const APP = '/?quality=low';
-const STILL_VERSION = 'entry-still-v1';
+const STILL_VERSION = 'entry-still-v2';
 
 const wrapper = (page: Page) => page.locator('[data-entry-gate]');
 
