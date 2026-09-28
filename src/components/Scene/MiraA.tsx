@@ -9,7 +9,7 @@ import {
 } from '../../shaders/miraA';
 import { COLORS } from '../../constants';
 import { useBinaryStar, useEntryReadiness } from '../../hooks';
-import { advanceTime } from '../../lib/captureMode';
+import { advanceTime, captureMode } from '../../lib/captureMode';
 import { materialFade } from '../../lib/entryReadiness';
 import GlowShell from './GlowShell';
 
@@ -81,11 +81,11 @@ export default function MiraA({ position, radius, turbulence, segments = 64 }: M
       materialRef.current.uniforms.uColorSurface.value = colors.colorSurface;
       materialRef.current.uniforms.uBrightness.value = brightness;
       materialRef.current.uniforms.uColorShift.value = colorShift;
-      // Rises to exactly 1 over ENTRY_FADE_MS once the map binds (#62).
-      materialRef.current.uniforms.uSurfaceReady.value = materialFade(
-        surfaceBoundAtRef.current,
-        performance.now(),
-      );
+      // Rises to exactly 1 over ENTRY_FADE_MS once the map binds (#62). Capture
+      // mode parks it at the endpoint: a capture is the settled scene.
+      materialRef.current.uniforms.uSurfaceReady.value = captureMode().active
+        ? 1
+        : materialFade(surfaceBoundAtRef.current, performance.now());
     }
 
     for (const ref of [innerAtmosphereRef, outerAtmosphereRef]) {
