@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { CINEMATIC, CAMERA, PORTRAIT_CAMERA } from '../../src/constants/animation';
-import { cinematicTimeScale, openingCaptionMark, openingSegment, resolveOpeningPose } from '../../src/lib/openingTimeline';
+import { cinematicTimeScale, openingSegment, resolveOpeningPose } from '../../src/lib/openingTimeline';
 
 // Opening timeline (#28, ticket 03): the full cinematic as a pure function of time.
 // The three beats are 起 hold (CLOSE) → 中 pull-back with the river pass (MID bow)
@@ -159,22 +159,20 @@ test.describe('portrait composition', () => {
   });
 });
 
-test.describe('caption marks', () => {
-  test('one mark per caption segment, matching the overlay thresholds', () => {
-    expect(openingCaptionMark(0)).toBe(0);
-    expect(openingCaptionMark(1.99)).toBe(0);
-    expect(openingCaptionMark(CINEMATIC.STARS_APPEAR)).toBe(CINEMATIC.STARS_APPEAR);
-    expect(openingCaptionMark(3.99)).toBe(CINEMATIC.STARS_APPEAR);
-    expect(openingCaptionMark(CINEMATIC.PULL_BACK_START)).toBe(CINEMATIC.PULL_BACK_START);
-    expect(openingCaptionMark(7.99)).toBe(CINEMATIC.PULL_BACK_START);
-    expect(openingCaptionMark(CINEMATIC.TAIL_REVEAL_START)).toBe(CINEMATIC.TAIL_REVEAL_START);
-    expect(openingCaptionMark(12.49)).toBe(CINEMATIC.TAIL_REVEAL_START);
-    expect(openingCaptionMark(CINEMATIC.FINAL_TEXT)).toBe(CINEMATIC.FINAL_TEXT);
-    expect(openingCaptionMark(15)).toBe(CINEMATIC.FINAL_TEXT);
-  });
-});
-
 test.describe('opening segments (caption ↔ phase)', () => {
+  test('one mark per caption segment, matching the overlay thresholds', () => {
+    expect(openingSegment(0).mark).toBe(0);
+    expect(openingSegment(1.99).mark).toBe(0);
+    expect(openingSegment(CINEMATIC.STARS_APPEAR).mark).toBe(CINEMATIC.STARS_APPEAR);
+    expect(openingSegment(3.99).mark).toBe(CINEMATIC.STARS_APPEAR);
+    expect(openingSegment(CINEMATIC.PULL_BACK_START).mark).toBe(CINEMATIC.PULL_BACK_START);
+    expect(openingSegment(7.99).mark).toBe(CINEMATIC.PULL_BACK_START);
+    expect(openingSegment(CINEMATIC.TAIL_REVEAL_START).mark).toBe(CINEMATIC.TAIL_REVEAL_START);
+    expect(openingSegment(12.49).mark).toBe(CINEMATIC.TAIL_REVEAL_START);
+    expect(openingSegment(CINEMATIC.FINAL_TEXT).mark).toBe(CINEMATIC.FINAL_TEXT);
+    expect(openingSegment(15).mark).toBe(CINEMATIC.FINAL_TEXT);
+  });
+
   test('each beat names its phase, caption and title together', () => {
     expect(openingSegment(0)).toEqual({ phase: 'dark', caption: null, title: false, mark: 0 });
     expect(openingSegment(CINEMATIC.STARS_APPEAR)).toEqual({
