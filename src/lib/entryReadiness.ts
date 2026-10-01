@@ -45,6 +45,12 @@ export const MATERIALS_TIMEOUT_MS = 5000;
 // not motion; it stays under reduced motion.
 export const ENTRY_FADE_MS = 500;
 
+// Extra allowance on top of ENTRY_FADE_MS before the dissolved veil is unmounted
+// (#63's lesson): under software GL the commit that removes the element can land
+// behind the wall-clock timer — one seconds-long frame is enough — so removal is
+// scheduled with this slack instead of trusting the fade to have painted.
+export const VEIL_UNMOUNT_MARGIN_MS = 250;
+
 // The gentle counterpart of a material's 'ready': 0 until the texture binds
 // (boundAt null), then a linear rise that lands on exactly 1 after ENTRY_FADE_MS.
 // The endpoints reproduce the old hard switch value for value, so a settled scene
@@ -86,6 +92,24 @@ export function resolveEntryGate(set: MaterialSet): EntryGate {
 
 export function gateAllowsCinematic(gate: EntryGate): boolean {
   return gate !== 'waiting';
+}
+
+// The loading veil's hold on the screen (#65): three inputs — the canvas
+// exists, the opening is already behind the viewer (direct entry), and the
+// entry gate — one boolean. The veil waits for the canvas unconditionally; a
+// full opening additionally waits for the gate (ADR-0001 settles the reverse:
+// once the opening is behind the viewer, the veil waits on the canvas alone —
+// a return visit adds no ceremony, even mid-load). The lift is one-way in
+// practice: canvasReady and openingPassed never revert within a visit, and the
+// gate's settled states are sticky, so no later event re-covers the screen.
+export function veilHoldsScreen(input: {
+  canvasReady: boolean;
+  openingPassed: boolean;
+  gate: EntryGate;
+}): boolean {
+  if (!input.canvasReady) return true;
+  if (input.openingPassed) return false;
+  return input.gate === 'waiting';
 }
 
 // WebGL availability as an injectable decision: the caller hands in the probe

@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import {
   ENTRY_FADE_MS,
   MATERIALS_TIMEOUT_MS,
+  VEIL_UNMOUNT_MARGIN_MS,
   materialFade,
   initialMaterials,
   noteMaterial,
@@ -10,7 +11,9 @@ import {
   gateAllowsCinematic,
   probeWebGLSupport,
   reduceSceneAccess,
+  veilHoldsScreen,
 } from '../../src/lib/entryReadiness';
+import type { EntryGate } from '../../src/lib/entryReadiness';
 
 // The entry readiness gate (#24): the full cinematic starts only once the main
 // materials — or a meaningful procedural fallback — can actually be presented.
@@ -148,5 +151,76 @@ test.describe('arrival fade', () => {
   test('the fade is a real duration, not a token constant', () => {
     expect(ENTRY_FADE_MS).toBeGreaterThanOrEqual(150);
     expect(ENTRY_FADE_MS).toBeLessThanOrEqual(1500);
+  });
+});
+
+// The veil's hold on the screen (#65): one pure verdict for the loading still.
+// Three inputs — the canvas exists, the opening is already behind the viewer,
+// and the entry gate — decide whether the veil still covers everything. The
+// expectations below are hand-written per row, not recomputed from the
+// implementation.
+const VEIL_TRUTH_TABLE: {
+  canvasReady: boolean;
+  openingPassed: boolean;
+  gate: EntryGate;
+  holds: boolean;
+}[] = [
+  // No canvas yet: there is nothing to hand off to, whatever the gate says.
+  { canvasReady: false, openingPassed: false, gate: 'waiting', holds: true },
+  { canvasReady: false, openingPassed: false, gate: 'materials', holds: true },
+  { canvasReady: false, openingPassed: false, gate: 'fallback', holds: true },
+  { canvasReady: false, openingPassed: true, gate: 'waiting', holds: true },
+  { canvasReady: false, openingPassed: true, gate: 'materials', holds: true },
+  { canvasReady: false, openingPassed: true, gate: 'fallback', holds: true },
+  // Canvas up, opening still ahead, gate waiting: the full cinematic waits.
+  { canvasReady: true, openingPassed: false, gate: 'waiting', holds: true },
+  // Gate settled on either path: the dissolve may begin.
+  { canvasReady: true, openingPassed: false, gate: 'materials', holds: false },
+  { canvasReady: true, openingPassed: false, gate: 'fallback', holds: false },
+  // Canvas up, opening behind: direct entry waits on the canvas alone
+  // (ADR-0001) — even a still-waiting gate adds no ceremony to a return visit.
+  { canvasReady: true, openingPassed: true, gate: 'waiting', holds: false },
+  { canvasReady: true, openingPassed: true, gate: 'materials', holds: false },
+  { canvasReady: true, openingPassed: true, gate: 'fallback', holds: false },
+];
+
+test.describe('veil hold on screen', () => {
+  for (const row of VEIL_TRUTH_TABLE) {
+    test(`canvasReady=${row.canvasReady} openingPassed=${row.openingPassed} gate=${row.gate} — ${row.holds ? 'holds' : 'lifts'}`, () => {
+      expect(
+        veilHoldsScreen({
+          canvasReady: row.canvasReady,
+          openingPassed: row.openingPassed,
+          gate: row.gate,
+        }),
+      ).toBe(row.holds);
+    });
+  }
+
+  test('full opening: the veil waits for the canvas, then the gate, then never returns', () => {
+    // A first visit, as the inputs actually move: nothing ready, then the
+    // canvas exists while materials still load, then the gate settles, then
+    // the opening completes. The fall is one-way in practice — canvasReady and
+    // openingPassed never revert within a visit, and the gate's settled states
+    // are sticky — so no later event can re-cover the screen.
+    expect(veilHoldsScreen({ canvasReady: false, openingPassed: false, gate: 'waiting' })).toBe(true);
+    expect(veilHoldsScreen({ canvasReady: true, openingPassed: false, gate: 'waiting' })).toBe(true);
+    expect(veilHoldsScreen({ canvasReady: true, openingPassed: false, gate: 'materials' })).toBe(false);
+    expect(veilHoldsScreen({ canvasReady: true, openingPassed: false, gate: 'fallback' })).toBe(false);
+    expect(veilHoldsScreen({ canvasReady: true, openingPassed: true, gate: 'materials' })).toBe(false);
+  });
+
+  test('direct entry: the veil waits on the canvas alone, the gate never enters the path', () => {
+    // ADR-0001: a return visit skips the opening, so the veil lifts the moment
+    // the canvas exists — even while the materials are still loading.
+    expect(veilHoldsScreen({ canvasReady: false, openingPassed: true, gate: 'waiting' })).toBe(true);
+    expect(veilHoldsScreen({ canvasReady: true, openingPassed: true, gate: 'waiting' })).toBe(false);
+  });
+
+  test('the unmount margin is a real allowance, not a token constant', () => {
+    // Enough to cover one lagging unmount commit under software GL, small
+    // enough that teardown never reads as a second wait.
+    expect(VEIL_UNMOUNT_MARGIN_MS).toBeGreaterThanOrEqual(50);
+    expect(VEIL_UNMOUNT_MARGIN_MS).toBeLessThanOrEqual(1000);
   });
 });
