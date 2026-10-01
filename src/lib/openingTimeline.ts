@@ -147,13 +147,6 @@ export function openingSegment(t: number): OpeningSegment {
   return { phase: 'dark', caption: null, title: false, mark: 0 };
 }
 
-// The caption overlay only reacts at segment boundaries, so the frame loop
-// publishes this mark instead of the raw clock — the store updates on segment
-// changes only, never per frame.
-export function openingCaptionMark(t: number): number {
-  return openingSegment(t).mark;
-}
-
 let cachedScale: number | null = null;
 
 // Dev-only wall-clock scale for the opening: `?cinematic-scale=5` runs the 15s

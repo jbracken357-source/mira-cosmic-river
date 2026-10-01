@@ -1,6 +1,6 @@
 import { Component, useState, useCallback, useEffect } from 'react';
 import type { ReactNode } from 'react';
-import { Scene } from './components/Scene';
+import Scene from './components/Scene/Scene';
 import { CinematicOverlay, InfoCards, ClosingMessage, MilestoneHint, SceneFallback } from './components/UI';
 import type { StarName } from './components/UI/InfoCards';
 import { hasFoundTail, persistFoundTail, useBinaryStar, useEntryReadiness, useIntentionalInput, initAmbientSound, useAmbientSound } from './hooks';
