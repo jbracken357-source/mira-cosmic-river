@@ -160,8 +160,23 @@ export interface ViewerControlSnapshot {
 // A fresh return to the main view settles: for this long after the request the
 // camera stays exactly where the viewer asked to be — no drift, no closing
 // takeover. The window is anchored to the request timestamp, so the per-frame
-// hold-restamps cannot renew it.
+// hold-restamps cannot renew it. Read through returnSettleWindowOpen below, never
+// by spelling the formula out again.
 export const RETURN_SETTLE_MS = 10_000;
+
+// The 归位收束窗口 verdict — the single authority, shared by viewerControlNow and
+// the Scene frame input. True while the opening has been passed and the last
+// return request is younger than RETURN_SETTLE_MS: the 「开场已越过」 premise is
+// part of the window itself, so a request left stale by a ritual replay (which
+// clears introComplete but not returnToExploreAt) never arms it. The camera
+// module's settle pin consumes this verdict as-is and does not re-check the
+// premise. Pass `now` explicitly for a fixed clock.
+export function returnSettleWindowOpen(
+  state: Pick<ViewerControlSnapshot, 'introComplete' | 'returnToExploreAt'>,
+  now: number = Date.now(),
+): boolean {
+  return state.introComplete && state.returnToExploreAt > 0 && now - state.returnToExploreAt < RETURN_SETTLE_MS;
+}
 
 // The assembled verdict from a whole store snapshot — one call instead of the
 // four-input assembly (now, clock, holds, timing) that used to be spelled out, word
@@ -172,11 +187,12 @@ export function viewerControlNow(
   reduceMotion: boolean,
   timing: IdleTiming = idleTiming(),
 ): ViewerControl {
-  if (state.introComplete && state.returnToExploreAt > 0 && Date.now() - state.returnToExploreAt < RETURN_SETTLE_MS) {
+  const now = Date.now();
+  if (returnSettleWindowOpen(state, now)) {
     return held('return-settle');
   }
   return resolveViewerControl(
-    Date.now(),
+    now,
     state.lastIntentionalInputAt,
     collectViewerHolds(state, reduceMotion),
     timing,

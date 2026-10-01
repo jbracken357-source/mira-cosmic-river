@@ -152,6 +152,9 @@ test.describe('return to the main view', () => {
   });
 
   test('the settle window pins the main view until the first input', () => {
+    // The default frame is the 跳过开场 / 直达 shape (introComplete true,
+    // openingRanToEnd false): the landing takes the explore framing on either
+    // path, and a fresh 归位 pins it there.
     const f = frame({ returnToExploreAt: 1000, returnSettleActive: true, camera: DRAGGED });
     const first = stepFreeViewCamera(initialFreeViewState(), f);
     // The pin overrides even the just-armed flight: the pose is the explore framing.
@@ -172,6 +175,24 @@ test.describe('return to the main view', () => {
     // Once the window expires the flights own the camera again.
     const expired = stepFreeViewCamera(first.state, { ...f, returnSettleActive: false });
     expect(expired.pose).not.toBeNull();
+  });
+
+  test('a hot settle flag never pins while the opening owns the camera', () => {
+    // The one shape where the flag can arrive hot with the opening still running:
+    // a ritual replay started inside the window leaves returnToExploreAt stale.
+    // The opening-owned branch carries the 「开场已越过」 premise — the pin must
+    // not fire, and the camera stays with the opening (no pose, no controls).
+    const replay = frame({
+      introComplete: false,
+      returnToExploreAt: 1000,
+      returnSettleActive: true,
+      camera: DRAGGED,
+    });
+    const step = stepFreeViewCamera(initialFreeViewState(), replay);
+    expect(step.pose).toBeNull();
+    expect(step.controlsEnabled).toBe(false);
+    expect(step.state.returnArmed).toBe(false);
+    expect(step.state.exploreApplied).toBe(false);
   });
 
   test('reduced motion places the camera instantly instead of flying', () => {
