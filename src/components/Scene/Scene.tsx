@@ -182,7 +182,7 @@ function SceneContent({
       aspect: camera.aspect,
       portrait,
       introComplete: store.introComplete,
-      openingFinished: cinematicStartRef.current !== 0 && cinematicElapsedRef.current >= CINEMATIC.EXPLORE_MODE,
+      openingRanToEnd: cinematicStartRef.current !== 0 && cinematicElapsedRef.current >= CINEMATIC.EXPLORE_MODE,
       returnToExploreAt: store.returnToExploreAt,
       returnSettleActive:
         store.returnToExploreAt > 0 && Date.now() - store.returnToExploreAt < RETURN_SETTLE_MS,
