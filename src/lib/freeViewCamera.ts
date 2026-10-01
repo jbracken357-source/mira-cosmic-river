@@ -100,8 +100,10 @@ export interface FreeViewFrame {
   // The capture pin's resolved pose, or null when capture mode is not parking the
   // camera this frame. It overrides every other verdict.
   capturePose: FlightPose | null;
-  // The return-settle window is active (a fresh return to the main view, before
-  // the first intentional input): the main view is pinned every frame.
+  // The return-settle window is active (a fresh return to the main view, after
+  // the opening was passed, before the first intentional input): the main view is
+  // pinned every frame. The verdict is viewerControl's single spelling — the
+  // 「开场已越过」 premise travels inside the flag, so the pin does not re-check it.
   returnSettleActive: boolean;
   // The live camera, for capturing flight origins at arm time.
   camera: {
@@ -244,13 +246,10 @@ export function stepFreeViewCamera(state: FreeViewState, frame: FreeViewFrame): 
   // including a damped drag inertia persisting at low frame rates — it is re-placed
   // every frame, the same parking discipline capture mode uses. The first
   // intentional input (the sequence captured at arm time changing) releases the
-  // pin, so the viewer keeps the camera at any moment.
-  if (
-    frame.returnSettleActive &&
-    frame.introComplete &&
-    frame.capturePose === null &&
-    s.returnArmedSeq === frame.inputSeq
-  ) {
+  // pin, so the viewer keeps the camera at any moment. The window's 「开场已越过」
+  // premise arrives inside returnSettleActive (viewerControl's single spelling);
+  // the opening-owned branch above already keeps this code out of the opening.
+  if (frame.returnSettleActive && frame.capturePose === null && s.returnArmedSeq === frame.inputSeq) {
     pose = place('EXPLORE');
   }
 

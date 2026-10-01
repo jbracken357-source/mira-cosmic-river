@@ -5,6 +5,7 @@ import {
   idleTiming,
   resolveViewerControl,
   viewerControlNow,
+  returnSettleWindowOpen,
   RETURN_SETTLE_MS,
 } from '../../src/lib/viewerControl';
 import type { ViewerControlSnapshot, ViewerHolds } from '../../src/lib/viewerControl';
@@ -292,6 +293,36 @@ test.describe('viewerControlNow (store snapshot assembly)', () => {
   test('the settle window belongs to free viewing, not the opening', () => {
     const opening = viewerControlNow(snapshot({ introComplete: false, returnToExploreAt: Date.now() }));
     expect(opening.reason).toBe('cinematic');
+  });
+});
+
+// The 归位收束窗口 verdict as its own spelling — the one viewerControlNow and the
+// Scene frame input share. These pin the premise (「开场已越过」) and the anchoring
+// against a fixed clock, so the two consumers cannot drift apart again.
+test.describe('returnSettleWindowOpen (the single window spelling)', () => {
+  const REQUESTED_AT = 1_000_000;
+  const windowState = (over: Partial<Pick<ViewerControlSnapshot, 'introComplete' | 'returnToExploreAt'>> = {}) => ({
+    introComplete: true,
+    returnToExploreAt: REQUESTED_AT,
+    ...over,
+  });
+
+  test('opens inside the window after the opening was passed', () => {
+    expect(returnSettleWindowOpen(windowState(), REQUESTED_AT + RETURN_SETTLE_MS - 1)).toBe(true);
+    expect(returnSettleWindowOpen(windowState(), REQUESTED_AT + 1)).toBe(true);
+  });
+
+  test('the 「开场已越过」 premise: a stale request never arms the window', () => {
+    // A ritual replay clears introComplete but not returnToExploreAt — the window
+    // must stay closed for the whole replay, however fresh the stale request is.
+    expect(returnSettleWindowOpen(windowState({ introComplete: false }), REQUESTED_AT + 1)).toBe(false);
+  });
+
+  test('no return request yet, or one aged past the window: closed', () => {
+    expect(returnSettleWindowOpen(windowState({ returnToExploreAt: 0 }), REQUESTED_AT)).toBe(false);
+    // Anchored to the request: closes at exactly RETURN_SETTLE_MS, not renewed.
+    expect(returnSettleWindowOpen(windowState(), REQUESTED_AT + RETURN_SETTLE_MS)).toBe(false);
+    expect(returnSettleWindowOpen(windowState(), REQUESTED_AT + RETURN_SETTLE_MS + 1)).toBe(false);
   });
 });
 
