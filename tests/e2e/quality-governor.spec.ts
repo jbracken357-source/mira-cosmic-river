@@ -26,9 +26,11 @@ async function gotoExplore(page: Page, query: string) {
   });
   await page.goto(`/?${query}`);
   await expect(page.getByTestId('explore-ui')).toBeVisible({ timeout: 15000 });
-  // The dissolve removes the veil on a wall clock (#63's fix); software GL can still
-  // hold the unmount commit behind one seconds-long frame, so the no-ceremony bound
-  // stays honest but generous.
+  // The 面纱 (veil) dissolves over ENTRY_FADE_MS, then unmounts VEIL_UNMOUNT_MARGIN_MS
+  // later on a wall-clock timer (#63's fix). Do not tighten this budget toward that
+  // schedule: under software GL a seconds-long frame can still hold the unmount commit
+  // behind the timer (#63's lesson), so the margin — and this budget's room beyond it —
+  // is honesty about CI reality, not structural slack.
   await expect(page.getByTestId('loading')).toHaveCount(0, { timeout: 10000 });
   // The pose attribute lands at the end of the first completed frame: the loop is
   // really running before any governor assertion is made.

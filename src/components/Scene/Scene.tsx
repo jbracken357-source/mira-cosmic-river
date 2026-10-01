@@ -145,8 +145,18 @@ function SceneContent({
 
   // Background click to deselect
 
-  // Main loop: cinematic + orbital animation
+  // Main loop. Stage order is the invariant: 门 (gate) → 控制 (control) → 飞行
+  // (flight) → 开场 (opening) → 治理 (governor) → 标记 (marking), with one camera
+  // prelude (aspect refit) ahead of 控制 and the always-running world (orbital
+  // tick, companion position, ambient distance) between 开场 and 治理 — the world
+  // belongs to no stage and runs regardless of the 门. The 入场门 is read exactly
+  // once per frame, before any consumer: the 开场 clock and the 治理 evidence rule
+  // share one verdict, so a frame can never disagree with itself about whether
+  // loading is over. Invariants carried by the order: while the 门 is closed the
+  // 开场 clock does not advance, and the frame is not admitted as 治理 evidence.
   useFrame((state, delta) => {
+    // 门: the one read both consumers below share.
+    const gateOpen = gateAllowsCinematic(useEntryReadiness.getState().gate);
     const camera = state.camera as THREE.PerspectiveCamera;
     if (camera.aspect !== previousAspect.current) {
       // Undo the old portrait expansion, then apply the new aspect (including
@@ -229,7 +239,7 @@ function SceneContent({
       // Free exploration holds the tail at full reveal — the same value the opening
       // timeline ramps to, so the hand-off never steps.
       tailOpacityRef.current = TAIL_FULL_OPACITY;
-    } else if (!gateAllowsCinematic(useEntryReadiness.getState().gate)) {
+    } else if (!gateOpen) {
       // The full cinematic waits until the main materials — or the procedural
       // fallback — can actually be presented (#24). The clock stays at zero and
       // the loading still holds the screen; a hung load is bounded by the gate
@@ -332,7 +342,6 @@ function SceneContent({
         });
       }
       if (governor.enabled && !document.hidden) {
-        const gateOpen = gateAllowsCinematic(useEntryReadiness.getState().gate);
         const driven = driveQualityGovernor(governorRef.current, gateOpen, frameMs, now, governor.config, tier);
         governorRef.current = driven.state;
         const verdict = driven.verdict;
