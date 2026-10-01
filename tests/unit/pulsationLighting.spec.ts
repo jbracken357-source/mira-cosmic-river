@@ -5,28 +5,25 @@ const DIM = { brightness: 0, colorShift: 0 };
 const BRIGHT = { brightness: 1, colorShift: 1 };
 
 test.describe('pulsationLighting', () => {
-  test('pins the four envelopes at the dim and bright ends', () => {
+  test('pins the three envelopes at the dim and bright ends', () => {
     expect(pulsationLighting(DIM)).toEqual({
       starFieldSky: 0.35,
       bloomIntensity: 0.18,
       bloomRadius: 0.28,
-      miraAClock: 0.38,
     });
     expect(pulsationLighting(BRIGHT)).toEqual({
       starFieldSky: 1,
       bloomIntensity: 0.8,
       bloomRadius: 0.72,
-      miraAClock: 1,
     });
   });
 
-  test('star field, bloom intensity and Mira A clock climb with brightness', () => {
+  test('star field and bloom intensity climb with brightness', () => {
     let previous = pulsationLighting(DIM);
     for (let b = 0.05; b <= 1; b += 0.05) {
       const current = pulsationLighting({ brightness: b, colorShift: 0 });
       expect(current.starFieldSky).toBeGreaterThan(previous.starFieldSky);
       expect(current.bloomIntensity).toBeGreaterThan(previous.bloomIntensity);
-      expect(current.miraAClock).toBeGreaterThan(previous.miraAClock);
       previous = current;
     }
   });
@@ -50,8 +47,6 @@ test.describe('pulsationLighting', () => {
       expect(light.starFieldSky).toBeGreaterThan(0);
       expect(light.starFieldSky).toBeLessThanOrEqual(1);
       expect(light.bloomIntensity).toBeGreaterThan(0);
-      expect(light.miraAClock).toBeGreaterThan(0);
-      expect(light.miraAClock).toBeLessThanOrEqual(1);
     }
   });
 });
