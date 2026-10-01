@@ -7,7 +7,13 @@ import { useBinaryStar, ambientSpace, tonightFrame, useEntryReadiness } from '..
 import { COLORS, PHYSICS, calculateOrbitalPosition, CINEMATIC, CAMERA as LANDSCAPE_CAMERA, TRANSLATIONS, resolveQualityTier, ENTRY_STILL, ENTRY_STILL_BACKDROP } from '../../constants';
 import type { QualityTier } from '../../constants';
 import { PORTRAIT_CAMERA } from '../../constants/animation';
-import { ENTRY_FADE_MS, MATERIALS_TIMEOUT_MS, gateAllowsCinematic } from '../../lib/entryReadiness';
+import {
+  ENTRY_FADE_MS,
+  MATERIALS_TIMEOUT_MS,
+  VEIL_UNMOUNT_MARGIN_MS,
+  gateAllowsCinematic,
+  veilHoldsScreen,
+} from '../../lib/entryReadiness';
 import { advanceTime, captureMode, resolveCapturePose } from '../../lib/captureMode';
 import { cinematicTimeScale, openingSegment, resolveOpeningPose, TAIL_FULL_OPACITY } from '../../lib/openingTimeline';
 import { viewerControlNow, RETURN_SETTLE_MS } from '../../lib/viewerControl';
@@ -611,14 +617,15 @@ export default function Scene({ onSelectStar }: SceneProps) {
     };
   }, [glCanvas]);
 
-  // The handoff is explicit: the loading still lifts when the canvas exists, and
-  // — for the full cinematic only — when the gate has opened. Direct entry adds
-  // no waiting ceremony beyond the canvas itself. The lift is a dissolve over
-  // ENTRY_FADE_MS (#62) — CSS opacity, which the compositor drives even under a
-  // starved main thread — and the element's removal is on a wall-clock timer,
-  // never on an animation callback: CI renders in software at seconds per frame,
-  // and no frame-loop condition may keep a loading screen on screen (#63).
-  const veilUp = !canvasReady || (!introComplete && gate === 'waiting');
+  // The handoff is decided in lib/entryReadiness (#65): the loading still lifts
+  // when the canvas exists and — for the full cinematic only — when the gate has
+  // opened; direct entry adds no waiting ceremony beyond the canvas itself. The
+  // lift is a dissolve over ENTRY_FADE_MS (#62) — CSS opacity, which the
+  // compositor drives even under a starved main thread — and the element's
+  // removal is on a wall-clock timer, never on an animation callback: CI renders
+  // in software at seconds per frame, and no frame-loop condition may keep a
+  // loading screen on screen (#63).
+  const veilUp = veilHoldsScreen({ canvasReady, openingPassed: introComplete, gate });
   const [veilMounted, setVeilMounted] = useState(true);
   useEffect(() => {
     if (veilUp) {
@@ -627,7 +634,7 @@ export default function Scene({ onSelectStar }: SceneProps) {
       setVeilMounted(true);
       return;
     }
-    const id = window.setTimeout(() => setVeilMounted(false), ENTRY_FADE_MS + 250);
+    const id = window.setTimeout(() => setVeilMounted(false), ENTRY_FADE_MS + VEIL_UNMOUNT_MARGIN_MS);
     return () => window.clearTimeout(id);
   }, [veilUp]);
 
