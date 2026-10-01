@@ -6,9 +6,18 @@
 //
 //   - the star clock is pinned (to `?epoch=` when given, else CAPTURE_EPOCH_ISO), so
 //     tonight's Mira is the same Mira in every run;
-//   - every time-driven uniform (uTime accumulation, twinkle phases, stream flow, the
-//     decorative orbit) is parked at CAPTURE_TIME, one fixed animation phase;
-//   - OrbitControls auto-rotate and damping switch off, mouse influence drops to zero;
+//   - every time-driven uniform is parked, each at its settled value, so two captures
+//     of the same URL are the same settled scene. The full register of parked values:
+//       · the uTime family (accumulation, twinkle phases, stream flow, the decorative
+//         orbit) parks at CAPTURE_TIME via advanceTime below;
+//       · the two 入场 (arrival) fades — uSurfaceReady on Mira A, uReady on the river
+//         veil — park at 1 via parkedFade below: a capture is the settled scene even
+//         if the texture never bound;
+//       · the mouse ripple (uMouseInfluence on MiraTail) zeroes out — that one is a
+//         motion strategy (it shares its reduceMotion switch), not a clock parking,
+//         so it stays at its call site and is deliberately not registered here.
+//     The next time-driven value registers in this list, next to its parking helper.
+//   - OrbitControls auto-rotate and damping switch off;
 //   - the run starts from direct entry — the full cinematic belongs to the ritual moment —
 //     unless `?cinematic-t=<ms>` is also given, which freezes the opening at that instant
 //     (opening phase captures; the pose comes from lib/openingTimeline, so it is
@@ -87,6 +96,18 @@ export function advanceTime(
   const isPaused = paused ?? pauseSource();
   if (!reduceMotion && !isPaused && !document.hidden) return current + Math.min(delta, .05) * scale;
   return current;
+}
+
+// Park one 入场 (arrival) presence value for capture: the two material fades
+// (uSurfaceReady, uReady) arrive here already computed by materialFade, and capture
+// replaces whatever the ramp says with its endpoint — 1, the settled scene, even when
+// the material never bound. Outside capture the value passes through untouched, so
+// the fade keeps its endpoints and ramp value for value. Call sites pass only the
+// fade: `active` defaults to the ambient cached mode, the same switch advanceTime
+// reads, so the parking policy applies without threading a flag through components;
+// tests may pass it explicitly to pin either path.
+export function parkedFade(fade: number, active = captureMode().active): number {
+  return active ? 1 : fade;
 }
 
 // Rotate a camera position around its look-at on the ground plane (Y-up), so the rotated
