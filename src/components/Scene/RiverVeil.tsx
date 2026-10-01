@@ -7,7 +7,7 @@ import { useEntryReadiness } from '../../hooks';
 import { materialFade } from '../../lib/entryReadiness';
 import { qualityBudget } from '../../lib/qualityBudget';
 import { veilRibbon, veilSide } from '../../lib/tailPath';
-import { advanceTime, captureMode } from '../../lib/captureMode';
+import { advanceTime, parkedFade } from '../../lib/captureMode';
 import {
   MIRA_A_REACH,
   MIRA_B_REACH,
@@ -214,8 +214,8 @@ export default function RiverVeil({ opacityRef, readyRef, length, reduceMotion, 
     // The arrival fade (#62): uReady rises to exactly 1 over ENTRY_FADE_MS instead
     // of switching in one frame. A rebuilt layer set picks up the retained map's
     // stamp and therefore arrives already faded in. Capture mode parks the fade at
-    // its endpoint — captures are the settled scene, reproducible to the pixel.
-    const ready = captureMode().active ? 1 : materialFade(mapBoundAtRef.current, performance.now());
+    // its endpoint — the registered policy lives in captureMode.
+    const ready = parkedFade(materialFade(mapBoundAtRef.current, performance.now()));
     for (const [i, child] of (groupRef.current?.children ?? []).entries()) {
       const material = (child as THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMaterial>).material;
       if (map && material.uniforms.uMap.value !== map) {
