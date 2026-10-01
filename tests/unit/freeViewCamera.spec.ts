@@ -26,7 +26,7 @@ function frame(over: Partial<FreeViewFrame> = {}): FreeViewFrame {
     aspect: LAND,
     portrait: false,
     introComplete: true,
-    openingFinished: false,
+    openingRanToEnd: false,
     returnToExploreAt: 0,
     returnSettleActive: false,
     inputSeq: 0,
@@ -71,8 +71,8 @@ test.describe('the landing (explore hand-off)', () => {
     expect(second.pose).toBeNull();
   });
 
-  test('a finished opening keeps its camera and only joins the orbit target', () => {
-    const f = frame({ openingFinished: true, camera: { position: [1, 2, 3], target: [0, 0, 0], fov: 47 } });
+  test('an opening that ran to its end keeps its camera and only joins the orbit target', () => {
+    const f = frame({ openingRanToEnd: true, camera: { position: [1, 2, 3], target: [0, 0, 0], fov: 47 } });
     const step = stepFreeViewCamera(initialFreeViewState(), f);
     expect(step.landedExplore).toBe(true);
     expect(step.pose!.position).toEqual([1, 2, 3]);

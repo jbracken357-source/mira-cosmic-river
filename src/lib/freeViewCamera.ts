@@ -86,9 +86,13 @@ export interface FreeViewFrame {
   aspect: number;
   portrait: boolean;
   introComplete: boolean;
-  // True when the opening ran to its natural end: the camera has already settled
-  // on the explore framing, so the landing only joins the orbit target to it.
-  openingFinished: boolean;
+  // True only when the opening ran to its natural end — the full cinematic's own
+  // ending. A skip or direct entry leaves it false, and the camera therefore
+  // lands on the explore framing. Distinct from introComplete above: that flag
+  // says the opening was passed, however it was passed; after a natural end the
+  // camera has already settled on the explore framing, so the landing only joins
+  // the orbit target to it.
+  openingRanToEnd: boolean;
   returnToExploreAt: number;
   inputSeq: number;
   epilogueCamera: boolean;
@@ -182,12 +186,13 @@ export function stepFreeViewCamera(state: FreeViewState, frame: FreeViewFrame): 
   let landedExplore = false;
   let landedReturn = false;
 
-  // The landing: return visits and an early skip take the explore framing; a
-  // finished opening keeps its sequence-end camera and only the orbit target
-  // joins (the far and explore framings share the look-at, so this cannot jump).
+  // The landing: return visits and an early skip take the explore framing; an
+  // opening that ran to its end keeps its sequence-end camera and only the orbit
+  // target joins (the far and explore framings share the look-at, so this cannot
+  // jump).
   if (!s.exploreApplied) {
     landedExplore = true;
-    pose = frame.openingFinished
+    pose = frame.openingRanToEnd
       ? { position: [...frame.camera.position], lookAt: [...target('EXPLORE').lookAt] as Vec3, fov: frame.camera.fov }
       : place('EXPLORE');
     s.exploreApplied = true;
