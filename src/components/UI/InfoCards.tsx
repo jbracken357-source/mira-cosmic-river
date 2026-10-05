@@ -116,11 +116,11 @@ export default function InfoCards({ selectedStar, onSelectStar, showTailFound }:
       className={
         isMobile
           ? 'relative z-20 pointer-events-auto w-full'
-          : 'absolute top-24 left-4 md:left-8 z-20 pointer-events-auto max-w-xs md:max-w-sm'
+          : 'absolute top-24 left-4 md:left-14 z-20 pointer-events-auto max-w-xs md:max-w-sm'
       }
     >
       <div
-        className={`relative bg-gradient-to-br ${cardData[selectedStar].color} to-transparent backdrop-blur-md border ${cardData[selectedStar].accent} ${
+        className={`relative bg-gradient-to-br ${cardData[selectedStar].color} to-transparent backdrop-blur-md border ${cardData[selectedStar].accent} shadow-[0_18px_50px_rgba(0,0,0,0.5)] ${
           isMobile
             ? 'rounded-t-2xl p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]'
             : 'rounded-lg p-4 md:p-5'
@@ -130,16 +130,16 @@ export default function InfoCards({ selectedStar, onSelectStar, showTailFound }:
           data-testid="info-card-close"
           aria-label={t.tonightClose}
           onClick={() => onSelectStar(null)}
-          className="absolute top-1 right-1 min-h-11 min-w-11 inline-flex items-center justify-center text-white/30 hover:text-white/60 transition-colors text-lg leading-none"
+          className="absolute top-1 right-1 min-h-11 min-w-11 inline-flex items-center justify-center text-white/45 hover:text-white/85 transition-colors text-xl leading-none"
         >
           ×
         </button>
 
-        <h3 className="font-display text-xl md:text-2xl text-white/90 italic mb-2">
+        <h3 className="font-display text-xl md:text-2xl text-white/90 mb-2 tracking-wide">
           {cardData[selectedStar].title}
         </h3>
 
-        <p className="text-xs md:text-sm text-white/60 font-extralight leading-relaxed mb-4">
+        <p className="text-xs md:text-sm text-white/65 font-extralight leading-relaxed mb-4 text-pretty">
           {cardData[selectedStar].desc}
         </p>
 
@@ -166,7 +166,7 @@ export default function InfoCards({ selectedStar, onSelectStar, showTailFound }:
           <div className="flex items-center gap-3">
             <label
               htmlFor="tail-time-speed"
-              className="text-[9px] tracking-[0.2em] uppercase text-white/30 font-extralight"
+              className="text-[10px] tracking-[0.2em] uppercase text-white/40 font-extralight"
             >
               {t.timeSpeed}
             </label>
@@ -178,16 +178,16 @@ export default function InfoCards({ selectedStar, onSelectStar, showTailFound }:
               step="0.1"
               value={timeSpeed}
               onChange={(e) => setParameter('timeSpeed', parseFloat(e.target.value))}
-              className="flex-1 h-[2px] bg-white/10 rounded-full appearance-none cursor-pointer
+              className="flex-1 h-[3px] bg-white/15 rounded-full appearance-none cursor-pointer
                 [&::-webkit-slider-thumb]:appearance-none
-                [&::-webkit-slider-thumb]:w-3
-                [&::-webkit-slider-thumb]:h-3
+                [&::-webkit-slider-thumb]:w-3.5
+                [&::-webkit-slider-thumb]:h-3.5
                 [&::-webkit-slider-thumb]:rounded-full
                 [&::-webkit-slider-thumb]:bg-orange-400/80
                 [&::-webkit-slider-thumb]:cursor-pointer
                 [&::-webkit-slider-thumb]:shadow-[0_0_8px_rgba(255,107,53,0.5)]"
             />
-            <span className="text-[10px] text-white/40 font-mono w-8 text-right">
+            <span className="text-[10px] text-white/45 font-mono w-8 text-right">
               {timeSpeed.toFixed(1)}x
             </span>
           </div>
@@ -206,8 +206,8 @@ export default function InfoCards({ selectedStar, onSelectStar, showTailFound }:
       transition={{ duration: toastFade, ease: EASE.OUT }}
       className={
         isMobile
-          ? 'relative z-20 flex justify-center pointer-events-none text-white/45 text-sm italic font-extralight tracking-wide px-4 py-2'
-          : 'absolute bottom-28 left-0 right-0 z-20 flex justify-center pointer-events-none text-white/45 text-sm italic font-extralight tracking-wide'
+          ? 'relative z-20 flex justify-center pointer-events-none text-white/55 text-sm font-extralight tracking-wide px-4 py-2 pb-3'
+          : 'absolute bottom-40 left-0 right-0 z-20 flex justify-center pointer-events-none text-white/55 text-sm font-extralight tracking-wide'
       }
     >
       {t.tailFound}

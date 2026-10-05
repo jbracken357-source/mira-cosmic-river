@@ -24,17 +24,20 @@ export default function AmbientToggle() {
       data-ambient-phase={phase}
       aria-pressed={phase !== 'off' && phase !== 'failed'}
       onClick={toggle}
-      className={`pointer-events-auto min-h-11 min-w-11 inline-flex items-center justify-center gap-2 text-xs font-extralight tracking-widest uppercase transition-colors ${
-        phase === 'playing' ? 'text-white/55 hover:text-white/75' : 'text-white/30 hover:text-white/60'
+      className={`pointer-events-auto min-h-11 min-w-11 inline-flex items-center justify-center gap-2 text-[11px] md:text-xs font-extralight tracking-widest uppercase transition-colors ${
+        phase === 'playing' ? 'text-white/70 hover:text-white/90' : 'whisper-btn'
       }`}
     >
+      {/* The dot is the sound's state, nothing else: a hollow ring when idle, a lit
+          pearl when playing, pulsing while starting, red on failure. Geometry never
+          changes, so the header does not reflow as the state moves. */}
       <span
         aria-hidden
         className={`w-1.5 h-1.5 rounded-full transition-colors ${
-          phase === 'playing' ? 'bg-orange-400/70'
-            : phase === 'failed' ? 'bg-red-400/60'
-              : phase === 'enabling' || phase === 'pending-gesture' ? 'bg-white/30 animate-pulse'
-                : 'bg-white/15'
+          phase === 'playing' ? 'bg-[#f2d8a8]'
+            : phase === 'failed' ? 'bg-red-400/70'
+              : phase === 'enabling' || phase === 'pending-gesture' ? 'bg-white/50 animate-pulse'
+                : 'border border-white/30'
         }`}
       />
       {label}

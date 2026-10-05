@@ -123,7 +123,7 @@ function createLayer(length: number, index: number, count: number, accent: boole
       uUvOffset: { value: new THREE.Vector2(index * .193, index * .117) },
       uColor: { value: new THREE.Color(accent
         ? (index % 2 === 0 ? '#e7d0ae' : '#bac9f2')
-        : (index % 2 === 0 ? '#5f6f9e' : '#76689c')) },
+        : (index % 2 === 0 ? '#5c6dbd' : '#7b67bd')) },
       uMiraBPos: { value: new THREE.Vector3(0, 0, 0) },
       uReach: { value: new THREE.Vector3(MIRA_A_REACH, MIRA_B_REACH, MIRA_B_GAIN) },
       uColorGold: { value: new THREE.Color('#f2d8a8') },

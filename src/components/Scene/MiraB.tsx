@@ -23,7 +23,7 @@ const miraBShaderMaterial = {
   uniforms: {
     time: { value: 0 },
     color: { value: new THREE.Color(COLORS.MIRA_B_CORE) },
-    intensity: { value: 0.72 },
+    intensity: { value: 0.8 },
   },
   vertexShader: `
     varying vec3 vNormal;

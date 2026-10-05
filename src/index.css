@@ -109,6 +109,29 @@ body {
   border-color: rgba(255, 255, 255, 0.2);
 }
 
+/* Whisper controls: the interface's default button voice. At rest they sit near
+   the scene (white/45 reads on the deep-space ground where /30 vanished), and
+   hover is two things at once — a colour lift plus a slow underline reveal —
+   because on near-black a bare brightness step is not perceptible feedback. */
+.whisper-btn {
+  color: rgba(255, 255, 255, 0.45);
+  text-decoration-line: underline;
+  text-decoration-color: transparent;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.45em;
+  transition: color 260ms ease-out, text-decoration-color 260ms ease-out;
+}
+
+.whisper-btn:hover {
+  color: rgba(255, 255, 255, 0.85);
+  text-decoration-color: rgba(255, 255, 255, 0.35);
+}
+
+.whisper-btn:disabled {
+  color: rgba(255, 255, 255, 0.22);
+  text-decoration-color: transparent;
+}
+
 /* One focus ring for every interactive control (#20), .glass-button included:
    the ring lives at the element level instead of being re-declared per class. */
 button:focus-visible,

@@ -154,14 +154,15 @@ export const TailFragmentShader = `
 
     float circle = exp(-dist * dist * 24.0) * (1.0 - smoothstep(0.3, 0.5, dist));
 
-    // Color gradient: pearl at the star, quickly into muted violet, then blue. The warm
-    // segment is deliberately short — the palette's gold stays local to the star light,
-    // the river body is blue-violet.
+    // Color gradient: pearl right at the star, quickly into violet, then blue. The
+    // warm segment is a shoulder hugging the star, not a band — in screen space the
+    // first sixth of the tail already spans much of the frame, and anything longer
+    // turns the visible river's middle into warm gray.
     vec3 color;
-    if (vLength < 0.3) {
-      color = mix(uColorNear, uColorMid, vLength / 0.3);
+    if (vLength < 0.16) {
+      color = mix(uColorNear, uColorMid, vLength / 0.16);
     } else {
-      color = mix(uColorMid, uColorFar, (vLength - 0.3) / 0.7);
+      color = mix(uColorMid, uColorFar, (vLength - 0.16) / 0.84);
     }
 
     // Subtle per-particle brightness variation
@@ -171,7 +172,7 @@ export const TailFragmentShader = `
     // Lit near the stars, falling into structured (not black) shadow down the tail.
     // Mirrors riverBrightness in src/lib/riverLighting.ts.
     float level = uShadowFloor + (1.0 - uShadowFloor) * vLight;
-    vec3 shadowTint = vec3(0.55, 0.62, 1.0); // shadow cools toward saturated blue-violet
+    vec3 shadowTint = vec3(0.52, 0.6, 1.05); // shadow cools toward saturated blue-violet
     color *= level * mix(shadowTint, vec3(1.0), vLight);
 
     // Gold accents stay local to the primary; the companion adds a cool pool of its own.
@@ -179,9 +180,10 @@ export const TailFragmentShader = `
     color = mix(color, uColorCool, vLightB * 0.45);
 
     // Real-time binding: the pulsation bends brightness and warmth, never switches off.
-    // Half-strength warmth on the points: full warmth greys the violet into mud.
+    // Warmth stays a whisper on the points — at the old half-strength it browned the
+    // whole visible river whenever tonight's Mira ran dim and red.
     color *= uSkyGain;
-    color = mix(color, color * vec3(1.06, 0.96, 0.84), uSkyWarmth * 0.5);
+    color = mix(color, color * vec3(1.06, 0.96, 0.84), uSkyWarmth * 0.3);
 
     // Core glow: brighter near center of each particle
     float coreGlow = pow(circle, 1.5) * 0.4;
@@ -202,9 +204,9 @@ export function createTailMaterial(): THREE.ShaderMaterial {
       uMouse: { value: new THREE.Vector2(0, 0) },
       uMouseInfluence: { value: 0 },
       uParticleSize: { value: 1.2 },
-      uColorNear: { value: new THREE.Color('#e3bd8b') },
-      uColorMid: { value: new THREE.Color('#a99ccc') },
-      uColorFar: { value: new THREE.Color('#789ac2') },
+      uColorNear: { value: new THREE.Color('#ecc9a0') },
+      uColorMid: { value: new THREE.Color('#9d84e2') },
+      uColorFar: { value: new THREE.Color('#7fa6e0') },
       uColorGold: { value: new THREE.Color('#f2d8a8') },
       uColorCool: { value: new THREE.Color('#dbe6ff') },
       uMiraBPos: { value: new THREE.Vector3(0, 0, 0) },

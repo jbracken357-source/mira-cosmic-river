@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 import { useBinaryStar, useTonightSave } from '../../hooks';
 import { TRANSLATIONS } from '../../constants/translations';
 import { primaryAction } from '../../lib/tonightSave';
@@ -23,6 +24,7 @@ export default function TonightSave() {
   const retry = useTonightSave((state) => state.retry);
 
   const flowOpen = phase !== 'idle';
+  const reduceMotion = Boolean(useReducedMotion());
 
   useEffect(() => {
     if (!flowOpen) return;
@@ -33,31 +35,56 @@ export default function TonightSave() {
     return () => window.removeEventListener('keydown', onKey);
   }, [flowOpen, close]);
 
+  // The overlay option chips: a quiet state dot says on/off at a glance, the way
+  // the words alone never quite did.
+  const optionChip = (active: boolean) =>
+    `min-h-11 inline-flex items-center gap-2 text-[10px] font-extralight tracking-widest uppercase transition-colors ${
+      active ? 'text-white/75' : 'text-white/45 hover:text-white/70'
+    }`;
+  const optionDot = (active: boolean) =>
+    `w-1.5 h-1.5 rounded-full transition-colors ${active ? 'bg-[#fef3c7]/85' : 'bg-white/20'}`;
+
   return (
     <>
       <button
         data-testid="tonight-save"
         aria-label={t.tonightSave}
         onClick={open}
-        className="pointer-events-auto min-h-11 min-w-11 inline-flex items-center justify-center text-white/30 text-xs font-extralight tracking-widest uppercase hover:text-white/60 transition-colors"
+        className="pointer-events-auto whisper-btn min-h-11 min-w-11 inline-flex items-center justify-center text-[11px] md:text-xs font-extralight tracking-widest uppercase"
       >
         {t.tonightSave}
       </button>
 
       {flowOpen && (
-        <div
+        <motion.div
           data-testid="tonight-panel"
           data-tonight-phase={phase}
           role="dialog"
           aria-label={t.tonightSave}
-          className="pointer-events-auto fixed bottom-24 left-1/2 -translate-x-1/2 z-50 w-[min(92vw,26rem)] backdrop-blur-md bg-black/55 border border-white/10 rounded-xl p-4 flex flex-col gap-3"
+          initial={{ opacity: 0, y: reduceMotion ? 0 : 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: reduceMotion ? 0 : 0.24, ease: [0.16, 1, 0.3, 1] }}
+          className="pointer-events-auto fixed left-3 right-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] md:left-1/2 md:right-auto md:-translate-x-1/2 md:bottom-24 z-50 md:w-[min(92vw,26rem)] backdrop-blur-md bg-black/65 border border-white/10 rounded-xl p-4 md:p-5 flex flex-col gap-3 shadow-[0_24px_60px_rgba(0,0,0,0.55)] max-h-[calc(100dvh-1.5rem)] overflow-y-auto"
         >
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] tracking-[0.25em] uppercase text-white/45 font-extralight">
+              {t.tonightSave}
+            </p>
+            <button
+              data-testid="tonight-close"
+              onClick={close}
+              className="whisper-btn min-h-11 min-w-11 -mr-2 inline-flex items-center justify-center text-xs font-extralight tracking-widest uppercase"
+            >
+              {t.tonightClose}
+            </button>
+          </div>
+
           {previewUrl && (
             <img
               data-testid="tonight-preview"
               src={previewUrl}
               alt={t.tonightSave}
-              className="w-full rounded-lg border border-white/5"
+              className="max-h-[38dvh] w-auto mx-auto rounded-lg border border-white/10"
             />
           )}
 
@@ -67,59 +94,48 @@ export default function TonightSave() {
             </p>
           )}
 
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center justify-between flex-wrap gap-x-4 gap-y-1">
             <div className="flex items-center gap-4">
               <button
                 data-testid="tonight-toggle-date"
                 aria-pressed={overlays.date}
                 onClick={toggleDate}
-                className={`min-h-11 inline-flex items-center text-[10px] font-extralight tracking-widest uppercase transition-colors ${
-                  overlays.date ? 'text-white/70' : 'text-white/30 hover:text-white/60'
-                }`}
+                className={optionChip(overlays.date)}
               >
+                <span aria-hidden className={optionDot(overlays.date)} />
                 {t.tonightAddDate}
               </button>
               <button
                 data-testid="tonight-toggle-phrase"
                 aria-pressed={overlays.phrase}
                 onClick={togglePhrase}
-                className={`min-h-11 inline-flex items-center text-[10px] font-extralight tracking-widest uppercase transition-colors ${
-                  overlays.phrase ? 'text-white/70' : 'text-white/30 hover:text-white/60'
-                }`}
+                className={optionChip(overlays.phrase)}
               >
+                <span aria-hidden className={optionDot(overlays.phrase)} />
                 {t.tonightAddPhrase}
               </button>
             </div>
 
-            <div className="flex items-center gap-4">
-              {primaryAction(phase) === 'retry' ? (
-                <button
-                  data-testid="tonight-export"
-                  onClick={retry}
-                  className="min-h-11 inline-flex items-center text-orange-200/70 text-xs font-extralight tracking-widest uppercase hover:text-orange-200 transition-colors"
-                >
-                  {t.tonightRetry}
-                </button>
-              ) : (
-                <button
-                  data-testid="tonight-export"
-                  disabled={primaryAction(phase) === 'disabled'}
-                  onClick={save}
-                  className="min-h-11 inline-flex items-center text-white/60 text-xs font-extralight tracking-widest uppercase hover:text-white/85 transition-colors disabled:text-white/25"
-                >
-                  {phase === 'exporting' ? t.tonightSaving : phase === 'success' ? t.tonightSaved : t.tonightDownload}
-                </button>
-              )}
+            {primaryAction(phase) === 'retry' ? (
               <button
-                data-testid="tonight-close"
-                onClick={close}
-                className="min-h-11 min-w-11 inline-flex items-center justify-center text-white/30 text-xs font-extralight tracking-widest hover:text-white/60 transition-colors"
+                data-testid="tonight-export"
+                onClick={retry}
+                className="min-h-11 px-5 rounded-full border border-orange-200/30 text-orange-200/80 text-xs font-extralight tracking-widest uppercase hover:bg-orange-200/10 transition-colors"
               >
-                {t.tonightClose}
+                {t.tonightRetry}
               </button>
-            </div>
+            ) : (
+              <button
+                data-testid="tonight-export"
+                disabled={primaryAction(phase) === 'disabled'}
+                onClick={save}
+                className="min-h-11 px-5 rounded-full border border-[#fef3c7]/35 bg-[#fef3c7]/15 text-[#fef3c7] text-xs font-extralight tracking-widest uppercase hover:bg-[#fef3c7]/25 transition-colors disabled:opacity-40 disabled:hover:bg-[#fef3c7]/15"
+              >
+                {phase === 'exporting' ? t.tonightSaving : phase === 'success' ? t.tonightSaved : t.tonightDownload}
+              </button>
+            )}
           </div>
-        </div>
+        </motion.div>
       )}
     </>
   );

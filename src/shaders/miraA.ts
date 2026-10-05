@@ -176,14 +176,16 @@ export const MiraA_Shader = {
     void main() {
       float mu = max(dot(normalize(vNormal), normalize(vViewDirection)), 0.0);
       vec3 p = normalize(vLocal);
-      float cells = .5 + .5 * snoise(p * 14. + vec3(uTime * .025, 0., 0.));
-      float fine = .5 + .5 * snoise(p * 43. - uTime * .02);
+      // Convection reads as few large cells with fine grain between them — noise an
+      // octave higher turns the photosphere into lava-lamp crackle.
+      float cells = .5 + .5 * snoise(p * 6. + vec3(uTime * .025, 0., 0.));
+      float fine = .5 + .5 * snoise(p * 20. - uTime * .02);
       // Mirrors surfaceDetailStrength in src/lib/binaryLighting.ts: the granulation lives
       // in large-scale patches and calms toward the limb, instead of gritting the whole
       // photosphere at one strength.
       float region = .5 + .5 * snoise(p * 1.6 + vec3(0., uTime * .012, 0.));
       float detailStrength = ${SURFACE_DETAIL_FLOOR} + ${1 - SURFACE_DETAIL_FLOOR} * smoothstep(.3, .75, region) * (.45 + .55 * smoothstep(.05, .5, mu));
-      float fineWeight = .35 * detailStrength;
+      float fineWeight = .25 * detailStrength;
       float procedural = cells * (1. - fineWeight) + fine * fineWeight;
       // Blend to procedural detail at the seam and poles: the generated map is not
       // assumed to be perfectly periodic, and lighting is never baked into it.
@@ -194,12 +196,16 @@ export const MiraA_Shader = {
       // dissolves into the mapped surface instead of switching in one frame. Both
       // endpoints match the old hard switch value for value; sampling the unbound map
       // at weight zero yields defined black that never reaches the mix.
-      float density = mix(procedural, mix(.5, texture2D(uSurfaceMap, uv).r, detailStrength), seam * .85 * uSurfaceReady);
-      float heat = smoothstep(.12, .73, density);
+      float mapped = mix(.5, texture2D(uSurfaceMap, uv).r, detailStrength);
+      // The map's native contrast is crackle; an S-curve through its middle keeps the
+      // large light and dark regions and lets the fine network between them fade out.
+      mapped = mix(mapped, smoothstep(.22, .78, mapped), .58);
+      float density = mix(procedural, mapped, seam * .85 * uSurfaceReady);
+      float heat = smoothstep(.22, .62, density);
       vec3 ember = uColorCore * .15 + vec3(.055, .006, .001);
       vec3 amber = mix(uColorSurface, vec3(1., .38, .065), .65);
       vec3 color = mix(ember, amber, heat);
-      color += vec3(1.2, .58, .16) * pow(heat, 5.) * .6 * detailStrength;
+      color += vec3(1.2, .58, .16) * pow(heat, 5.) * .5 * detailStrength;
       color *= .36 + .64 * pow(mu, .55);
       float pulse = .94 + .06 * sin(uTime * ${PULSE_RATE});
       color *= pulse * (.68 + .55 * uBrightness);
@@ -253,9 +259,9 @@ export const MIRA_A_ATMOSPHERE = {
 // purpose — a broad halo around the companion buries the accretion disk behind it and
 // fattens the star into a white bead.
 export const MIRA_B_CORONA = {
-  scale: 1.7,
-  opacity: 0.16,
-  falloff: 2.2,
+  scale: 1.75,
+  opacity: 0.19,
+  falloff: 2.1,
   color: COLORS.MIRA_B_CORONA,
   pulseAmp: 0.015,
 } as const;
