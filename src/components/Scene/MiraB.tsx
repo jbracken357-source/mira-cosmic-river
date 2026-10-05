@@ -1,4 +1,4 @@
-import { useRef, useMemo } from 'react';
+import { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { AccretionDisk_Shader, makeDiskUniforms } from '../../shaders/accretionDisk';
@@ -8,7 +8,8 @@ import type { OrbitPositions } from '../../types';
 import GlowShell from './GlowShell';
 import type { MutableRefObject } from 'react';
 import { useReducedMotion } from 'framer-motion';
-import { advanceTime } from '../../lib/captureMode';
+import { advanceTime, parkedFade } from '../../lib/captureMode';
+import { materialFade } from '../../lib/entryReadiness';
 
 interface MiraBProps {
   position: [number, number, number];
@@ -20,16 +21,13 @@ interface MiraBProps {
 
 // Custom shader for Mira B - White Dwarf with intense core glow
 const miraBShaderMaterial = {
-  uniforms: {
-    time: { value: 0 },
-    color: { value: new THREE.Color(COLORS.MIRA_B_CORE) },
-    intensity: { value: 0.8 },
-  },
   vertexShader: `
+    varying vec2 vUv;
     varying vec3 vNormal;
     varying vec3 vPosition;
 
     void main() {
+      vUv = uv;
       vNormal = normalize(normalMatrix * normal);
       vPosition = position;
       gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
@@ -39,7 +37,10 @@ const miraBShaderMaterial = {
     uniform float time;
     uniform vec3 color;
     uniform float intensity;
+    uniform sampler2D uSurfaceMap;
+    uniform float uSurfaceReady;
 
+    varying vec2 vUv;
     varying vec3 vNormal;
     varying vec3 vPosition;
 
@@ -57,13 +58,30 @@ const miraBShaderMaterial = {
       // Subtle rapid pulsation (white dwarfs can pulsate quickly)
       float pulse = 0.98 + 0.02 * sin(time * 4.0);
 
-      // Combine effects
+      // The companion's own density. The grayscale is mild — most texels sit near
+      // mid-grey — so a small multiply after the shoulder vanishes into the hot
+      // core and the bloom, and a zoomed-in star still reads as a flat white bead.
+      // Stretch that body onto a swing centred at 1 and apply it before the
+      // shoulder: dark grains fall out of the bloom, a mid texel leaves the hot
+      // point alone. Weight zero is today's procedural photosphere, including a
+      // late or missing map. The seam and the poles stay on that flat read so a
+      // wrap line cannot ring the star.
+      float seam = smoothstep(0.0, 0.06, vUv.x) * (1.0 - smoothstep(0.94, 1.0, vUv.x));
+      seam *= smoothstep(0.0, 0.08, vUv.y) * (1.0 - smoothstep(0.92, 1.0, vUv.y));
+      float density = texture2D(uSurfaceMap, vUv).r;
+      float opened = clamp((density - 0.50) / 0.17, -1.0, 1.0);
+      float grain = 1.0 + opened * 0.46;
+      float weight = seam * uSurfaceReady;
+
+      // Combine effects. The core lamp eases off once the map is showing, or it
+      // paints the middle white and the grains never surface.
       vec3 finalColor = color * intensity * pulse;
-      finalColor += vec3(1.0, 1.0, 1.0) * coreBright * 0.35;
+      finalColor += vec3(1.0, 1.0, 1.0) * coreBright * mix(0.35, 0.16, weight);
       finalColor += vec3(0.8, 0.9, 1.0) * fresnel * 0.3;
 
       // Slight blue tint for hot star
       finalColor = mix(finalColor, vec3(0.7, 0.85, 1.0), 0.15);
+      finalColor *= mix(1.0, grain, weight);
       finalColor = highlightShoulder(finalColor);
 
       gl_FragColor = vec4(finalColor, 1.0);
@@ -94,10 +112,46 @@ export default function MiraB({ position, radius, segments = 64, positionsRef }:
   const materialRef = useRef<THREE.ShaderMaterial>(null);
   const diskMaterialRef = useRef<THREE.ShaderMaterial>(null);
   const timeRef = useRef(0);
+  // When the companion density bound. The frame loop ramps uSurfaceReady from the
+  // stamp. Null keeps the procedural photosphere, and this map never joins the
+  // entry gate — a late or missing companion texture must not hold the opening.
+  const surfaceBoundAtRef = useRef<number | null>(null);
   const reduceMotion = Boolean(useReducedMotion());
 
   // White dwarf: hot blue-white (#e0e7ff per product direction)
   const color = useMemo(() => new THREE.Color(COLORS.MIRA_B_CORE), []);
+  const uniforms = useMemo(() => ({
+    time: { value: 0 },
+    color: { value: color.clone() },
+    intensity: { value: 0.8 },
+    uSurfaceMap: { value: null as THREE.Texture | null },
+    uSurfaceReady: { value: 0 },
+  }), [color]);
+
+  useEffect(() => {
+    let active = true;
+    const material = materialRef.current;
+    const texture = new THREE.TextureLoader().load(
+      `${import.meta.env.BASE_URL}materials/companion-surface-density-v1.webp`,
+      (loaded) => {
+        if (!active || !material) return;
+        loaded.colorSpace = THREE.NoColorSpace;
+        material.uniforms.uSurfaceMap.value = loaded;
+        surfaceBoundAtRef.current = performance.now();
+      },
+      undefined,
+      () => {
+        if (!active) return;
+        surfaceBoundAtRef.current = null;
+      },
+    );
+    return () => {
+      active = false;
+      surfaceBoundAtRef.current = null;
+      if (material) material.uniforms.uSurfaceReady.value = 0;
+      texture.dispose();
+    };
+  }, []);
 
   const diskRadius = radius * DISK_SCALE;
 
@@ -108,6 +162,14 @@ export default function MiraB({ position, radius, segments = 64, positionsRef }:
     if (materialRef.current) {
       materialRef.current.uniforms.time.value = time;
       materialRef.current.uniforms.color.value = color;
+      // Stay on the procedural photosphere until the map has actually bound.
+      // Capture parks the fade at 1, and an unbound sampler at that weight is not
+      // a flat white dwarf: the stretch reads it as grain, so two captures of the
+      // same URL stop matching.
+      const boundAt = surfaceBoundAtRef.current;
+      materialRef.current.uniforms.uSurfaceReady.value = boundAt == null
+        ? 0
+        : parkedFade(materialFade(boundAt, performance.now()));
     }
 
     if (coronaRef.current) {
@@ -146,7 +208,9 @@ export default function MiraB({ position, radius, segments = 64, positionsRef }:
         <sphereGeometry args={[radius, segments, segments]} />
         <shaderMaterial
           ref={materialRef}
-          {...miraBShaderMaterial}
+          uniforms={uniforms}
+          vertexShader={miraBShaderMaterial.vertexShader}
+          fragmentShader={miraBShaderMaterial.fragmentShader}
         />
       </mesh>
 

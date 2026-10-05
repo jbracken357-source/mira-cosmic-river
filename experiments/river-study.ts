@@ -80,7 +80,7 @@ function markReady() {
 }
 const density = textureLoader.load('/experiments/assets/river-density-v1.png', markReady);
 density.colorSpace = THREE.NoColorSpace;
-const surface = textureLoader.load('/materials/surface-density-v1.webp', markReady);
+const surface = textureLoader.load('/materials/surface-density-v2.webp', markReady);
 surface.colorSpace = THREE.NoColorSpace;
 
 function bentPlane(width: number, height: number, layer: number, depth: number) {

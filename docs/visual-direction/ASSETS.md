@@ -10,8 +10,12 @@
 | epic.png | 已选纵深与尺度参考 | 仅概念图 |
 | ../../experiments/assets/river-density-v1.png | 单层灰度气流密度；亮度→透明度，着色交给 shader | 2172×724 PNG，990285 bytes；实验可用，尚未做交付压缩 |
 | ../../public/materials/river-density-v1.webp | 光河正式场景素材 | 77766 bytes；随生产构建复制 |
-| ../../experiments/assets/surface-density-v1.png | 星体表面灰度原始素材 | 3257888 bytes；仅源文件 |
-| ../../public/materials/surface-density-v1.webp | 星体表面正式素材 | 584140 bytes；随生产构建复制 |
+| ../../experiments/assets/surface-density-v1.png | 红巨星星面灰度，上一版 | 3257888 bytes；仅源文件。赤道有一圈连通亮脉，正式场景已不再使用 |
+| ../../public/materials/surface-density-v1.webp | 上一版红巨星星面 | 584140 bytes；保留作对照，运行时不加载 |
+| ../../experiments/assets/surface-density-v2.png | 红巨星星面灰度原始素材 | 640644 bytes；仅源文件。赤道与其余纬度同为断开的对流 |
+| ../../public/materials/surface-density-v2.webp | 红巨星星面正式素材 | 141836 bytes；随生产构建复制 |
+| ../../experiments/assets/companion-surface-density-v1.png | 伴星星面灰度原始素材 | 703866 bytes；仅源文件。细颗粒，无赤道亮带 |
+| ../../public/materials/companion-surface-density-v1.webp | 伴星星面正式素材 | 381172 bytes；随生产构建复制。不参加入场门禁 |
 | ../../public/materials/entry-still-v2.jpg | 加载遮罩与静态后备共用的记录静帧 | 本项目自身场景的基线法捕获（非外部素材，无第三方权利）；来源场景版本与捕获命令见同目录 entry-still-v2.SOURCE.txt；#24 引入、#29（11）按 01/02 后新美术重制，#62 从验收版 b53ed9e 重采（与 v1 逐字节一致，仅刷新溯源） |
 
 密度图生成约束：纯黑底；单条水平银白薄雾，右窄左宽；细丝与涡流；四边柔和淡出；无星星、双星、文字、颜色或光源；用于弯曲网格的局部纹理。原始文件保持不变。无需假设 PNG 有 alpha，shader 直接读取灰度。

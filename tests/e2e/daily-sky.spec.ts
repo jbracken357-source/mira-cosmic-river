@@ -36,7 +36,8 @@ test.describe('Daily sky', () => {
       // Registered before the navigation so the texture loads cannot race past.
       const materials = Promise.all([
         page.waitForResponse((r) => r.url().endsWith('/materials/river-density-v1.webp')),
-        page.waitForResponse((r) => r.url().endsWith('/materials/surface-density-v1.webp')),
+        page.waitForResponse((r) => r.url().endsWith('/materials/surface-density-v2.webp')),
+        page.waitForResponse((r) => r.url().endsWith('/materials/companion-surface-density-v1.webp')),
       ]);
       // A mid-cycle date: no milestone window, so the hint overlay never enters the frame.
       const sky = await visitSky(page, Date.UTC(2026, 8, 12), true);

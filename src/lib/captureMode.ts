@@ -10,9 +10,13 @@
 //     of the same URL are the same settled scene. The full register of parked values:
 //       · the uTime family (accumulation, twinkle phases, stream flow, the decorative
 //         orbit) parks at CAPTURE_TIME via advanceTime below;
-//       · the two 入场 (arrival) fades — uSurfaceReady on Mira A, uReady on the river
+//       · the 入场 (arrival) fades — uSurfaceReady on Mira A and uReady on the river
 //         veil — park at 1 via parkedFade below: a capture is the settled scene even
 //         if the texture never bound;
+//       · uSurfaceReady on Mira B parks at 1 only after its map has bound. Before that
+//         it stays 0. An unbound sampler at weight 1 is not the procedural photosphere:
+//         the stretch would read that sample as grain, and two captures of one URL
+//         would stop matching;
 //       · the mouse ripple (uMouseInfluence on MiraTail) zeroes out — that one is a
 //         motion strategy (it shares its reduceMotion switch), not a clock parking,
 //         so it stays at its call site and is deliberately not registered here.

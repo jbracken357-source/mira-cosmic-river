@@ -6,7 +6,7 @@ test('image-backed river loads without blocking exploration or replay', async ({
   page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
   await page.addInitScript(() => localStorage.setItem('mira:seen-opening', '1'));
   const texture = page.waitForResponse(response => response.url().endsWith('/materials/river-density-v1.webp'));
-  const surface = page.waitForResponse(response => response.url().endsWith('/materials/surface-density-v1.webp'));
+  const surface = page.waitForResponse(response => response.url().endsWith('/materials/surface-density-v2.webp'));
   await page.goto('/?quality=low');
   expect((await texture).ok()).toBe(true);
   expect((await surface).ok()).toBe(true);

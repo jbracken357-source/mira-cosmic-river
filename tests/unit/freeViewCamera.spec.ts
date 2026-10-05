@@ -86,6 +86,13 @@ test.describe('the landing (explore hand-off)', () => {
     expect(step.pose!.lookAt).toEqual([...PORTRAIT_CAMERA.EXPLORE.lookAt]);
     expect(step.pose!.fov).toBeGreaterThan(PORTRAIT_CAMERA.EXPLORE.fov);
   });
+
+  test('portrait explore stands farther back than the landscape explore', () => {
+    const lengthOf = (p: readonly number[]) => Math.hypot(p[0], p[1], p[2]);
+    const step = stepFreeViewCamera(initialFreeViewState(), frame({ portrait: true, aspect: PORT }));
+    expect(lengthOf(step.pose!.position)).toBeGreaterThan(lengthOf(CAMERA.EXPLORE.position) + 3);
+    expect(step.pose!.lookAt).toEqual([...PORTRAIT_CAMERA.EXPLORE.lookAt]);
+  });
 });
 
 test.describe('return to the main view', () => {

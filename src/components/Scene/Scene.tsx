@@ -380,6 +380,9 @@ function SceneContent({
   // Tail opacity is computed in useFrame and stored in tailOpacityRef
   return (
     <>
+      {/* Portrait stands farther down the tail, so the haze has to reach that far
+          or the river fades out just as the scale of it should read. */}
+      <fog attach="fog" args={[COLORS.VOID_BLACK, portrait ? 20 : 15, portrait ? 80 : 50]} />
       <group rotation-z={portrait ? Math.PI / 3 : 0}>
       {/* Custom twinkling star field */}
       <StarField count={lod.starCount} />
@@ -695,7 +698,6 @@ export default function Scene({ onSelectStar }: SceneProps) {
       }}
     >
       <color attach="background" args={[COLORS.VOID_BLACK]} />
-      <fog attach="fog" args={[COLORS.VOID_BLACK, 15, 50]} />
 
       <SceneContent
         onSelectStar={onSelectStar}

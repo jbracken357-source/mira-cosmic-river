@@ -71,19 +71,23 @@ export const PORTRAIT_CAMERA = {
     lookAt: [-1, -2, 3] as [number, number, number],
     fov: 45,
   },
+  // Far, explore and the epilogue step onto the river's side and lift. In the
+  // tall frame the tail runs downward and the pair sits small above it. Close
+  // and the mid waypoint stay with the pair. Distance to the orbit target stays
+  // inside the explore zoom limit, so the landing is a place the viewer can keep.
   EXPLORE: {
-    position: [8, 9, 28] as [number, number, number],
-    lookAt: [-2, -3, 6] as [number, number, number],
+    position: [-6, 22, 26] as [number, number, number],
+    lookAt: [-2, -6, 14] as [number, number, number],
     fov: 45,
   },
   FAR: {
-    position: [8, 9, 32] as [number, number, number],
-    lookAt: [-2, -3, 6] as [number, number, number],
+    position: [-5, 23, 30] as [number, number, number],
+    lookAt: [-2, -8, 13] as [number, number, number],
     fov: 50,
   },
   CLOSING: {
-    position: [8, 11, 34] as [number, number, number],
-    lookAt: [-7, -5, 6] as [number, number, number],
+    position: [-8, 26, 32] as [number, number, number],
+    lookAt: [-8, -10, 16] as [number, number, number],
     fov: 48,
   },
 } as const;

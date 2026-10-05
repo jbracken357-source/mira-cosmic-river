@@ -34,7 +34,7 @@ export default function MiraA({ position, radius, turbulence, segments = 64 }: M
 
   useEffect(() => {
     let active = true;
-    const texture = new THREE.TextureLoader().load(`${import.meta.env.BASE_URL}materials/surface-density-v1.webp`, loaded => {
+    const texture = new THREE.TextureLoader().load(`${import.meta.env.BASE_URL}materials/surface-density-v2.webp`, loaded => {
       if (!active || !materialRef.current) return;
       loaded.colorSpace = THREE.NoColorSpace;
       materialRef.current.uniforms.uSurfaceMap.value = loaded;
