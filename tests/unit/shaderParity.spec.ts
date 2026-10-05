@@ -115,6 +115,12 @@ test.describe('Mira A shader stays in step with binaryLighting', () => {
     const park = miraBSource.indexOf('materialFade(boundAt, performance.now())');
     expect(gate).toBeGreaterThan(-1);
     expect(park).toBeGreaterThan(gate);
+    // The stamp belongs to the GPU upload, not the decode callback. A capture
+    // that fades in a texture which has not uploaded yet drifts between visits.
+    const upload = miraBSource.indexOf('loaded.onUpdate');
+    const stamp = miraBSource.indexOf('surfaceBoundAtRef.current = performance.now()');
+    expect(upload).toBeGreaterThan(-1);
+    expect(stamp).toBeGreaterThan(upload);
   });
 });
 

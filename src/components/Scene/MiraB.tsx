@@ -136,8 +136,14 @@ export default function MiraB({ position, radius, segments = 64, positionsRef }:
       (loaded) => {
         if (!active || !material) return;
         loaded.colorSpace = THREE.NoColorSpace;
+        // Stamp when the image is on the GPU, not when the file has decoded.
+        // The fade (and a capture's parked 1) would otherwise multiply a texture
+        // that has not uploaded yet, and two captures of one URL stop matching.
+        loaded.onUpdate = () => {
+          if (!active || surfaceBoundAtRef.current != null) return;
+          surfaceBoundAtRef.current = performance.now();
+        };
         material.uniforms.uSurfaceMap.value = loaded;
-        surfaceBoundAtRef.current = performance.now();
       },
       undefined,
       () => {
