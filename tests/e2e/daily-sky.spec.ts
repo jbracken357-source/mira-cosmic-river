@@ -7,6 +7,52 @@ import {
 } from '../../src/lib/starClock';
 
 const DAY_MS = 86_400_000;
+
+// Capture parks the fades, but a slow software upload can still be mid-mipmap when a
+// fixed pause ends. The second visit then hits the browser cache and lands on the map
+// while the first visit is still the procedural star, so the two canvases disagree.
+async function waitForMappedStars(page: Page) {
+  const deadline = Date.now() + 20_000;
+  let ready = false;
+  while (Date.now() < deadline) {
+    ready = await page.evaluate(async () => {
+      const r3f = await import('/node_modules/.vite/deps/@react-three_fiber.js');
+      const canvas = document.querySelector('canvas');
+      const root = canvas ? r3f._roots.get(canvas) : undefined;
+      if (!root) return false;
+      let companion = false;
+      let giant = false;
+      root.store.getState().scene.traverse((obj: { material?: { uniforms?: Record<string, { value?: unknown }> } }) => {
+        const uniforms = obj.material?.uniforms;
+        if (!uniforms?.uSurfaceReady || uniforms.uSurfaceReady.value !== 1 || !uniforms.uSurfaceMap?.value) return;
+        if (uniforms.intensity) companion = true;
+        if (uniforms.uColorCore) giant = true;
+      });
+      return companion && giant;
+    });
+    if (ready) return;
+    await page.waitForTimeout(200);
+  }
+  expect(ready).toBe(true);
+}
+
+async function settledCanvas(page: Page) {
+  // The readiness uniform flips in useFrame, and that frame's draw is what puts
+  // the uploaded map on the canvas. Read past that present, then accept the shot
+  // once two reads agree.
+  await page.evaluate(() => new Promise<void>((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+  }));
+  const canvas = page.locator('canvas');
+  let previous = await canvas.screenshot({ animations: 'disabled' });
+  for (let i = 0; i < 8; i += 1) {
+    await page.waitForTimeout(200);
+    const next = await canvas.screenshot({ animations: 'disabled' });
+    if (next.equals(previous)) return next;
+    previous = next;
+  }
+  return previous;
+}
 const MINIMUM_EPOCH_MS =
   MIRA_MAXIMUM_EPOCH_MS + (MIRA_PERIOD_DAYS - MIRA_RISE_DAYS) * DAY_MS;
 
@@ -36,16 +82,16 @@ test.describe('Daily sky', () => {
       // Registered before the navigation so the texture loads cannot race past.
       const materials = Promise.all([
         page.waitForResponse((r) => r.url().endsWith('/materials/river-density-v1.webp')),
-        page.waitForResponse((r) => r.url().endsWith('/materials/surface-density-v1.webp')),
+        page.waitForResponse((r) => r.url().endsWith('/materials/surface-density-v2.webp')),
+        page.waitForResponse((r) => r.url().endsWith('/materials/companion-surface-density-v1.webp')),
       ]);
       // A mid-cycle date: no milestone window, so the hint overlay never enters the frame.
       const sky = await visitSky(page, Date.UTC(2026, 8, 12), true);
       await materials;
       await page.getByTestId('explore-ui').waitFor({ timeout: 30000 });
       await page.evaluate(() => document.fonts.ready.then(() => undefined));
-      // Let the frozen frames settle (texture upload, first presents) before reading.
-      await page.waitForTimeout(1500);
-      return { sky, shot: await page.locator('canvas').screenshot({ animations: 'disabled' }) };
+      await waitForMappedStars(page);
+      return { sky, shot: await settledCanvas(page) };
     };
 
     const first = await visit();

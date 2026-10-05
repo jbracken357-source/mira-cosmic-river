@@ -65,9 +65,11 @@ suite. Constrained devices can also select it automatically; phones normally use
 
 React 19 + TypeScript, three.js via react-three-fiber, Zustand for state, Tailwind +
 Framer Motion for the interface. Local AI-generated density maps supply fine detail
-for the stellar surface and layered river; shaders provide colour, motion and depth.
-Procedural material fallbacks keep the scene usable if either image fails to load.
-The two WebP maps total about 662 KB; the full concept images are not runtime
+for both stellar surfaces and the layered river; shaders provide colour, motion and depth.
+Procedural material fallbacks keep the scene usable if a map fails to load. The
+companion map arrives on its own and does not hold the opening.
+The three live WebP maps total about 601 KB. The previous red-giant map stays in
+the tree for comparison and is not loaded. The full concept images are not runtime
 backgrounds, and the recorded entry still ships alongside them for slow loads and
 draw failures.
 

@@ -122,12 +122,26 @@ test.describe('portrait composition', () => {
     expect(dist(pose.lookAt, [0, 0, 0])).toBeLessThan(3);
   });
 
-  test('the portrait pull-back bows toward the river too', () => {
+  test('the portrait pull-back still bends through its waypoint on the way to the river', () => {
     const pose = resolveOpeningPose(8, PORT);
     const straight = PORTRAIT_CAMERA.CLOSE.position.map(
       (v, i) => v + (PORTRAIT_CAMERA.FAR.position[i] - v) * 0.5,
     );
-    expect(pose.position[0]).toBeLessThan(straight[0] - 0.5);
+    // The far pose itself stands on the river's side, so the old "left of the
+    // chord" check no longer describes the bow. The waypoint still pulls the
+    // path off a straight retreat.
+    expect(dist(pose.position, straight)).toBeGreaterThan(1);
+    expect(PORTRAIT_CAMERA.FAR.position[0]).toBeLessThan(PORTRAIT_CAMERA.CLOSE.position[0]);
+  });
+
+  test('portrait far, explore and closing stand back so the tail can read as long', () => {
+    const lengthOf = (p: readonly number[]) => Math.hypot(p[0], p[1], p[2]);
+    expect(lengthOf(PORTRAIT_CAMERA.EXPLORE.position)).toBeGreaterThan(lengthOf(PORTRAIT_CAMERA.CLOSE.position) * 2);
+    expect(lengthOf(PORTRAIT_CAMERA.FAR.position)).toBeGreaterThan(lengthOf(CAMERA.FAR.position));
+    expect(lengthOf(PORTRAIT_CAMERA.CLOSING.position)).toBeGreaterThan(lengthOf(PORTRAIT_CAMERA.EXPLORE.position));
+    expect(PORTRAIT_CAMERA.EXPLORE.lookAt[1]).toBeLessThan(PORTRAIT_CAMERA.CLOSE.lookAt[1]);
+    expect(lengthOf(PORTRAIT_CAMERA.EXPLORE.lookAt)).toBeGreaterThan(8);
+    expect(lengthOf(PORTRAIT_CAMERA.CLOSE.position)).toBeLessThan(18);
   });
 
   test('the portrait fov path reads the portrait table, not the landscape globals', () => {

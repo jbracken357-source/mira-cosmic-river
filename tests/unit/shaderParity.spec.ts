@@ -97,6 +97,31 @@ test.describe('Mira A shader stays in step with binaryLighting', () => {
   test('Mira B shares the same highlight shoulder snippet', () => {
     expect(miraBSource).toContain('${HIGHLIGHT_SHOULDER_GLSL}');
   });
+
+  test('the companion density fades on its own and does not join the entry gate', () => {
+    expect(miraBSource).toContain('companion-surface-density-v1.webp');
+    expect(miraBSource).toContain('uSurfaceReady');
+    expect(miraBSource).not.toContain('noteMaterial');
+    // The stretch has to land before the shoulder. After it, the same grains
+    // compress into the hot core and the zoomed-in star goes flat white again.
+    const grain = miraBSource.indexOf('finalColor *= mix(1.0, grain, weight)');
+    const shoulder = miraBSource.indexOf('finalColor = highlightShoulder(finalColor)');
+    expect(grain).toBeGreaterThan(-1);
+    expect(shoulder).toBeGreaterThan(grain);
+    expect(miraBSource).toContain('(density - 0.50) / 0.17');
+    // Capture parks the fade at 1. That weight must wait until the map is bound,
+    // or an unbound sampler is stretched into grain and a repeated capture drifts.
+    const gate = miraBSource.indexOf('boundAt == null');
+    const park = miraBSource.indexOf('materialFade(boundAt, performance.now())');
+    expect(gate).toBeGreaterThan(-1);
+    expect(park).toBeGreaterThan(gate);
+    // The stamp belongs to the GPU upload, not the decode callback. A capture
+    // that fades in a texture which has not uploaded yet drifts between visits.
+    const upload = miraBSource.indexOf('loaded.onUpdate');
+    const stamp = miraBSource.indexOf('surfaceBoundAtRef.current = performance.now()');
+    expect(upload).toBeGreaterThan(-1);
+    expect(stamp).toBeGreaterThan(upload);
+  });
 });
 
 test.describe('accretion disk shader stays in step with binaryLighting', () => {
