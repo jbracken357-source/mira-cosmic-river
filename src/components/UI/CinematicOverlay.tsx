@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import { useBinaryStar, useMobile, useEntryReadiness } from '../../hooks';
+import { useBinaryStar, useMobile, useEntryReadiness, useTonightSave } from '../../hooks';
 import { TRANSLATIONS } from '../../constants/translations';
 import { TRANSITIONS } from '../../constants/animation';
 import { openingSegment } from '../../lib/openingTimeline';
@@ -51,15 +51,24 @@ export default function CinematicOverlay({
       data-testid="cinematic-overlay"
       className="relative z-10 flex h-dvh w-full pointer-events-none select-none overflow-hidden"
     >
-      {/* Direct entry mid-opening (#20): translated, full touch target */}
-      <div className="absolute top-[max(1rem,env(safe-area-inset-top))] right-[max(1rem,env(safe-area-inset-right))] pointer-events-auto z-50 flex items-center gap-4">
+      {/* Top-right control cluster during the opening. One place for every quiet
+          action (sound, enter early, language) so the corner reads as a single
+          group instead of a switch glued to a skip button. */}
+      <div className="absolute top-[max(1rem,env(safe-area-inset-top))] right-[max(1rem,env(safe-area-inset-right))] pointer-events-auto z-50 flex items-center gap-5 md:gap-7">
         <AmbientToggle />
         <button
           data-testid="skip-cinematic"
           onClick={handleEnterEarly}
-          className="min-h-11 min-w-11 inline-flex items-center justify-center text-white/30 text-xs font-extralight tracking-widest uppercase hover:text-white/60 transition-colors"
+          className="whisper-btn min-h-11 min-w-11 inline-flex items-center justify-center text-[11px] md:text-xs font-extralight tracking-widest uppercase"
         >
           {t.enterEarly}
+        </button>
+        <button
+          data-testid="language-toggle"
+          onClick={() => setLanguage(language === 'en' ? 'ch' : 'en')}
+          className="whisper-btn min-h-11 min-w-11 inline-flex items-center justify-center text-xs font-extralight tracking-widest"
+        >
+          {language === 'en' ? '中文' : 'EN'}
         </button>
       </div>
 
@@ -74,7 +83,7 @@ export default function CinematicOverlay({
             transition={{ duration: Math.min(fade, .75) }}
             className="absolute bottom-32 md:bottom-24 left-6 md:left-12 right-6 md:right-12 pointer-events-none select-none"
           >
-            <p className="text-white/70 text-base md:text-xl font-extralight tracking-wide leading-relaxed" style={{ textShadow: '0 2px 12px #000' }}>
+            <p className="text-white/85 text-lg md:text-2xl font-extralight tracking-wider leading-relaxed" style={{ textShadow: '0 2px 16px #000' }}>
               {caption}
             </p>
           </motion.div>
@@ -90,28 +99,21 @@ export default function CinematicOverlay({
             animate={{ opacity: 1 }}
             transition={{ duration: finalFade }}
             className="absolute top-1/3 left-6 md:left-12 pointer-events-none select-none"
-            style={{ textShadow: '0 2px 12px #000' }}
+            style={{ textShadow: '0 2px 16px #000' }}
           >
             <h1 className="font-display text-5xl md:text-7xl lg:text-8xl font-light text-white/90 tracking-wider">
               Mira
             </h1>
-            <p className="text-white/50 text-sm md:text-base font-extralight italic tracking-widest uppercase mt-2">
+            {/* Italic belongs to the Latin run only — synthetic oblique on CJK
+                glyph shapes reads as broken, not romantic. */}
+            <p
+              className={`text-white/60 text-sm md:text-lg font-extralight tracking-[0.25em] mt-3 ${language === 'en' ? 'italic' : ''}`}
+            >
               {t.subtitle}
             </p>
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Language switch */}
-      <div className="absolute bottom-[max(1rem,env(safe-area-inset-bottom))] left-[max(1rem,env(safe-area-inset-left))] pointer-events-auto z-50">
-        <button
-          data-testid="language-toggle"
-          onClick={() => setLanguage(language === 'en' ? 'ch' : 'en')}
-          className="min-h-11 min-w-11 inline-flex items-center justify-center text-white/30 text-xs font-extralight tracking-widest hover:text-white/60 transition-colors"
-        >
-          {language === 'en' ? '中文' : 'EN'}
-        </button>
-      </div>
     </div>
   );
 }
@@ -133,9 +135,19 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
   const language = useBinaryStar((state) => state.language);
   const setLanguage = useBinaryStar((state) => state.setLanguage);
   const isPlaying = useBinaryStar((state) => state.isPlaying);
+  const cardOpen = useBinaryStar((state) => state.cardOpen);
+  const epilogueVisible = useBinaryStar((state) => state.epilogueVisible);
+  const tonightOpen = useTonightSave((state) => state.phase !== 'idle');
   const t = TRANSLATIONS[language];
   const isMobile = useMobile();
   const reduceMotion = Boolean(useReducedMotion());
+
+  // The epilogue is the emotional close: all chrome lets go of the screen, and the
+  // first intentional input (which ends the epilogue) brings it back.
+  const epilogueHush = epilogueVisible;
+  // While a panel owns the viewer's attention the ambient hints step aside — the
+  // mobile bottom sheet would sit on top of them anyway.
+  const hintsQuiet = tonightOpen || (isMobile && cardOpen);
 
   // The interaction hint leaves once the viewer has actually manipulated the scene
   // (drag/zoom land on the canvas; presses on UI buttons do not count), and stays
@@ -166,23 +178,27 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
       className="relative z-10 flex h-dvh w-full pointer-events-none select-none overflow-hidden"
     >
       {/* Top bar */}
-      <header className="absolute top-0 left-0 right-0 px-4 md:px-14 pt-[max(1rem,env(safe-area-inset-top))] pb-4 md:pb-8 flex items-center justify-between">
+      <header
+        className={`absolute top-0 left-0 right-0 px-4 md:px-14 pt-[max(1rem,env(safe-area-inset-top))] pb-4 md:pb-8 flex items-center justify-between transition-opacity duration-[1200ms] ${
+          epilogueHush ? 'opacity-0 pointer-events-none' : 'opacity-100'
+        }`}
+      >
         <div className="flex items-center gap-3 md:gap-6">
           <motion.span
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: reduceMotion ? 0 : TRANSITIONS.EXPLORE_TRANSITION }}
-            className="font-display text-2xl md:text-4xl text-orange-400/80 italic tracking-widest"
+            className="font-display text-2xl md:text-3xl text-white/90 font-light tracking-widest"
           >
             Mira
           </motion.span>
         </div>
 
-        <div className="flex items-center justify-end flex-wrap gap-4 md:gap-6">
+        <div className="flex items-center justify-end flex-wrap gap-3 md:gap-7">
           <button
             data-testid="return-to-view"
             onClick={() => useBinaryStar.getState().requestReturnToExplore()}
-            className="pointer-events-auto min-h-11 min-w-11 inline-flex items-center justify-center text-white/30 text-xs font-extralight tracking-widest uppercase hover:text-white/60 transition-colors"
+            className="pointer-events-auto whisper-btn min-h-11 min-w-11 inline-flex items-center justify-center text-[11px] md:text-xs font-extralight tracking-widest uppercase"
           >
             {t.returnToView}
           </button>
@@ -193,7 +209,7 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
             aria-pressed={!isPlaying}
             aria-label={isPlaying ? t.pause : t.resume}
             onClick={() => useBinaryStar.getState().setPlaying(!isPlaying)}
-            className="pointer-events-auto min-h-11 min-w-11 inline-flex items-center justify-center text-white/30 text-xs font-extralight tracking-widest uppercase hover:text-white/60 transition-colors"
+            className="pointer-events-auto whisper-btn min-h-11 min-w-11 inline-flex items-center justify-center text-[11px] md:text-xs font-extralight tracking-widest uppercase"
           >
             {isPlaying ? t.pause : t.resume}
           </button>
@@ -201,14 +217,14 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
             data-testid="replay-opening"
             aria-label={t.replayOpening}
             onClick={() => useBinaryStar.getState().setIntroComplete(false)}
-            className="pointer-events-auto min-h-11 min-w-11 inline-flex items-center justify-center text-white/30 text-xs font-extralight tracking-widest uppercase hover:text-white/60 transition-colors"
+            className="pointer-events-auto whisper-btn min-h-11 min-w-11 inline-flex items-center justify-center text-[11px] md:text-xs font-extralight tracking-widest uppercase"
           >
             {t.replayOpening}
           </button>
           <button
             data-testid="language-toggle"
             onClick={() => setLanguage(language === 'en' ? 'ch' : 'en')}
-            className="pointer-events-auto min-h-11 min-w-11 inline-flex items-center justify-center text-white/30 text-xs font-extralight tracking-widest hover:text-white/60 transition-colors"
+            className="pointer-events-auto whisper-btn min-h-11 min-w-11 inline-flex items-center justify-center text-xs font-extralight tracking-widest"
           >
             {language === 'en' ? '中文' : 'EN'}
           </button>
@@ -216,7 +232,11 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
       </header>
 
       {/* Bottom hint — tail line on its own row so it does not collide with the pill on narrow viewports */}
-      <footer className="absolute bottom-0 left-0 right-0 px-8 pb-[max(1rem,env(safe-area-inset-bottom))] md:pb-8 pt-2 flex flex-col items-center gap-3">
+      <footer
+        className={`absolute bottom-0 left-0 right-0 px-8 pb-[max(1rem,env(safe-area-inset-bottom))] md:pb-8 pt-2 flex flex-col items-center gap-3 transition-opacity duration-[1200ms] ${
+          epilogueHush || hintsQuiet ? 'opacity-0 pointer-events-none' : 'opacity-100'
+        }`}
+      >
         {/* Keyboard entry to the two stars (#20): the canvas itself is not
             focusable, so these triggers stay screen-reader reachable and only
             become visible when tabbed to. The tail already has a visible entry. */}
@@ -224,14 +244,14 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
           <button
             data-testid="star-trigger-miraA"
             onClick={() => onSelectStar('miraA')}
-            className="min-h-11 min-w-11 inline-flex items-center justify-center backdrop-blur-sm bg-white/5 border border-white/10 px-4 rounded-full text-[9px] tracking-[0.2em] uppercase text-white/55 font-extralight hover:text-white/80 transition-colors"
+            className="min-h-11 min-w-11 inline-flex items-center justify-center backdrop-blur-sm bg-white/5 border border-white/10 px-4 rounded-full text-[10px] tracking-[0.2em] uppercase text-white/55 font-extralight hover:text-white/85 transition-colors"
           >
             {t.miraA}
           </button>
           <button
             data-testid="star-trigger-miraB"
             onClick={() => onSelectStar('miraB')}
-            className="min-h-11 min-w-11 inline-flex items-center justify-center backdrop-blur-sm bg-white/5 border border-white/10 px-4 rounded-full text-[9px] tracking-[0.2em] uppercase text-white/55 font-extralight hover:text-white/80 transition-colors"
+            className="min-h-11 min-w-11 inline-flex items-center justify-center backdrop-blur-sm bg-white/5 border border-white/10 px-4 rounded-full text-[10px] tracking-[0.2em] uppercase text-white/55 font-extralight hover:text-white/85 transition-colors"
           >
             {t.miraB}
           </button>
@@ -240,7 +260,7 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
           data-testid="tail-hint"
           aria-label={t.tailHint}
           onClick={() => onSelectStar('tail')}
-          className="pointer-events-auto min-h-11 min-w-11 inline-flex items-center justify-center text-[9px] tracking-[0.2em] uppercase text-white/30 font-extralight hover:text-white/55 transition-colors"
+          className="pointer-events-auto whisper-btn min-h-11 min-w-11 inline-flex items-center justify-center text-[10px] tracking-[0.2em] uppercase"
         >
           {t.tailHint}
         </button>
@@ -255,8 +275,8 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
               className="backdrop-blur-sm bg-white/5 border border-white/10 px-4 py-2 rounded-full"
             >
               <div className="flex items-center gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-orange-500/60 animate-pulse" />
-                <span className="text-[9px] tracking-[0.2em] uppercase text-white/40 font-extralight">
+                <div className="w-1.5 h-1.5 rounded-full bg-white/50 animate-pulse" />
+                <span className="text-[10px] tracking-[0.2em] uppercase text-white/55 font-extralight">
                   {isMobile ? t.interactionHintMobile : t.interactionHint}
                 </span>
               </div>
@@ -267,7 +287,7 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
               data-testid="interaction-hint-recall"
               aria-label={isMobile ? t.interactionHintMobile : t.interactionHint}
               onClick={() => setHintVisible(true)}
-              className="pointer-events-auto min-h-11 min-w-11 inline-flex items-center justify-center text-white/20 text-xs font-extralight hover:text-white/50 transition-colors"
+              className="pointer-events-auto whisper-btn min-h-11 min-w-11 inline-flex items-center justify-center text-xs font-extralight"
             >
               ?
             </button>

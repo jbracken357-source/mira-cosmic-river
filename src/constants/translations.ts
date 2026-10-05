@@ -14,7 +14,7 @@ export const TRANSLATIONS = {
 
     // Star info cards
     miraA: 'Mira A',
-    miraADesc: 'Red Giant. 300x the Sun\'s radius. Pulsing every 332 days. Temperature: 3,000K.',
+    miraADesc: 'Red Giant. 300× the Sun\'s radius. Pulsing every 332 days. Temperature: 3,000K.',
     phaseDaysToMax: 'About {n} days to next maximum',
     phaseDaysToMin: 'About {n} days to next minimum',
     phaseAtMaximum: 'At maximum light',
@@ -86,7 +86,7 @@ export const TRANSLATIONS = {
 
     // Star info cards
     miraA: '蒭藁增二 A',
-    miraADesc: '红巨星。太阳半径的300倍。每332天脉动一次。表面温度3,000K。',
+    miraADesc: '红巨星。太阳半径的 300 倍。每 332 天脉动一次。表面温度 3,000K。',
     phaseDaysToMax: '距下次最亮约 {n} 天',
     phaseDaysToMin: '距下次最暗约 {n} 天',
     phaseAtMaximum: '正处于最亮',
@@ -98,7 +98,7 @@ export const TRANSLATIONS = {
     miraB: '蒭藁增二 B',
     miraBDesc: '白矮星。从伴星吸积物质。终有一天，它可能触发新星爆发。',
     tailLabel: '尾巴',
-    tailDesc: '13光年长。2007年由GALEX卫星发现。人类观测到的最长的恒星尾巴。',
+    tailDesc: '13 光年长。2007 年由 GALEX 卫星发现。人类观测到的最长的恒星尾巴。',
 
     // UI
     timeSpeed: '时间速度',

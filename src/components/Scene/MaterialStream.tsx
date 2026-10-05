@@ -101,10 +101,10 @@ export default function MaterialStream({
   return (
     <points ref={pointsRef} geometry={geometry}>
       <pointsMaterial
-        size={0.06}
+        size={0.075}
         vertexColors
         transparent
-        opacity={0.16}
+        opacity={0.2}
         sizeAttenuation
         blending={THREE.AdditiveBlending}
         depthWrite={false}

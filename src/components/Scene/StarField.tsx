@@ -44,7 +44,7 @@ function pickWeighted<T extends { weight: number }>(roll: number, entries: reado
 // it is seen through, which is the same cue that makes a photograph of a sky look deep.
 // `farShare` is deliberately not the largest share: the far shell is the haze, not the subject.
 const LAYERS = {
-  near: { share: 0.34, min: 42, max: 70, sizeMin: 0.55, sizeMax: 2.1, brightMin: 0.62, brightMax: 1.0, redden: 0.0 },
+  near: { share: 0.34, min: 42, max: 70, sizeMin: 0.55, sizeMax: 2.6, brightMin: 0.62, brightMax: 1.0, redden: 0.0 },
   mid: { share: 0.4, min: 70, max: 108, sizeMin: 0.35, sizeMax: 1.35, brightMin: 0.38, brightMax: 0.78, redden: 0.35 },
   far: { share: 0.26, min: 108, max: 158, sizeMin: 0.25, sizeMax: 0.85, brightMin: 0.16, brightMax: 0.45, redden: 1.0 },
 } as const;
@@ -105,7 +105,7 @@ export default function StarField({ count = 5000 }: StarFieldProps) {
 
       // A handful of genuinely bright foreground stars carry the frame.
       const brightRoll = layer.brightMin + rand() * (layer.brightMax - layer.brightMin);
-      brightArr[i] = Math.min(1.8, rand() < 0.04 ? brightRoll * 1.7 : brightRoll);
+      brightArr[i] = Math.min(1.9, rand() < 0.05 ? brightRoll * 1.75 : brightRoll);
 
       // Twinkle data: random phase and speed.
       phaseArr[i] = rand() * Math.PI * 2;
