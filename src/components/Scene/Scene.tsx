@@ -116,7 +116,7 @@ function SceneContent({
   const journeyGroupRef = useRef<THREE.Group>(null);
   const miraAAnchorRef = useRef<THREE.Group>(null);
   // 去向: derived from the existing tail path (the tail itself is not redone). The
-  // camera advance rides the same world-space heading the pair drifts along —
+  // camera advance rides the same world-space heading the pair journeys along —
   // under portrait the whole scene carries the diagonal tilt, so the heading does
   // (the tilt is applied where the vector is consumed, in the frame loop).
   const heading = tailHeading(PHYSICS.TAIL.length);

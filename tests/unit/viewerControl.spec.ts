@@ -114,16 +114,16 @@ test.describe('epilogue', () => {
     expect(text.epilogueText).toBe(true);
   });
 
-  test('the epilogue eases the drift out instead of snapping it off', () => {
+  test('the epilogue eases the idle advance out instead of snapping it off', () => {
     const cameraAt = 60_000 - TRANSITIONS.CLOSING_CAMERA * 1000; // 52s
 
-    // Arming the closing camera does not cut the drift: full speed at the arm point.
+    // Arming the closing camera does not cut the advance: full speed at the arm point.
     const atArm = resolveViewerControl(cameraAt, 0, FREE);
     expect(atArm.epilogueCamera).toBe(true);
     expect(atArm.autoCamera).toBe('ramping');
     expect(atArm.autoAdvanceSpeed).toBeCloseTo(AUTO_ADVANCE_SPEED, 6);
 
-    // Symmetric to the 3s ease-in: the drift eases to zero over one ramp window.
+    // Symmetric to the 3s ease-in: the advance eases to zero over one ramp window.
     let previous = atArm.autoAdvanceSpeed;
     for (let idleMs = cameraAt + 250; idleMs <= cameraAt + 3_000; idleMs += 250) {
       const { autoAdvanceSpeed } = resolveViewerControl(idleMs, 0, FREE);
