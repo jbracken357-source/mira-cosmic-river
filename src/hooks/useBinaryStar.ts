@@ -3,7 +3,7 @@ import type { StarSystemState, StarParameters, Language, CinematicPhase } from '
 import type { SkyState } from '../lib/starClock';
 import { currentSkyState } from '../lib/starClock';
 import { captureMode, registerPauseSource } from '../lib/captureMode';
-import { closingLineArrival } from '../lib/lowerEdge';
+import { closingLineArrival as resolveClosingLineArrival } from '../lib/lowerEdge';
 import type { ClosingLineArrival } from '../lib/lowerEdge';
 import type { AutoCameraState } from '../lib/viewerControl';
 import { rememberFlag, rememberedFlag } from '../lib/rememberedFlag';
@@ -99,7 +99,7 @@ export const useBinaryStar = create<BinaryStarStore>((set, get) => ({
       // The arrival is decided at the landing: the published mark has landed on
       // FINAL_TEXT exactly when the final beat was shown (终幕→下缘 settle);
       // anything earlier cut the opening short, and the line is simply present.
-      set({ introComplete: true, cinematicPhase: 'explore', closingLineArrival: closingLineArrival(get().cinematicTime) });
+      set({ introComplete: true, cinematicPhase: 'explore', closingLineArrival: resolveClosingLineArrival(get().cinematicTime) });
       return;
     }
     // Replay: the seen flag stays. Clearing storage is how a first visit is restored.
