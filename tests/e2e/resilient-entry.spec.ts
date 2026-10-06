@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
+import { openTailCardViaKeyboard } from './helpers';
 
 // Resilient entry (#24, ticket 08): fault injection around the entry path.
 //
@@ -131,7 +132,7 @@ test.describe('Resilient entry', () => {
     // It never poses as explorable: no canvas, no explore UI, no lower-edge line (#88).
     await expect(page.locator('canvas')).toHaveCount(0);
     await expect(page.getByTestId('explore-ui')).toHaveCount(0);
-    await expect(page.getByTestId('lower-edge-tagline')).toHaveCount(0);
+    await expect(page.getByTestId('lower-edge-closing-line')).toHaveCount(0);
 
     // The recorded still is a real image, not a black panel.
     const stats = await screenshotStats(page);
@@ -195,9 +196,7 @@ test.describe('Resilient entry', () => {
 
     // Interactions work after restore and are not double-registered:
     // one press on the tail's keyboard entry (#88) opens exactly one card.
-    await page.getByTestId('star-trigger-tail').focus();
-    await page.keyboard.press('Enter');
-    await expect(page.getByTestId('info-card')).toBeVisible();
+    await openTailCardViaKeyboard(page);
     expect(await page.getByTestId('info-card').count()).toBe(1);
     await page.getByTestId('info-card').getByRole('button').click();
     await expect(page.getByTestId('info-card')).toBeHidden();

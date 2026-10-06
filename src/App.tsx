@@ -58,6 +58,7 @@ export default function App() {
   const introComplete = useBinaryStar((state) => state.introComplete);
   const autoCamera = useBinaryStar((state) => state.autoCamera);
   const epilogueVisible = useBinaryStar((state) => state.epilogueVisible);
+  const closingLineArrival = useBinaryStar((state) => state.closingLineArrival);
   const ambientPhase = useAmbientSound((state) => state.phase);
   const entryGate = useEntryReadiness((state) => state.gate);
   const sceneAccess = useEntryReadiness((state) => state.sceneAccess);
@@ -92,6 +93,10 @@ export default function App() {
         data-entry-gate={entryGate}
         // Ambient sound (#22): the honest phase, dev-only like data-camera-pose.
         {...(!import.meta.env.PROD ? { 'data-ambient-state': ambientPhase } : {})}
+        // 终幕那句的抵达 (#88): 'present' on 直达 (the line is at the lower edge from
+        // the first frame), 'settle' after a landing that showed the final beat —
+        // dev-only, the same gate as data-ambient-state.
+        {...(!import.meta.env.PROD ? { 'data-closing-line-arrival': closingLineArrival } : {})}
         className="relative w-full h-dvh overflow-hidden pointer-events-none"
       >
         {sceneAvailable && (

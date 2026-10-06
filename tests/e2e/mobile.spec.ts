@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
+import { openTailCardViaKeyboard } from './helpers';
 
 // `?quality=low` keeps the scene light enough for software rendering (headless CI has no GPU).
 const APP = '/?quality=low';
@@ -43,10 +44,7 @@ test.describe('Mobile first-class', () => {
     await expect(page.getByTestId('explore-ui')).toBeVisible({ timeout: 10000 });
     // The tail's keyboard entry (#88): the treasure-hunt hint is gone from the
     // lower edge, so the scene itself and this trigger are the tail's doors.
-    const trigger = page.getByTestId('star-trigger-tail');
-    await trigger.focus();
-    await page.keyboard.press('Enter');
-    await expect(page.getByTestId('info-card')).toBeVisible();
+    await openTailCardViaKeyboard(page);
 
     await page.getByTestId('info-card').getByRole('button').click();
     await expect(page.getByTestId('info-card')).toBeHidden();

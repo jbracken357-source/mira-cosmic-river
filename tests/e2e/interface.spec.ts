@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
+import { MID_DECLINE_EPOCH, openTailCardViaKeyboard } from './helpers';
 
 // Interface (#20): keyboard reachability of the star info cards, Esc + focus
 // restore, 44px targets and accessible names, slider labelling, document language
@@ -8,8 +9,8 @@ import type { Page } from '@playwright/test';
 // `?quality=low` keeps the scene light enough for software rendering (headless CI
 // has no GPU). Behaviour is identical; only detail level differs. The epoch pins
 // tonight off every milestone window, so the lower edge (#88) always holds the
-// closing line in these tests (mid-decline, the date integration-journey uses).
-const APP = '/?quality=low&epoch=2026-09-12T00%3A00%3A00Z';
+// closing line in these tests.
+const APP = `/?quality=low&epoch=${MID_DECLINE_EPOCH}`;
 const EVIDENCE = 'docs/design-audit-2026-09-17/evidence';
 
 async function gotoExplore(page: Page, url = APP) {
@@ -28,14 +29,6 @@ async function gotoExplore(page: Page, url = APP) {
   await page.keyboard.press('Shift');
 }
 
-// The tail's keyboard entry (#88): with the treasure-hunt hint gone from the lower
-// edge, the scene itself and this sr-only trigger are the tail's doors.
-async function openTailCard(page: Page) {
-  const trigger = page.getByTestId('star-trigger-tail');
-  await trigger.focus();
-  await page.keyboard.press('Enter');
-  await expect(page.getByTestId('info-card')).toBeVisible();
-}
 
 async function expectMinTarget(page: Page, testId: string) {
   const locator = page.getByTestId(testId);
@@ -95,7 +88,7 @@ test.describe('keyboard access to the star info', () => {
   test('the close control has an accessible name and closes with the keyboard', async ({ page }) => {
     await gotoExplore(page);
 
-    await openTailCard(page);
+    await openTailCardViaKeyboard(page);
     const card = page.getByTestId('info-card');
 
     const close = page.getByTestId('info-card-close');
@@ -108,7 +101,7 @@ test.describe('keyboard access to the star info', () => {
   test('the time-speed slider has an associated label', async ({ page }) => {
     await gotoExplore(page);
 
-    await openTailCard(page);
+    await openTailCardViaKeyboard(page);
     // Default language is Chinese.
     const slider = page.getByLabel('时间速度');
     await expect(slider).toHaveAttribute('type', 'range');
@@ -132,7 +125,7 @@ test.describe('touch targets and focus', () => {
       await expectMinTarget(page, testId);
     }
 
-    await openTailCard(page);
+    await openTailCardViaKeyboard(page);
     await expectMinTarget(page, 'info-card-close');
   });
 
@@ -217,7 +210,7 @@ test.describe('card motion', () => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await gotoExplore(page);
 
-    await openTailCard(page);
+    await openTailCardViaKeyboard(page);
     const card = page.getByTestId('info-card');
     // No translate on the way in: the card only fades, instantly.
     const transform = await card.evaluate((el) => getComputedStyle(el).transform);
@@ -244,9 +237,9 @@ for (const viewport of VIEWPORTS) {
       await expect(page.getByTestId(testId)).toBeVisible();
     }
     // The closing line of the full cinematic holds the lower edge at every size (#88).
-    await expect(page.getByTestId('lower-edge-tagline')).toBeVisible();
+    await expect(page.getByTestId('lower-edge-closing-line')).toBeVisible();
 
-    await openTailCard(page);
+    await openTailCardViaKeyboard(page);
     const card = page.getByTestId('info-card');
     // The card never covers its own close control.
     const close = page.getByTestId('info-card-close');
