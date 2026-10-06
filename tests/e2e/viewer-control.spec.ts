@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { PHYSICS } from '../../src/constants/physics';
 import { tailHeading } from '../../src/lib/tailPath';
+import { openTailCardViaKeyboard } from './helpers';
 
 // Viewer control (#21): idle takeover, immediate interrupt, pause, card suppression,
 // reduced motion, and return-to-main-view, all against real page input. #86 changed
@@ -125,8 +126,7 @@ test.describe('Viewer control', () => {
   test('reading a card suppresses the takeover; closing it restarts the count', async ({ page }) => {
     await gotoExplore(page);
 
-    await page.getByTestId('tail-hint').click();
-    await expect(page.getByTestId('info-card')).toBeVisible();
+    await openTailCardViaKeyboard(page);
 
     // Well past the scaled epilogue threshold: no ramp, no epilogue while reading.
     await page.waitForTimeout(5000);

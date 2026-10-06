@@ -3,11 +3,12 @@ import type { StarSystemState, StarParameters, Language, CinematicPhase } from '
 import type { SkyState } from '../lib/starClock';
 import { currentSkyState } from '../lib/starClock';
 import { captureMode, registerPauseSource } from '../lib/captureMode';
+import { closingLineArrival as resolveClosingLineArrival } from '../lib/lowerEdge';
+import type { ClosingLineArrival } from '../lib/lowerEdge';
 import type { AutoCameraState } from '../lib/viewerControl';
 import { rememberFlag, rememberedFlag } from '../lib/rememberedFlag';
 
 export const SEEN_OPENING_KEY = 'mira:seen-opening';
-export const FOUND_TAIL_KEY = 'mira:found-tail';
 
 interface BinaryStarStore extends StarSystemState {
   parameters: StarParameters;
@@ -25,6 +26,10 @@ interface BinaryStarStore extends StarSystemState {
   // text): under reduced motion the line arrives without the closing flight.
   epilogueText: boolean;
   setEpilogueText: (visible: boolean) => void;
+  // 终幕那句的抵达 (#88): 'present' when the session has not shown the final beat
+  // (直达 — the closing line is at the lower edge from the first frame), 'settle'
+  // for a landing that passed the final beat (the ≤0.5s 终幕→下缘 transition).
+  closingLineArrival: ClosingLineArrival;
   // Shared idle clock: the timestamp of the last intentional input. Drag, wheel,
   // touch, keys and control presses restamp it; mousemove and the auto camera do not.
   // inputSeq counts intentional inputs only (never the silent restamps), so a camera
@@ -57,14 +62,6 @@ function persistOpeningSeen() {
   rememberFlag(SEEN_OPENING_KEY);
 }
 
-export function hasFoundTail(): boolean {
-  return rememberedFlag(FOUND_TAIL_KEY);
-}
-
-export function persistFoundTail() {
-  rememberFlag(FOUND_TAIL_KEY);
-}
-
 // The clock is read at load and only carried forward from there, so nothing has to read it
 // during a render.
 const initialSky = currentSkyState();
@@ -82,6 +79,9 @@ export const useBinaryStar = create<BinaryStarStore>((set, get) => ({
   cinematicTime: 0,
   epilogueVisible: false,
   epilogueText: false,
+  // 直达 starts here: no final beat ever shown, so the closing line is present from
+  // the first frame. Each landing recomputes it from the opening's quantized mark.
+  closingLineArrival: 'present',
   lastIntentionalInputAt: Date.now(),
   inputSeq: 0,
   cardOpen: false,
@@ -96,7 +96,10 @@ export const useBinaryStar = create<BinaryStarStore>((set, get) => ({
   setIntroComplete: (complete) => {
     if (complete) {
       persistOpeningSeen();
-      set({ introComplete: true, cinematicPhase: 'explore' });
+      // The arrival is decided at the landing: the published mark has landed on
+      // FINAL_TEXT exactly when the final beat was shown (终幕→下缘 settle);
+      // anything earlier cut the opening short, and the line is simply present.
+      set({ introComplete: true, cinematicPhase: 'explore', closingLineArrival: resolveClosingLineArrival(get().cinematicTime) });
       return;
     }
     // Replay: the seen flag stays. Clearing storage is how a first visit is restored.

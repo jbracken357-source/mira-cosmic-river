@@ -7,6 +7,7 @@ import { openingSegment } from '../../lib/openingTimeline';
 import { rememberFlag, rememberedFlag } from '../../lib/rememberedFlag';
 import type { StarName } from './InfoCards';
 import AmbientToggle from './AmbientToggle';
+import LowerEdge from './LowerEdge';
 import TonightSave from './TonightSave';
 
 // Cinematic overlay: 15-second opening text sequence
@@ -107,6 +108,7 @@ export default function CinematicOverlay({
             {/* Italic belongs to the Latin run only — synthetic oblique on CJK
                 glyph shapes reads as broken, not romantic. */}
             <p
+              data-testid="opening-subtitle"
               className={`text-white/60 text-sm md:text-lg font-extralight tracking-[0.25em] mt-3 ${language === 'en' ? 'italic' : ''}`}
             >
               {t.subtitle}
@@ -231,15 +233,16 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
         </div>
       </header>
 
-      {/* Bottom hint — tail line on its own row so it does not collide with the pill on narrow viewports */}
+      {/* Bottom hint — the lower edge (#88) holds the closing line of the full
+          cinematic; the interaction pill sits above it so the line keeps the row. */}
       <footer
         className={`absolute bottom-0 left-0 right-0 px-8 pb-[max(1rem,env(safe-area-inset-bottom))] md:pb-8 pt-2 flex flex-col items-center gap-3 transition-opacity duration-[1200ms] ${
           epilogueHush || hintsQuiet ? 'opacity-0 pointer-events-none' : 'opacity-100'
         }`}
       >
-        {/* Keyboard entry to the two stars (#20): the canvas itself is not
-            focusable, so these triggers stay screen-reader reachable and only
-            become visible when tabbed to. The tail already has a visible entry. */}
+        {/* Keyboard entry to the two stars and the tail (#20, #88): the canvas
+            itself is not focusable, so these triggers stay screen-reader reachable
+            and only become visible when tabbed to. */}
         <div className="sr-only focus-within:not-sr-only pointer-events-auto flex items-center gap-3">
           <button
             data-testid="star-trigger-miraA"
@@ -255,15 +258,14 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
           >
             {t.miraB}
           </button>
+          <button
+            data-testid="star-trigger-tail"
+            onClick={() => onSelectStar('tail')}
+            className="min-h-11 min-w-11 inline-flex items-center justify-center backdrop-blur-sm bg-white/5 border border-white/10 px-4 rounded-full text-[10px] tracking-[0.2em] uppercase text-white/55 font-extralight hover:text-white/85 transition-colors"
+          >
+            {t.tailLabel}
+          </button>
         </div>
-        <button
-          data-testid="tail-hint"
-          aria-label={t.tailHint}
-          onClick={() => onSelectStar('tail')}
-          className="pointer-events-auto whisper-btn min-h-11 min-w-11 inline-flex items-center justify-center text-[10px] tracking-[0.2em] uppercase"
-        >
-          {t.tailHint}
-        </button>
         <AnimatePresence mode="wait">
           {hintVisible ? (
             <motion.div
@@ -293,6 +295,8 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
             </button>
           )}
         </AnimatePresence>
+        {/* 终幕那句 lives at the lower edge; the milestone hint borrows the row. */}
+        <LowerEdge />
       </footer>
     </div>
   );

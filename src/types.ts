@@ -37,8 +37,6 @@ export interface TranslationDict {
   pause: string;
   resume: string;
   returnToView: string;
-  tailHint: string;
-  tailFound: string;
   loading: string;
   closingMessage: string;
 }

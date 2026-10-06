@@ -1,9 +1,9 @@
 import { Component, useState, useCallback, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import Scene from './components/Scene/Scene';
-import { CinematicOverlay, InfoCards, ClosingMessage, MilestoneHint, SceneFallback } from './components/UI';
+import { CinematicOverlay, InfoCards, ClosingMessage, SceneFallback } from './components/UI';
 import type { StarName } from './components/UI/InfoCards';
-import { hasFoundTail, persistFoundTail, useBinaryStar, useEntryReadiness, useIntentionalInput, initAmbientSound, useAmbientSound } from './hooks';
+import { useBinaryStar, useEntryReadiness, useIntentionalInput, initAmbientSound, useAmbientSound } from './hooks';
 import { currentSkyState } from './lib/starClock';
 import { dailySkyCoupling } from './lib/riverLighting';
 import './App.css';
@@ -26,14 +26,7 @@ class SceneBoundary extends Component<{ children: ReactNode }, { failed: boolean
 
 export default function App() {
   const [selectedStar, setSelectedStar] = useState<StarName | null>(null);
-  const [showTailFound, setShowTailFound] = useState(false);
   const handleSelectStar = useCallback((star: StarName | null) => {
-    if (star === 'tail' && !hasFoundTail()) {
-      persistFoundTail();
-      setShowTailFound(true);
-    } else if (star !== 'tail') {
-      setShowTailFound(false);
-    }
     setSelectedStar(star);
     // Reading a card holds the idle takeover; the hold ends when the card closes.
     useBinaryStar.getState().setCardOpen(star !== null);
@@ -61,21 +54,15 @@ export default function App() {
     document.documentElement.lang = language === 'ch' ? 'zh-CN' : 'en';
   }, [language]);
 
-  useEffect(() => {
-    if (!showTailFound) return;
-    const id = window.setTimeout(() => setShowTailFound(false), 4500);
-    return () => window.clearTimeout(id);
-  }, [showTailFound]);
-
   const sky = useBinaryStar((state) => state.sky);
   const introComplete = useBinaryStar((state) => state.introComplete);
   const autoCamera = useBinaryStar((state) => state.autoCamera);
   const epilogueVisible = useBinaryStar((state) => state.epilogueVisible);
+  const closingLineArrival = useBinaryStar((state) => state.closingLineArrival);
   const ambientPhase = useAmbientSound((state) => state.phase);
   const entryGate = useEntryReadiness((state) => state.gate);
   const sceneAccess = useEntryReadiness((state) => state.sceneAccess);
   if (!introComplete && selectedStar !== null) setSelectedStar(null);
-  if (!introComplete && showTailFound) setShowTailFound(false);
 
   // Replay (or any return to the opening) also releases the reading-card idle hold.
   // External-store writes belong in an effect, not in the render pass above.
@@ -106,18 +93,17 @@ export default function App() {
         data-entry-gate={entryGate}
         // Ambient sound (#22): the honest phase, dev-only like data-camera-pose.
         {...(!import.meta.env.PROD ? { 'data-ambient-state': ambientPhase } : {})}
+        // 终幕那句的抵达 (#88): 'present' on 直达 (the line is at the lower edge from
+        // the first frame), 'settle' after a landing that showed the final beat —
+        // dev-only, the same gate as data-ambient-state.
+        {...(!import.meta.env.PROD ? { 'data-closing-line-arrival': closingLineArrival } : {})}
         className="relative w-full h-dvh overflow-hidden pointer-events-none"
       >
         {sceneAvailable && (
           <>
             <CinematicOverlay onSelectStar={handleSelectStar} />
-            <InfoCards
-              selectedStar={selectedStar}
-              onSelectStar={handleSelectStar}
-              showTailFound={showTailFound}
-            />
+            <InfoCards selectedStar={selectedStar} onSelectStar={handleSelectStar} />
             <ClosingMessage />
-            <MilestoneHint />
           </>
         )}
       </div>

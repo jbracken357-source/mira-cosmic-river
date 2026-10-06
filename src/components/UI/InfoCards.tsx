@@ -10,10 +10,9 @@ export type StarName = 'miraA' | 'miraB' | 'tail';
 interface InfoCardsProps {
   selectedStar: StarName | null;
   onSelectStar: (star: StarName | null) => void;
-  showTailFound: boolean;
 }
 
-export default function InfoCards({ selectedStar, onSelectStar, showTailFound }: InfoCardsProps) {
+export default function InfoCards({ selectedStar, onSelectStar }: InfoCardsProps) {
   const language = useBinaryStar((state) => state.language);
   const timeSpeed = useBinaryStar((state) => state.parameters.timeSpeed);
   const setParameter = useBinaryStar((state) => state.setParameter);
@@ -27,7 +26,6 @@ export default function InfoCards({ selectedStar, onSelectStar, showTailFound }:
   const exitDur = reduceMotion ? 0 : INFO_CARD.EXIT;
   const riseEnter = reduceMotion ? 0 : isMobile ? 24 : 8;
   const riseExit = reduceMotion ? 0 : isMobile ? 16 : 6;
-  const toastFade = reduceMotion ? 0 : 0.8;
   const readout = phaseReadout(sky);
   const daysToMax = Math.round(readout.daysToNextMaximum);
   const daysToMin = Math.round(readout.daysToNextMinimum);
@@ -196,37 +194,13 @@ export default function InfoCards({ selectedStar, onSelectStar, showTailFound }:
     </motion.div>
   ) : null;
 
-  const toast = showTailFound ? (
-    <motion.p
-      key="tail-found"
-      data-testid="tail-found"
-      initial={{ opacity: 0, y: 6 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: toastFade, ease: EASE.OUT }}
-      className={
-        isMobile
-          ? 'relative z-20 flex justify-center pointer-events-none text-white/55 text-sm font-extralight tracking-wide px-4 py-2 pb-3'
-          : 'absolute bottom-40 left-0 right-0 z-20 flex justify-center pointer-events-none text-white/55 text-sm font-extralight tracking-wide'
-      }
-    >
-      {t.tailFound}
-    </motion.p>
-  ) : null;
-
   if (isMobile) {
     return (
       <div className="absolute inset-x-0 bottom-0 z-20 flex flex-col items-stretch pointer-events-none">
-        <AnimatePresence>{toast}</AnimatePresence>
         <AnimatePresence mode="wait">{card}</AnimatePresence>
       </div>
     );
   }
 
-  return (
-    <>
-      <AnimatePresence mode="wait">{card}</AnimatePresence>
-      <AnimatePresence>{toast}</AnimatePresence>
-    </>
-  );
+  return <AnimatePresence mode="wait">{card}</AnimatePresence>;
 }

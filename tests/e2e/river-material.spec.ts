@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { openTailCardViaKeyboard } from './helpers';
 
 test('image-backed river loads without blocking exploration or replay', async ({ page }) => {
   const errors: string[] = [];
@@ -11,8 +12,7 @@ test('image-backed river loads without blocking exploration or replay', async ({
   expect((await texture).ok()).toBe(true);
   expect((await surface).ok()).toBe(true);
   await expect(page.getByTestId('explore-ui')).toBeVisible();
-  await page.getByTestId('tail-hint').click();
-  await expect(page.getByTestId('info-card')).toBeVisible();
+  await openTailCardViaKeyboard(page);
   await page.getByTestId('info-card').getByRole('button').click();
   await expect(page.getByTestId('info-card')).toBeHidden();
   await page.getByTestId('replay-opening').click();
@@ -32,8 +32,7 @@ test('missing material images preserve a usable mobile scene', async ({ page }) 
   await page.goto('/?quality=low');
   await expect(page.getByTestId('explore-ui')).toBeVisible();
   await expect(page.locator('canvas')).toBeVisible();
-  await page.getByTestId('tail-hint').click();
-  await expect(page.getByTestId('info-card')).toBeVisible();
+  await openTailCardViaKeyboard(page);
   expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
   expect(errors).toEqual([]);
 });

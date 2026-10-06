@@ -8,7 +8,8 @@ export const TRANSLATIONS = {
     cinematic2: 'Drawn together. Moving onward.',
     cinematic3: 'Behind us, a river of light.',
 
-    // Title and subtitle
+    // Title and subtitle — the subtitle is 终幕那句 (#88): it closes the full
+    // cinematic and then stays at the lower edge through free viewing.
     title: 'Mira',
     subtitle: 'Together, Until the End of Time',
 
@@ -38,8 +39,6 @@ export const TRANSLATIONS = {
     pause: 'Pause',
     resume: 'Resume',
     returnToView: 'Main view',
-    tailHint: 'Find her tail',
-    tailFound: 'You found her tail.',
     loading: 'Loading Mira...',
 
     // Ambient sound (#22): opt-in, honest states — pending never claims to be playing
@@ -80,9 +79,10 @@ export const TRANSLATIONS = {
     cinematic2: '彼此牵引，一起走向更远。',
     cinematic3: '走过的路，留成一条光河。',
 
-    // Title and subtitle
+    // Title and subtitle — the subtitle is 终幕那句 (#88): it closes the full
+    // cinematic and then stays at the lower edge through free viewing.
     title: 'Mira',
-    subtitle: '在宇宙的尽头，我们依然相伴',
+    subtitle: '在宇宙的尽头，我们依然相伴。',
 
     // Star info cards
     miraA: '蒭藁增二 A',
@@ -110,8 +110,6 @@ export const TRANSLATIONS = {
     pause: '暂停',
     resume: '恢复',
     returnToView: '主视角',
-    tailHint: '去找她的尾巴',
-    tailFound: '你找到了她的尾巴。',
     loading: '正在点亮 Mira...',
 
     // 环境音（#22）：主动开启，状态如实——等待手势时绝不冒充正在播放

@@ -1,10 +1,10 @@
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
+import { openTailCardViaKeyboard } from './helpers';
 
 // `?quality=low` keeps the scene light enough for software rendering (headless CI has no GPU).
 const APP = '/?quality=low';
 const SEEN_KEY = 'mira:seen-opening';
-const FOUND_KEY = 'mira:found-tail';
 
 test.use({
   viewport: { width: 375, height: 812 },
@@ -12,15 +12,13 @@ test.use({
   isMobile: true,
 });
 
-async function gotoWithFlags(page: Page, opts: { seenOpening: boolean; foundTail?: boolean }) {
+async function gotoWithFlags(page: Page, opts: { seenOpening: boolean }) {
   await page.addInitScript(
-    ({ seenKey, foundKey, seenOpening, foundTail }) => {
+    ({ seenKey, seenOpening }) => {
       if (seenOpening) localStorage.setItem(seenKey, '1');
       else localStorage.removeItem(seenKey);
-      if (foundTail) localStorage.setItem(foundKey, '1');
-      else localStorage.removeItem(foundKey);
     },
-    { seenKey: SEEN_KEY, foundKey: FOUND_KEY, foundTail: opts.foundTail ?? false, seenOpening: opts.seenOpening },
+    { seenKey: SEEN_KEY, seenOpening: opts.seenOpening },
   );
   await page.goto(APP);
   await page.waitForLoadState('networkidle');
@@ -40,12 +38,13 @@ test.describe('Mobile first-class', () => {
     await expect(page.getByTestId('explore-ui')).toBeVisible();
   });
 
-  test('tail hint opens a closeable info card', async ({ page }) => {
-    await gotoWithFlags(page, { seenOpening: true, foundTail: true });
+  test('the tail entry opens a closeable info card', async ({ page }) => {
+    await gotoWithFlags(page, { seenOpening: true });
 
     await expect(page.getByTestId('explore-ui')).toBeVisible({ timeout: 10000 });
-    await page.getByTestId('tail-hint').click();
-    await expect(page.getByTestId('info-card')).toBeVisible();
+    // The tail's keyboard entry (#88): the treasure-hunt hint is gone from the
+    // lower edge, so the scene itself and this trigger are the tail's doors.
+    await openTailCardViaKeyboard(page);
 
     await page.getByTestId('info-card').getByRole('button').click();
     await expect(page.getByTestId('info-card')).toBeHidden();

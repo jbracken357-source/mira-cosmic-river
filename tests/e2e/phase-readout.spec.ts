@@ -91,17 +91,21 @@ test.describe('Phase readout', () => {
     await expect(readout).toContainText('At maximum light');
   });
 
-  test('maximum milestone hint fires once per cycle', async ({ page }) => {
+  test('maximum milestone hint fires once per cycle, borrowing the lower edge', async ({ page }) => {
     await page.goto(`/?quality=low&epoch=${Math.round(MIRA_MAXIMUM_EPOCH_MS / 1000)}`);
     await reachExplore(page);
-    await expect(page.getByTestId('milestone-hint')).toBeVisible();
-    await expect(page.getByTestId('milestone-hint')).toHaveAttribute(
-      'data-milestone-kind',
-      'maximum',
-    );
+    const hint = page.getByTestId('milestone-hint');
+    await expect(hint).toBeVisible();
+    await expect(hint).toHaveAttribute('data-milestone-kind', 'maximum');
+    // #88: the hint borrows the lower edge — it never stacks beside the closing
+    // line, and the line returns when the ~8s window closes.
+    await expect(page.getByTestId('lower-edge-closing-line')).toHaveCount(0);
+    await expect(hint).toHaveCount(0, { timeout: 20000 });
+    await expect(page.getByTestId('lower-edge-closing-line')).toBeVisible();
 
     await page.reload();
     await reachExplore(page);
     await expect(page.getByTestId('milestone-hint')).toHaveCount(0);
+    await expect(page.getByTestId('lower-edge-closing-line')).toBeVisible();
   });
 });

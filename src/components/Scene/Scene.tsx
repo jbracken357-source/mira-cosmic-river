@@ -59,6 +59,15 @@ function applyPose(camera: THREE.PerspectiveCamera, controls: OrbitControlsImpl 
   if (controls) controls.target.set(pose.lookAt[0], pose.lookAt[1], pose.lookAt[2]);
 }
 
+// Dev-only e2e seam: project a world-space anchor to screen percentages, so specs
+// click the star or the tail where it actually is — the journey (#86) carries both
+// off their home positions. `vec` is caller-owned scratch, same pattern as the refs.
+function screenPercent(anchor: THREE.Object3D, camera: THREE.Camera, vec: THREE.Vector3): string {
+  anchor.getWorldPosition(vec);
+  vec.project(camera);
+  return `${(((vec.x + 1) / 2) * 100).toFixed(2)},${(((1 - vec.y) / 2) * 100).toFixed(2)}`;
+}
+
 function SceneContent({
   onSelectStar,
   reduceMotion,
@@ -128,8 +137,10 @@ function SceneContent({
   const tailOpacityRef = useRef(0);
   const miraBGroupRef = useRef<THREE.Group>(null);
   const miraBTargetRef = useRef<THREE.Mesh>(null);
+  const tailTargetRef = useRef<THREE.Mesh>(null);
   const previousAspect = useRef(1);
   const miraAScreenRef = useRef(new THREE.Vector3());
+  const tailScreenRef = useRef(new THREE.Vector3());
   const ambientLookRef = useRef(new THREE.Vector3());
   const firstFrameMarkedRef = useRef(false);
   // Quality governor (#26): the state lives outside React — it is fed every frame
@@ -411,13 +422,19 @@ function SceneContent({
       if (el.dataset.cameraPose !== pose) el.dataset.cameraPose = pose;
       frameCountRef.current += 1;
       el.dataset.frameCount = String(frameCountRef.current);
-      miraAScreenRef.current.set(0, 0, 0);
-      // Project where Mira A actually is: the journey (#86) carries it off the
-      // origin, so the click probe reads the anchor's world position.
-      if (miraAAnchorRef.current) miraAAnchorRef.current.getWorldPosition(miraAScreenRef.current);
-      miraAScreenRef.current.project(camera);
-      const miraA = `${(((miraAScreenRef.current.x + 1) / 2) * 100).toFixed(2)},${(((1 - miraAScreenRef.current.y) / 2) * 100).toFixed(2)}`;
-      if (el.dataset.miraAScreen !== miraA) el.dataset.miraAScreen = miraA;
+      // Mira A and the tail's click target, projected to screen percentages through
+      // one seam: the click probes read where each anchor actually is this frame.
+      if (miraAAnchorRef.current) {
+        const miraA = screenPercent(miraAAnchorRef.current, camera, miraAScreenRef.current);
+        if (el.dataset.miraAScreen !== miraA) el.dataset.miraAScreen = miraA;
+      }
+      // The tail's click target, projected the same way (#88): with the treasure-hunt
+      // hint gone from the lower edge, the scene itself is the tail's entry and specs
+      // click it where it actually is.
+      if (tailTargetRef.current) {
+        const tail = screenPercent(tailTargetRef.current, camera, tailScreenRef.current);
+        if (el.dataset.tailScreen !== tail) el.dataset.tailScreen = tail;
+      }
     }
 
     // The cold-start probe fires at the first COMPLETED frame — not at context
@@ -507,6 +524,7 @@ function SceneContent({
       </group>
       {/* Invisible click target for tail card */}
       <mesh
+        ref={tailTargetRef}
         position={occupancy.click.position}
         userData={{ starName: 'tail' }}
         onClick={(e) => {

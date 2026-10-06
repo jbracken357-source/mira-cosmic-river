@@ -1,13 +1,16 @@
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
+import { MID_DECLINE_EPOCH, openTailCardViaKeyboard } from './helpers';
 
 // Interface (#20): keyboard reachability of the star info cards, Esc + focus
 // restore, 44px targets and accessible names, slider labelling, document language
 // sync, interaction-hint exit and rediscovery, and the narrow/landscape viewports.
 //
 // `?quality=low` keeps the scene light enough for software rendering (headless CI
-// has no GPU). Behaviour is identical; only detail level differs.
-const APP = '/?quality=low';
+// has no GPU). Behaviour is identical; only detail level differs. The epoch pins
+// tonight off every milestone window, so the lower edge (#88) always holds the
+// closing line in these tests.
+const APP = `/?quality=low&epoch=${MID_DECLINE_EPOCH}`;
 const EVIDENCE = 'docs/design-audit-2026-09-17/evidence';
 
 async function gotoExplore(page: Page, url = APP) {
@@ -25,6 +28,7 @@ async function gotoExplore(page: Page, url = APP) {
   await expect(page.locator('canvas')).toHaveAttribute('data-camera-pose', /.+/, { timeout: 30000 });
   await page.keyboard.press('Shift');
 }
+
 
 async function expectMinTarget(page: Page, testId: string) {
   const locator = page.getByTestId(testId);
@@ -84,9 +88,8 @@ test.describe('keyboard access to the star info', () => {
   test('the close control has an accessible name and closes with the keyboard', async ({ page }) => {
     await gotoExplore(page);
 
-    await page.getByTestId('tail-hint').click();
+    await openTailCardViaKeyboard(page);
     const card = page.getByTestId('info-card');
-    await expect(card).toBeVisible();
 
     const close = page.getByTestId('info-card-close');
     await expect(close).toHaveAttribute('aria-label', /^(关闭|Close)$/);
@@ -98,8 +101,7 @@ test.describe('keyboard access to the star info', () => {
   test('the time-speed slider has an associated label', async ({ page }) => {
     await gotoExplore(page);
 
-    await page.getByTestId('tail-hint').click();
-    await expect(page.getByTestId('info-card')).toBeVisible();
+    await openTailCardViaKeyboard(page);
     // Default language is Chinese.
     const slider = page.getByLabel('时间速度');
     await expect(slider).toHaveAttribute('type', 'range');
@@ -119,13 +121,11 @@ test.describe('touch targets and focus', () => {
       'pause-toggle',
       'replay-opening',
       'language-toggle',
-      'tail-hint',
     ]) {
       await expectMinTarget(page, testId);
     }
 
-    await page.getByTestId('tail-hint').click();
-    await expect(page.getByTestId('info-card')).toBeVisible();
+    await openTailCardViaKeyboard(page);
     await expectMinTarget(page, 'info-card-close');
   });
 
@@ -210,9 +210,8 @@ test.describe('card motion', () => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await gotoExplore(page);
 
-    await page.getByTestId('tail-hint').click();
+    await openTailCardViaKeyboard(page);
     const card = page.getByTestId('info-card');
-    await expect(card).toBeVisible();
     // No translate on the way in: the card only fades, instantly.
     const transform = await card.evaluate((el) => getComputedStyle(el).transform);
     expect(transform === 'none' || transform === 'matrix(1, 0, 0, 1, 0, 0)').toBe(true);
@@ -234,13 +233,14 @@ for (const viewport of VIEWPORTS) {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     await gotoExplore(page);
 
-    for (const testId of ['pause-toggle', 'replay-opening', 'language-toggle', 'tail-hint']) {
+    for (const testId of ['pause-toggle', 'replay-opening', 'language-toggle']) {
       await expect(page.getByTestId(testId)).toBeVisible();
     }
+    // The closing line of the full cinematic holds the lower edge at every size (#88).
+    await expect(page.getByTestId('lower-edge-closing-line')).toBeVisible();
 
-    await page.getByTestId('tail-hint').click();
+    await openTailCardViaKeyboard(page);
     const card = page.getByTestId('info-card');
-    await expect(card).toBeVisible();
     // The card never covers its own close control.
     const close = page.getByTestId('info-card-close');
     await expect(close).toBeVisible();

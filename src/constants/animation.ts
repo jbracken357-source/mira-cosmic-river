@@ -99,7 +99,23 @@ export const TRANSITIONS = {
   EXPLORE_TRANSITION: 0.5,
   CLOSING_CAMERA: 8,     // idle pull-in; matches the lead before the epilogue line
   RETURN_CAMERA: 1.5,    // deliberate return to the main view; reduced motion places instantly
+  // 终幕那句 (#88): the closing line's settle from the final beat to the lower edge —
+  // 不超过半秒, never a two-second fade, and never the controls' all-caps styling.
+  // The budget belongs to the 终幕→下缘 transition only; 直达 finds the line already
+  // present from the first frame (lib/lowerEdge's closingLineArrival).
+  CLOSING_LINE_SETTLE: 0.5,
+  // 结语 (#88): the epilogue line enters in about 0.8s; when the viewer interrupts,
+  // it leaves faster than it came.
+  EPILOGUE_ENTER: 0.8,
+  EPILOGUE_EXIT: 0.3,
+  // The milestone hint's own enter/exit fade while it borrows the lower edge.
+  MILESTONE_HINT_FADE: 0.4,
 } as const;
+
+// 下缘 (#88): how long the milestone hint (本周期最亮/最暗) holds the lower edge once
+// per cycle before the closing line returns — 约 8 秒. Milliseconds: it drives a
+// timer, not a motion duration, so it lives beside TRANSITIONS rather than in it.
+export const MILESTONE_HINT_MS = 8000;
 
 // Info card (#20): snappy enough that the card reads as an answer to the tap, not a
 // scene change. Enter 180–240ms, exit 120–180ms; the windows are pinned by
