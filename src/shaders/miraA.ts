@@ -5,6 +5,9 @@ import * as THREE from 'three';
 import { COLORS } from '../constants/colors';
 import {
   SURFACE_DETAIL_FLOOR,
+  PULSE_LIGHT_SWING,
+  PULSE_CELL_LIFT_DIM,
+  PULSE_CELL_LIFT_BRIGHT,
   HIGHLIGHT_KNEE,
   HIGHLIGHT_CEILING,
 } from '../lib/binaryLighting';
@@ -12,7 +15,9 @@ import {
 // One decorative pulsation rate for the whole star: the surface radius, the surface colour and
 // the atmosphere all breathe together, or the halo detaches from the star. (Shader strings are
 // built at module load, so these have to be declared before the shaders that interpolate them.)
-const PULSE_RATE = 0.785; // ~8s cycle
+// Exported so the parity guard can evaluate the mirrored light curve in
+// src/lib/binaryLighting.ts against the GLSL expression below.
+export const PULSE_RATE = 0.785; // ~8s cycle
 /** Radius pulse of Mira A's decorative cycle. Exported so MiraA.tsx's shells breathe with it. */
 export const MIRA_A_PULSE_AMPLITUDE = 0.09; // 9% of the radius come and gone each cycle
 
@@ -205,10 +210,20 @@ export const MiraA_Shader = {
       vec3 ember = uColorCore * .15 + vec3(.055, .006, .001);
       vec3 amber = mix(uColorSurface, vec3(1., .38, .065), .65);
       vec3 color = mix(ember, amber, heat);
-      color += vec3(1.2, .58, .16) * pow(heat, 5.) * .5 * detailStrength;
+      // The photosphere's light breathes with the same phase as the radius — bright
+      // when swollen, dim when shrunk, or the surface reads as a static shell behind
+      // a breathing halo (#87). pulsePhase is the radius sine lifted to 0..1; the two
+      // curves below are pulsationSurfaceLight and pulsationCellLift in
+      // src/lib/binaryLighting.ts, run at theta = uTime * PULSE_RATE + pi/2.
+      float pulsePhase = sin(uTime * ${PULSE_RATE}) * .5 + .5;
+      // The granulation's hot network swells toward maximum and sinks into the ember
+      // floor at minimum: the cycle moves the surface itself instead of holding one
+      // strength edge to edge.
+      float cellLift = mix(${PULSE_CELL_LIFT_DIM}, ${PULSE_CELL_LIFT_BRIGHT}, pulsePhase);
+      color += vec3(1.2, .58, .16) * pow(heat, 5.) * cellLift * detailStrength;
       color *= .36 + .64 * pow(mu, .55);
-      float pulse = .94 + .06 * sin(uTime * ${PULSE_RATE});
-      color *= pulse * (.68 + .55 * uBrightness);
+      float surfaceLight = 1. + ${PULSE_LIGHT_SWING} * (pulsePhase * 2. - 1.);
+      color *= surfaceLight * (.68 + .55 * uBrightness);
       color *= mix(vec3(1., .7, .5), vec3(1., 1., .94), uColorShift);
       color = highlightShoulder(color);
       gl_FragColor = vec4(color, 1.0);

@@ -15,10 +15,15 @@ import {
   veilLightResponse,
 } from '../../src/lib/riverLighting';
 import { TailVertexShader, TailFragmentShader, createTailMaterial } from '../../src/shaders/tail';
-import { MiraA_Shader, HIGHLIGHT_SHOULDER_GLSL } from '../../src/shaders/miraA';
+import { MiraA_Shader, HIGHLIGHT_SHOULDER_GLSL, PULSE_RATE } from '../../src/shaders/miraA';
 import { AccretionDisk_Shader } from '../../src/shaders/accretionDisk';
 import {
   SURFACE_DETAIL_FLOOR,
+  PULSE_LIGHT_SWING,
+  pulsationSurfaceLight,
+  PULSE_CELL_LIFT_DIM,
+  PULSE_CELL_LIFT_BRIGHT,
+  pulsationCellLift,
   HIGHLIGHT_KNEE,
   HIGHLIGHT_CEILING,
   DISK_ARC_TRACE,
@@ -94,6 +99,30 @@ test.describe('Mira A shader stays in step with binaryLighting', () => {
     expect(MiraA_Shader.fragmentShader).toContain(HIGHLIGHT_SHOULDER_GLSL);
   });
 
+  test('the photosphere light and hot network breathe with the pulsation phase (#87)', () => {
+    const f = MiraA_Shader.fragmentShader;
+    // Both curves run off the radius pulse's own sine, lifted to 0..1.
+    expect(f).toContain(`float pulsePhase = sin(uTime * ${PULSE_RATE}) * .5 + .5;`);
+    expect(f).toContain(`float cellLift = mix(${PULSE_CELL_LIFT_DIM}, ${PULSE_CELL_LIFT_BRIGHT}, pulsePhase);`);
+    expect(f).toContain(`color += vec3(1.2, .58, .16) * pow(heat, 5.) * cellLift * detailStrength;`);
+    expect(f).toContain(`float surfaceLight = 1. + ${PULSE_LIGHT_SWING} * (pulsePhase * 2. - 1.);`);
+    expect(f).toContain('color *= surfaceLight * (.68 + .55 * uBrightness);');
+  });
+
+  test('the GLSL curves are the pure functions at theta = uTime * PULSE_RATE + pi/2', () => {
+    // pulsePhase = sin(uTime * rate) * .5 + .5 is -cos(theta) * .5 + .5, so the two
+    // GLSL expressions above must equal the TS functions value for value.
+    for (const uTime of [0, 1.3, 4, 8, 12.7]) {
+      const theta = uTime * PULSE_RATE + Math.PI / 2;
+      const pulsePhase = 0.5 + 0.5 * Math.sin(uTime * PULSE_RATE);
+      expect(pulsationSurfaceLight(theta)).toBeCloseTo(1 + PULSE_LIGHT_SWING * (pulsePhase * 2 - 1), 10);
+      expect(pulsationCellLift(theta)).toBeCloseTo(
+        PULSE_CELL_LIFT_DIM + (PULSE_CELL_LIFT_BRIGHT - PULSE_CELL_LIFT_DIM) * pulsePhase,
+        10,
+      );
+    }
+  });
+
   test('Mira B shares the same highlight shoulder snippet', () => {
     expect(miraBSource).toContain('${HIGHLIGHT_SHOULDER_GLSL}');
   });
@@ -102,6 +131,13 @@ test.describe('Mira A shader stays in step with binaryLighting', () => {
     expect(miraBSource).toContain('companion-surface-density-v1.webp');
     expect(miraBSource).toContain('uSurfaceReady');
     expect(miraBSource).not.toContain('noteMaterial');
+    // The companion stays a lit star (#87): its own lamp and rim light are what keep
+    // the small body readable next to the giant; the hue evaluator in
+    // binaryLighting.spec.ts mirrors these exact lines.
+    expect(miraBSource).toContain('vec3 finalColor = color * intensity * pulse');
+    expect(miraBSource).toContain('finalColor += vec3(1.0, 1.0, 1.0) * coreBright * mix(0.35, 0.16, weight)');
+    expect(miraBSource).toContain('finalColor += vec3(0.8, 0.9, 1.0) * fresnel * 0.3');
+    expect(miraBSource).toContain('finalColor = mix(finalColor, vec3(0.7, 0.85, 1.0), 0.15)');
     // The stretch has to land before the shoulder. After it, the same grains
     // compress into the hot core and the zoomed-in star goes flat white again.
     const grain = miraBSource.indexOf('finalColor *= mix(1.0, grain, weight)');

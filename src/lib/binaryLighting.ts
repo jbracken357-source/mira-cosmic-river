@@ -50,6 +50,36 @@ export function surfaceDetailStrength(region: number, limb: number): number {
   return SURFACE_DETAIL_FLOOR + (1 - SURFACE_DETAIL_FLOOR) * patch * inward;
 }
 
+// --- Mira A's breathing photosphere (issue #87) --------------------------------
+
+// The decorative pulsation moves the photosphere's light with its radius — bright
+// when swollen, dim when shrunk, in step, or the surface reads as a static shell
+// behind a breathing halo. The swing is large enough to read in the opening
+// close-up, small enough that the star never goes out at the dim end nor lifts the
+// whole disc into dead white at the bright end.
+export const PULSE_LIGHT_SWING = 0.2;
+
+// The photosphere's light at one pulsation phase angle: 0 is the dimmest, pi the
+// brightest, and the two half-turns have to read differently. The shader runs the
+// same curve at theta = uTime * PULSE_RATE + pi/2, where it is one multiply against
+// the radius pulse's own sine.
+export function pulsationSurfaceLight(phaseAngle: number): number {
+  return 1 - PULSE_LIGHT_SWING * Math.cos(phaseAngle);
+}
+
+// The granulation's hot network breathes with the same phase: near maximum the
+// bright cells lift off the ember floor, near minimum they sink back into it. The
+// cycle moves the surface itself instead of dimming one static shell — this is what
+// keeps the disc from reading as a uniform hard shell at full intensity. The bright
+// end stays well under flooding the disc, the dim end never lets the cells vanish.
+export const PULSE_CELL_LIFT_DIM = 0.3;
+export const PULSE_CELL_LIFT_BRIGHT = 0.62;
+
+export function pulsationCellLift(phaseAngle: number): number {
+  const phase01 = 0.5 - 0.5 * Math.cos(phaseAngle); // 0 at the dimmest, 1 at the brightest
+  return PULSE_CELL_LIFT_DIM + (PULSE_CELL_LIFT_BRIGHT - PULSE_CELL_LIFT_DIM) * phase01;
+}
+
 // --- Highlight shoulder ------------------------------------------------------
 
 // Linear up to the knee, then an exponential approach to the ceiling. Bright cores
