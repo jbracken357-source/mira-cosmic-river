@@ -176,7 +176,9 @@ export function initialTonightSaveState(): TonightSaveState {
   return {
     phase: 'idle',
     snapshot: null,
-    overlays: { date: false, phrase: false },
+    // #88: the phrase is part of the keepsake by default — attached from the first
+    // open, while the date stays opt-in.
+    overlays: { date: false, phrase: true },
     failure: null,
   };
 }

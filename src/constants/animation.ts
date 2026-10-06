@@ -99,6 +99,13 @@ export const TRANSITIONS = {
   EXPLORE_TRANSITION: 0.5,
   CLOSING_CAMERA: 8,     // idle pull-in; matches the lead before the epilogue line
   RETURN_CAMERA: 1.5,    // deliberate return to the main view; reduced motion places instantly
+  // 下缘这句 (#88): the closing line's settle from the final beat to the lower edge —
+  // 不超过半秒, never a two-second fade, and never the controls' all-caps styling.
+  TAGLINE_SETTLE: 0.5,
+  // 结语 (#88): the epilogue line enters in about 0.8s; when the viewer interrupts,
+  // it leaves faster than it came.
+  EPILOGUE_ENTER: 0.8,
+  EPILOGUE_EXIT: 0.3,
 } as const;
 
 // Info card (#20): snappy enough that the card reads as an answer to the tap, not a

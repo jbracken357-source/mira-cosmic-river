@@ -102,6 +102,10 @@ test.describe('Tonight\'s Mira save flow', () => {
     const lockedSrc = await preview.getAttribute('src');
     expect(lockedSrc).toBeTruthy();
 
+    // #88: on the first open the phrase is already attached, the date still off.
+    await expect(page.getByTestId('tonight-toggle-phrase')).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByTestId('tonight-toggle-date')).toHaveAttribute('aria-pressed', 'false');
+
     // The saving hold suppresses the idle takeover even with the fast thresholds.
     await expect(page.locator('[data-auto-camera]')).toHaveAttribute('data-auto-camera', 'off');
     await page.waitForTimeout(2000);
@@ -128,6 +132,10 @@ test.describe('Tonight\'s Mira save flow', () => {
     const canvas = await directEntry(page);
     await openSaveFlow(page);
 
+    // The phrase is attached by default (#88): take it off for the pure-frame baseline.
+    await page.getByTestId('tonight-toggle-phrase').click();
+    await expect(page.getByTestId('tonight-toggle-phrase')).toHaveAttribute('aria-pressed', 'false');
+
     const backing = await canvas.evaluate((el: HTMLCanvasElement) => ({ width: el.width, height: el.height }));
     const { decoded, download } = await exportAndDecode(page);
 
@@ -150,10 +158,10 @@ test.describe('Tonight\'s Mira save flow', () => {
 
   test('date and phrase compose in both languages and the file still decodes', async ({ page }) => {
     await directEntry(page);
-    // zh (the default language)
+    // zh (the default language): the phrase starts attached (#88), so adding the
+    // date composes both lines.
     await openSaveFlow(page);
     await page.getByTestId('tonight-toggle-date').click();
-    await page.getByTestId('tonight-toggle-phrase').click();
     const zh = await exportAndDecode(page);
     expect(zh.decoded.mean).toBeGreaterThan(0);
     await page.getByTestId('tonight-close').click();
@@ -163,7 +171,6 @@ test.describe('Tonight\'s Mira save flow', () => {
     await page.locator('button:has-text("EN")').first().click();
     await openSaveFlow(page);
     await page.getByTestId('tonight-toggle-date').click();
-    await page.getByTestId('tonight-toggle-phrase').click();
     const en = await exportAndDecode(page);
     expect(en.decoded.mean).toBeGreaterThan(0);
     expect(en.decoded).toMatchObject({ width: zh.decoded.width, height: zh.decoded.height });

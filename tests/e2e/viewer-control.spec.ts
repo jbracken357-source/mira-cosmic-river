@@ -125,7 +125,10 @@ test.describe('Viewer control', () => {
   test('reading a card suppresses the takeover; closing it restarts the count', async ({ page }) => {
     await gotoExplore(page);
 
-    await page.getByTestId('tail-hint').click();
+    // The tail's keyboard entry (#88) — the treasure-hunt hint no longer exists.
+    const trigger = page.getByTestId('star-trigger-tail');
+    await trigger.focus();
+    await page.keyboard.press('Enter');
     await expect(page.getByTestId('info-card')).toBeVisible();
 
     // Well past the scaled epilogue threshold: no ramp, no epilogue while reading.

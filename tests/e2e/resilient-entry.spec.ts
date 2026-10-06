@@ -128,10 +128,10 @@ test.describe('Resilient entry', () => {
     await expect(fallback).toHaveAttribute('data-still-source', STILL_VERSION);
     await expect(fallback).toContainText(/暂时进不去|can’t open right now/);
 
-    // It never poses as explorable: no canvas, no explore UI, no star targets.
+    // It never poses as explorable: no canvas, no explore UI, no lower-edge line (#88).
     await expect(page.locator('canvas')).toHaveCount(0);
     await expect(page.getByTestId('explore-ui')).toHaveCount(0);
-    await expect(page.getByTestId('tail-hint')).toHaveCount(0);
+    await expect(page.getByTestId('lower-edge-tagline')).toHaveCount(0);
 
     // The recorded still is a real image, not a black panel.
     const stats = await screenshotStats(page);
@@ -194,8 +194,9 @@ test.describe('Resilient entry', () => {
     await expect(page.getByTestId('explore-ui')).toBeVisible();
 
     // Interactions work after restore and are not double-registered:
-    // one press of the tail hint opens exactly one card.
-    await page.getByTestId('tail-hint').click();
+    // one press on the tail's keyboard entry (#88) opens exactly one card.
+    await page.getByTestId('star-trigger-tail').focus();
+    await page.keyboard.press('Enter');
     await expect(page.getByTestId('info-card')).toBeVisible();
     expect(await page.getByTestId('info-card').count()).toBe(1);
     await page.getByTestId('info-card').getByRole('button').click();

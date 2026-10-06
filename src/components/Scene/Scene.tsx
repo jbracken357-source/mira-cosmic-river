@@ -128,8 +128,10 @@ function SceneContent({
   const tailOpacityRef = useRef(0);
   const miraBGroupRef = useRef<THREE.Group>(null);
   const miraBTargetRef = useRef<THREE.Mesh>(null);
+  const tailTargetRef = useRef<THREE.Mesh>(null);
   const previousAspect = useRef(1);
   const miraAScreenRef = useRef(new THREE.Vector3());
+  const tailScreenRef = useRef(new THREE.Vector3());
   const ambientLookRef = useRef(new THREE.Vector3());
   const firstFrameMarkedRef = useRef(false);
   // Quality governor (#26): the state lives outside React — it is fed every frame
@@ -418,6 +420,13 @@ function SceneContent({
       miraAScreenRef.current.project(camera);
       const miraA = `${(((miraAScreenRef.current.x + 1) / 2) * 100).toFixed(2)},${(((1 - miraAScreenRef.current.y) / 2) * 100).toFixed(2)}`;
       if (el.dataset.miraAScreen !== miraA) el.dataset.miraAScreen = miraA;
+      // The tail's click target, projected the same way (#88): with the treasure-hunt
+      // hint gone from the lower edge, the scene itself is the tail's entry and specs
+      // click it where it actually is.
+      if (tailTargetRef.current) tailTargetRef.current.getWorldPosition(tailScreenRef.current);
+      tailScreenRef.current.project(camera);
+      const tail = `${(((tailScreenRef.current.x + 1) / 2) * 100).toFixed(2)},${(((1 - tailScreenRef.current.y) / 2) * 100).toFixed(2)}`;
+      if (el.dataset.tailScreen !== tail) el.dataset.tailScreen = tail;
     }
 
     // The cold-start probe fires at the first COMPLETED frame — not at context
@@ -507,6 +516,7 @@ function SceneContent({
       </group>
       {/* Invisible click target for tail card */}
       <mesh
+        ref={tailTargetRef}
         position={occupancy.click.position}
         userData={{ starName: 'tail' }}
         onClick={(e) => {

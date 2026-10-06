@@ -170,8 +170,8 @@ test.describe('save flow state machine', () => {
     expect(state.phase).toBe('capturing');
     expect(state.snapshot).toBeNull();
     expect(state.failure).toBeNull();
-    // Default is the pure frame: date and phrase are opt-in.
-    expect(state.overlays).toEqual({ date: false, phrase: false });
+    // #88: the phrase is attached from the first open; the date stays opt-in.
+    expect(state.overlays).toEqual({ date: false, phrase: true });
     expect(effects).toEqual([{ type: 'capture' }]);
   });
 
@@ -195,14 +195,15 @@ test.describe('save flow state machine', () => {
 
   test('overlay toggles re-compose the same snapshot, never a fresh capture', () => {
     const preview = inPreview();
-    const withDate = transition(preview, 'toggle-date');
+    // Phrase starts attached (#88): toggling it off leaves the pure frame.
+    const withoutPhrase = transition(preview, 'toggle-phrase');
+    expect(withoutPhrase.state.overlays).toEqual({ date: false, phrase: false });
+    expect(withoutPhrase.state.snapshot).toBe(preview.snapshot);
+    expect(withoutPhrase.effects).toEqual([]);
+    const withDate = transition(withoutPhrase.state, 'toggle-date');
     expect(withDate.state.overlays).toEqual({ date: true, phrase: false });
-    expect(withDate.state.snapshot).toBe(preview.snapshot);
-    expect(withDate.effects).toEqual([]);
-    const withBoth = transition(withDate.state, 'toggle-phrase');
-    expect(withBoth.state.overlays).toEqual({ date: true, phrase: true });
     // Toggles are toggles.
-    expect(transition(withBoth.state, 'toggle-date').state.overlays.date).toBe(false);
+    expect(transition(withDate.state, 'toggle-phrase').state.overlays.phrase).toBe(true);
   });
 
   test('export runs once per press and success settles', () => {

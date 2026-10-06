@@ -11,7 +11,9 @@ test('image-backed river loads without blocking exploration or replay', async ({
   expect((await texture).ok()).toBe(true);
   expect((await surface).ok()).toBe(true);
   await expect(page.getByTestId('explore-ui')).toBeVisible();
-  await page.getByTestId('tail-hint').click();
+  // The tail's keyboard entry (#88) — the treasure-hunt hint no longer exists.
+  await page.getByTestId('star-trigger-tail').focus();
+  await page.keyboard.press('Enter');
   await expect(page.getByTestId('info-card')).toBeVisible();
   await page.getByTestId('info-card').getByRole('button').click();
   await expect(page.getByTestId('info-card')).toBeHidden();
@@ -32,7 +34,8 @@ test('missing material images preserve a usable mobile scene', async ({ page }) 
   await page.goto('/?quality=low');
   await expect(page.getByTestId('explore-ui')).toBeVisible();
   await expect(page.locator('canvas')).toBeVisible();
-  await page.getByTestId('tail-hint').click();
+  await page.getByTestId('star-trigger-tail').focus();
+  await page.keyboard.press('Enter');
   await expect(page.getByTestId('info-card')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
   expect(errors).toEqual([]);

@@ -7,7 +7,6 @@ import type { AutoCameraState } from '../lib/viewerControl';
 import { rememberFlag, rememberedFlag } from '../lib/rememberedFlag';
 
 export const SEEN_OPENING_KEY = 'mira:seen-opening';
-export const FOUND_TAIL_KEY = 'mira:found-tail';
 
 interface BinaryStarStore extends StarSystemState {
   parameters: StarParameters;
@@ -55,14 +54,6 @@ function hasSeenOpening(): boolean {
 
 function persistOpeningSeen() {
   rememberFlag(SEEN_OPENING_KEY);
-}
-
-export function hasFoundTail(): boolean {
-  return rememberedFlag(FOUND_TAIL_KEY);
-}
-
-export function persistFoundTail() {
-  rememberFlag(FOUND_TAIL_KEY);
 }
 
 // The clock is read at load and only carried forward from there, so nothing has to read it

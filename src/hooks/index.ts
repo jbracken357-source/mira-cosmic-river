@@ -1,8 +1,4 @@
-export {
-  useBinaryStar,
-  hasFoundTail,
-  persistFoundTail,
-} from './useBinaryStar';
+export { useBinaryStar } from './useBinaryStar';
 export { useMobile } from './useMobile';
 export { useIntentionalInput } from './useIntentionalInput';
 export { useAmbientSound, initAmbientSound, ambientSpace } from './useAmbientSound';

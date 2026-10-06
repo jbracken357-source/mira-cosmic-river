@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
+import { TRANSLATIONS } from '../../src/constants/translations';
 
 // Full cinematic (#28, ticket 03): the 15-second opening compressed by the dev-only
 // `?cinematic-scale=` override (gated like ?epoch=), so the natural ending runs in
@@ -129,5 +130,24 @@ test.describe('Full opening', () => {
     const stats = await screenshotStats(page);
     expect(stats.mean).toBeGreaterThan(1);
     expect(stats.stddev).toBeGreaterThan(1);
+  });
+
+  test('the closing line keeps its wording from the final beat to the lower edge', async ({ page }) => {
+    // The final beat, frozen mid-settle (13s of the 15s sequence): the subtitle is
+    // 终幕那句 as the cinematic presents it.
+    await gotoOpening(page, '/?quality=low&capture=1&cinematic-t=13000');
+    const subtitle = page.getByTestId('opening-subtitle');
+    await expect(subtitle).toBeVisible();
+    const atFinalBeat = await subtitle.textContent();
+
+    // The natural ending (epoch pinned off every milestone window so the lower edge
+    // is the tagline's): the same words land at the lower edge — 终幕结束前后，屏上
+    // 这句的用词不变 (#88).
+    await gotoOpening(page, '/?quality=low&cinematic-scale=2&epoch=2026-09-12T00%3A00%3A00Z');
+    await expect(page.getByTestId('explore-ui')).toBeVisible({ timeout: 45000 });
+    const tagline = page.getByTestId('lower-edge-tagline');
+    await expect(tagline).toBeVisible();
+    expect(await tagline.textContent()).toBe(atFinalBeat);
+    expect(atFinalBeat).toBe(TRANSLATIONS.ch.subtitle);
   });
 });
