@@ -19,6 +19,8 @@ import { cinematicTimeScale, openingSegment, resolveOpeningPose, TAIL_FULL_OPACI
 import { returnSettleWindowOpen, viewerControlNow } from '../../lib/viewerControl';
 import { cancelReturnFlight, fittedFov, initialFreeViewState, stepFreeViewCamera } from '../../lib/freeViewCamera';
 import type { FlightPose } from '../../lib/freeViewCamera';
+import { sharedJourney } from '../../lib/sharedJourney';
+import { TAIL_OCCUPANCY, tailHeading } from '../../lib/tailPath';
 import {
   driveQualityGovernor,
   governorProbeFrameMs,
@@ -29,7 +31,6 @@ import {
 import type { GovernorConfig, GovernorState } from '../../lib/qualityGovernor';
 import { qualityBudget } from '../../lib/qualityBudget';
 import { pulsationLighting } from '../../lib/pulsationLighting';
-import { TAIL_OCCUPANCY } from '../../lib/tailPath';
 import * as THREE from 'three';
 import type { StarName } from '../UI/InfoCards';
 import MiraA from './MiraA';
@@ -44,6 +45,8 @@ interface SceneProps {
 }
 
 type OrbitControlsImpl = React.ElementRef<typeof DreiOrbitControls>;
+
+const Z_AXIS = new THREE.Vector3(0, 0, 1);
 
 // Place the camera (and its orbit target) exactly on a pose lib/freeViewCamera has
 // already fitted for the current aspect: the explore landing, the reduced-motion
@@ -106,6 +109,18 @@ function SceneContent({
   const cinematicStartRef = useRef(0);
   const cinematicElapsedRef = useRef(0);
   const captionMarkRef = useRef(0);
+  // 共同前行 (#86): the pair's shared ride along the tail's heading. The phase is
+  // a scene clock like the orbit's — it only runs in free viewing, pauses with the
+  // scene, resumes from the held phase, and parks under reduced motion / capture.
+  const journeyPhaseRef = useRef(0);
+  const journeyGroupRef = useRef<THREE.Group>(null);
+  const miraAAnchorRef = useRef<THREE.Group>(null);
+  // 去向: derived from the existing tail path (the tail itself is not redone). The
+  // camera advance rides the same world-space heading the pair drifts along —
+  // under portrait the whole scene carries the diagonal tilt, so the heading does
+  // (the tilt is applied where the vector is consumed, in the frame loop).
+  const heading = tailHeading(PHYSICS.TAIL.length);
+  const advanceVecRef = useRef(new THREE.Vector3());
   // The free-viewing camera (自由观看) state machine — flights, landing, capture
   // pin — lives in lib/freeViewCamera; the frame loop only applies its verdicts.
   const flightRef = useRef(initialFreeViewState());
@@ -206,12 +221,6 @@ function SceneContent({
     // flight and e2e; epilogueText is the line's own visibility.
     store.setEpilogueVisible(control.epilogueCamera || control.epilogueText);
     store.setEpilogueText(control.epilogueText);
-    if (orbitControlsRef.current) {
-      // Driven per frame rather than by prop: the 3s ramp is a continuous value, and
-      // the epilogue hands rotation off instead of snapping it.
-      orbitControlsRef.current.autoRotate = control.autoRotateSpeed > 0;
-      orbitControlsRef.current.autoRotateSpeed = control.autoRotateSpeed;
-    }
     const { introComplete, cinematicPhase } = store;
 
     // Apply the free-viewing verdicts: the pose (already fitted for the current
@@ -232,6 +241,21 @@ function SceneContent({
       // asked for the main view (the click-time restamp alone leaves the flight's
       // duration counted against the idle run).
       store.restampIdleClock();
+    }
+
+    // The idle camera (#86): a very slow advance along the tail's heading, never an
+    // orbit around the pair. Only while the viewer owns the camera (no flight pose
+    // this frame); the verdict already zeroes the speed for pause, reduced motion,
+    // holds and the epilogue hand-off, and intentional input cancels it upstream.
+    // The raw delta is honest here: the speed is tiny enough that even a stalled
+    // software frame cannot lurch the scene. The orbit target translates with the
+    // camera, so a drag still pivots the pair instead of chasing it.
+    if (flight.pose === null && flight.controlsEnabled && control.autoAdvanceSpeed > 0 && orbit) {
+      advanceVecRef.current.set(heading[0], heading[1], heading[2]);
+      if (portrait) advanceVecRef.current.applyAxisAngle(Z_AXIS, Math.PI / 3);
+      const step = control.autoAdvanceSpeed * delta;
+      camera.position.addScaledVector(advanceVecRef.current, step);
+      orbit.target.addScaledVector(advanceVecRef.current, step);
     }
 
     if (introComplete) {
@@ -293,16 +317,40 @@ function SceneContent({
       reduceMotion,
       scale: timeSpeed * .08,
     });
+    // 共同前行 (#86): the shared ride along the heading runs on its own scene
+    // clock, and only in free viewing — the full cinematic owns the framing and
+    // expects the pair at home. The ride carries the journey group (stars, tail,
+    // haze, click targets); on top of it the red giant answers the tow and the
+    // white dwarf rides its lag plus the visible orbit.
+    if (introComplete) {
+      journeyPhaseRef.current = advanceTime(journeyPhaseRef.current, delta, {
+        reduceMotion,
+        scale: timeSpeed,
+      });
+    } else {
+      // The journey belongs to free viewing: the opening always finds the pair at
+      // home, and every hand-off starts the ride from phase zero.
+      journeyPhaseRef.current = 0;
+    }
+    const journey = sharedJourney(journeyPhaseRef.current, heading);
+    journeyGroupRef.current?.position.set(journey.base[0], journey.base[1], journey.base[2]);
     const newPositions = calculateOrbitalPosition(timeRef.current, PHYSICS.ORBIT);
-    positionsRef.current = {
-      primary: newPositions.primary,
-      secondary: newPositions.secondary,
-    };
+    const primary: [number, number, number] = [
+      journey.primary[0] + newPositions.primary[0],
+      journey.primary[1] + newPositions.primary[1],
+      journey.primary[2] + newPositions.primary[2],
+    ];
+    const secondary: [number, number, number] = [
+      journey.companion[0] + newPositions.secondary[0],
+      journey.companion[1] + newPositions.secondary[1],
+      journey.companion[2] + newPositions.secondary[2],
+    ];
+    positionsRef.current = { primary, secondary };
 
-    // Mira B moves every frame, so it is positioned imperatively rather than through
-    // props: prop values are only re-applied on re-render, which stops once the
-    // cinematic ends and would leave the companion frozen in explore mode.
-    const secondary = newPositions.secondary;
+    // Both stars move every frame now, so they are positioned imperatively rather
+    // than through props: prop values are only re-applied on re-render, which stops
+    // once the cinematic ends and would leave the pair frozen in explore mode.
+    miraAAnchorRef.current?.position.set(primary[0], primary[1], primary[2]);
     miraBGroupRef.current?.position.set(secondary[0], secondary[1], secondary[2]);
     miraBTargetRef.current?.position.set(secondary[0], secondary[1], secondary[2]);
 
@@ -363,7 +411,11 @@ function SceneContent({
       if (el.dataset.cameraPose !== pose) el.dataset.cameraPose = pose;
       frameCountRef.current += 1;
       el.dataset.frameCount = String(frameCountRef.current);
-      miraAScreenRef.current.set(0, 0, 0).project(camera);
+      miraAScreenRef.current.set(0, 0, 0);
+      // Project where Mira A actually is: the journey (#86) carries it off the
+      // origin, so the click probe reads the anchor's world position.
+      if (miraAAnchorRef.current) miraAAnchorRef.current.getWorldPosition(miraAScreenRef.current);
+      miraAScreenRef.current.project(camera);
       const miraA = `${(((miraAScreenRef.current.x + 1) / 2) * 100).toFixed(2)},${(((1 - miraAScreenRef.current.y) / 2) * 100).toFixed(2)}`;
       if (el.dataset.miraAScreen !== miraA) el.dataset.miraAScreen = miraA;
     }
@@ -384,10 +436,15 @@ function SceneContent({
           or the river fades out just as the scale of it should read. */}
       <fog attach="fog" args={[COLORS.VOID_BLACK, portrait ? 20 : 15, portrait ? 80 : 50]} />
       <group rotation-z={portrait ? Math.PI / 3 : 0}>
-      {/* Custom twinkling star field */}
+      {/* The sky stays home: the star field is what the journey moves against. */}
       <StarField count={lod.starCount} />
 
-      {/* Mira A - Red Giant */}
+      {/* 共同前行 (#86): everything that belongs to the pair — stars, stream,
+          tail, haze, click targets — rides this one offset along the heading. */}
+      <group ref={journeyGroupRef}>
+      {/* Mira A - Red Giant. The anchor carries the giant's own answer to the tow
+          (回应), set imperatively every frame. */}
+      <group ref={miraAAnchorRef}>
       <group ref={(g) => { if (g) g.userData.starName = 'miraA'; }}>
         <MiraA
           position={[0, 0, 0]}
@@ -406,6 +463,7 @@ function SceneContent({
           <sphereGeometry args={[PHYSICS.MIRA_A.radius * 1.4, 16, 16]} />
           <meshBasicMaterial visible={false} side={THREE.DoubleSide} />
         </mesh>
+      </group>
       </group>
 
       {/* Mira B - White Dwarf */}
@@ -472,6 +530,8 @@ function SceneContent({
         </group>
       )}
 
+      </group>
+
       {/* Background click to deselect */}
       <mesh
         renderOrder={-1}
@@ -484,9 +544,9 @@ function SceneContent({
       </mesh>
 
       </group>
-      {/* Orbit controls (disabled during cinematic). autoRotate is driven per frame by
-          the viewer-control rules above; starting a drag is intentional input and
-          interrupts the auto camera and the epilogue in the same event. */}
+      {/* Orbit controls (disabled during cinematic). The idle advance is driven per
+          frame by the viewer-control rules above; starting a drag is intentional
+          input and interrupts the auto camera and the epilogue in the same event. */}
       <DreiOrbitControls
         ref={orbitControlsRef}
         onStart={() => {

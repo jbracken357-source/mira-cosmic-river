@@ -21,7 +21,7 @@
 //         motion strategy (it shares its reduceMotion switch), not a clock parking,
 //         so it stays at its call site and is deliberately not registered here.
 //     The next time-driven value registers in this list, next to its parking helper.
-//   - OrbitControls auto-rotate and damping switch off;
+//   - the idle camera advance and OrbitControls damping switch off;
 //   - the run starts from direct entry — the full cinematic belongs to the ritual moment —
 //     unless `?cinematic-t=<ms>` is also given, which freezes the opening at that instant
 //     (opening phase captures; the pose comes from lib/openingTimeline, so it is

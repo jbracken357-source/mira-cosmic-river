@@ -7,6 +7,7 @@ import {
   tailCenterline,
   tailClickVolume,
   tailGenerationBounds,
+  tailHeading,
   tailOccupancy,
   tailSpread,
   tailWorldBounds,
@@ -61,5 +62,34 @@ test.describe('tail path', () => {
     const occupancy = tailOccupancy(LENGTH);
     expect(occupancy.click).toBe(TAIL_OCCUPANCY.click);
     expect(occupancy.generation).toEqual(tailWorldBounds(LENGTH));
+  });
+});
+
+test.describe('the heading (去向)', () => {
+  test('is the wake read backwards: unit length, colinear, opposed', () => {
+    const heading = tailHeading(LENGTH);
+    expect(Math.hypot(...heading)).toBeCloseTo(1, 9);
+
+    // The tail is what the pair leaves behind, so the heading opposes the far end
+    // of the same centerline — the tail itself is not redone (#86).
+    const far = yawY(tailCenterline(1, LENGTH));
+    const dot = heading[0] * far[0] + heading[1] * far[1] + heading[2] * far[2];
+    expect(dot).toBeLessThan(0);
+    const cross = Math.hypot(
+      heading[1] * far[2] - heading[2] * far[1],
+      heading[2] * far[0] - heading[0] * far[2],
+      heading[0] * far[1] - heading[1] * far[0],
+    );
+    expect(cross).toBeCloseTo(0, 9);
+  });
+
+  test('is derived from the path, not hardcoded: a different tail bends it', () => {
+    // The centerline's rise does not scale with its length, so a shorter tail
+    // points its far end elsewhere — the heading must follow.
+    const short = tailHeading(LENGTH / 2);
+    const along = tailHeading(LENGTH);
+    expect(Math.hypot(...short)).toBeCloseTo(1, 9);
+    const apart = Math.hypot(short[0] - along[0], short[1] - along[1], short[2] - along[2]);
+    expect(apart).toBeGreaterThan(0.01);
   });
 });

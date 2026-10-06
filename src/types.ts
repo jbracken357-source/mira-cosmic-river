@@ -43,8 +43,10 @@ export interface TranslationDict {
   closingMessage: string;
 }
 
-// Where the two stars are right now, in world space. Scene.tsx updates it every frame and the
-// components that need to point at a star (the stream, the disk's hot spot) read it.
+// Where the two stars are right now, in the pair's journey frame (the shared ride
+// along the tail's heading, #86 — the journey group's own offset is applied to the
+// group itself). Scene.tsx updates it every frame and the components that need to
+// point at a star (the stream, the disk's hot spot) read it.
 export interface OrbitPositions {
   primary: [number, number, number];
   secondary: [number, number, number];
