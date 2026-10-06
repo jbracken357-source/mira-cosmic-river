@@ -65,11 +65,11 @@ export default function MaterialStream({
     const pts = pointsRef.current;
     if (!pts) return;
 
-    const { primary, secondary } = positionsRef.current;
+    const { primary, companion } = positionsRef.current;
     timeRef.current = advanceTime(timeRef.current, delta, { reduceMotion });
-    const dx = secondary[0] - primary[0];
-    const dy = secondary[1] - primary[1];
-    const dz = secondary[2] - primary[2];
+    const dx = companion[0] - primary[0];
+    const dy = companion[1] - primary[1];
+    const dz = companion[2] - primary[2];
     const startFraction = Math.min(.8, 2.4 / Math.hypot(dx, dy, dz));
     const posAttr = pts.geometry.attributes.position;
     const colAttr = pts.geometry.attributes.color;

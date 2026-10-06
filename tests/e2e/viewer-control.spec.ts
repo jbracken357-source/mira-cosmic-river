@@ -1,8 +1,12 @@
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
+import { PHYSICS } from '../../src/constants/physics';
+import { tailHeading } from '../../src/lib/tailPath';
 
 // Viewer control (#21): idle takeover, immediate interrupt, pause, card suppression,
-// reduced motion, and return-to-main-view, all against real page input.
+// reduced motion, and return-to-main-view, all against real page input. #86 changed
+// what the takeover IS: a very slow advance along the tail's heading, never an
+// orbit around the pair.
 //
 // `?idle-resume/ramp/epilogue/lead` are the dev-only overrides that compress the
 // 30s/3s/60s rules into seconds (gated like ?epoch=; production ignores them).
@@ -47,6 +51,33 @@ test.describe('Viewer control', () => {
     // The first wheel interrupts immediately — well inside one 1s poll cycle.
     await page.mouse.wheel(0, 120);
     await expect(wrapper(page)).toHaveAttribute('data-auto-camera', 'off', { timeout: 800 });
+  });
+
+  test('the idle camera advances along the tail’s heading instead of orbiting the pair', async ({ page }) => {
+    // The closing camera is pushed far away so the advance can be observed on its
+    // own; resume/ramp compress so the takeover starts in about a second (#86).
+    await gotoExplore(page, '/?quality=low&idle-resume=500&idle-ramp=500&idle-epilogue=120000&idle-lead=8000');
+    await expect(wrapper(page)).toHaveAttribute('data-auto-camera', 'on', { timeout: 15000 });
+
+    const canvas = page.locator('canvas');
+    const pose = async () =>
+      (await canvas.getAttribute('data-camera-pose'))!.split(',').map(Number);
+    const from = await pose();
+    // Twenty idle seconds at 0.05 units/s: about a unit of travel — readable past
+    // the pose attribute's 0.1 rounding, and far too slow to be a flight.
+    await page.waitForTimeout(20_000);
+    const to = await pose();
+
+    const delta = [to[0] - from[0], to[1] - from[1], to[2] - from[2]];
+    const moved = Math.hypot(delta[0], delta[1], delta[2]);
+    // 极慢: the camera crept, it did not fly.
+    expect(moved).toBeGreaterThan(0.4);
+    expect(moved).toBeLessThan(2.5);
+    // Along the heading the existing tail points — an orbit around the pair would
+    // swing the position sideways off this line.
+    const heading = tailHeading(PHYSICS.TAIL.length);
+    const along = (delta[0] * heading[0] + delta[1] * heading[1] + delta[2] * heading[2]) / moved;
+    expect(along).toBeGreaterThan(0.85);
   });
 
   test('the epilogue follows the auto camera on the same clock, and keydown dismisses it at once', async ({ page }) => {
@@ -154,7 +185,7 @@ test.describe('Viewer control', () => {
     await page.getByTestId('return-to-view').click();
 
     // Explore framing is [8, 7, 28] on a landscape viewport; the blend lands there and
-    // the resumed drift moves the camera only slowly afterwards.
+    // the resumed advance moves the camera only slowly afterwards.
     await expect(async () => {
       const [x, y, z] = await pose();
       expect(Math.hypot(x - 8, y - 7, z - 28)).toBeLessThan(1);

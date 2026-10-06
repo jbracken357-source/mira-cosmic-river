@@ -2,8 +2,9 @@
 //
 // One shared clock — the last intentional input (drag, wheel, touch, key, control
 // presses; never mousemove, never the auto camera itself) — feeds both thresholds:
-// 30s idle resumes the slow auto rotation over a ~3s ramp, 60s idle allows the
-// epilogue (the closing camera leads the text by TRANSITIONS.CLOSING_CAMERA).
+// 30s idle resumes the very slow camera advance along the tail's heading over a
+// ~3s ramp (#86: a creep forward, never an orbit around the pair), 60s idle allows
+// the epilogue (the closing camera leads the text by TRANSITIONS.CLOSING_CAMERA).
 //
 // Priority, highest first: capture mode > full cinematic > manual pause >
 // background / reading a card / saving tonight's frame > free exploration. While
@@ -12,15 +13,17 @@
 // Ticket #23 adds its saving hold as one more flag on ViewerHolds and one line in
 // collectViewerHolds — no rule changes.
 //
-// Reduced motion is not a hold: it suppresses the idle CAMERA takeover (no auto
-// drift, no closing flight) but the idle clock keeps counting and the epilogue text
+// Reduced motion is not a hold: it suppresses the idle CAMERA takeover (no advance,
+// no closing flight) but the idle clock keeps counting and the epilogue text
 // is still allowed at the 60s mark — it fades in place, no camera motion.
 import { TRANSITIONS } from '../constants/animation';
 import { captureMode } from './captureMode';
 import { easeInOutCubic } from './openingTimeline';
 
-// OrbitControls speed once the ramp completes (the pre-existing drift rate).
-export const AUTO_ROTATE_SPEED = 0.3;
+// The idle camera's speed along the tail's heading once the ramp completes, in
+// scene units per second: 极慢 — a full minute of stillness covers less ground
+// than the pair's own separation, so the framing never runs away from the viewer.
+export const AUTO_ADVANCE_SPEED = 0.05;
 
 export interface IdleTiming {
   resumeMs: number;        // idle before the auto camera starts ramping back
@@ -62,7 +65,7 @@ export type ViewerControlReason =
 
 export interface ViewerControl {
   autoCamera: AutoCameraState;
-  autoRotateSpeed: number; // eased, 0 → AUTO_ROTATE_SPEED across the ramp
+  autoAdvanceSpeed: number; // eased, 0 → AUTO_ADVANCE_SPEED across the ramp
   rampProgress: number;    // raw 0..1 while ramping
   epilogueCamera: boolean;
   epilogueText: boolean;
@@ -73,7 +76,7 @@ export interface ViewerControl {
 function held(reason: ViewerControlReason): ViewerControl {
   return {
     autoCamera: 'off',
-    autoRotateSpeed: 0,
+    autoAdvanceSpeed: 0,
     rampProgress: 0,
     epilogueCamera: false,
     epilogueText: false,
@@ -110,19 +113,19 @@ export function resolveViewerControl(
     timing.epilogueMs > timing.epilogueLeadMs ? timing.epilogueMs - timing.epilogueLeadMs : timing.epilogueMs;
   const epilogueCamera = idleMs >= cameraAt;
 
-  // Where the drift would be on its 3s ease-in, epilogue or not — the fade below
+  // Where the advance would be on its 3s ease-in, epilogue or not — the fade below
   // multiplies it down so the hand-off never snaps.
   const rampProgress = Math.min(1, Math.max(0, (idleMs - timing.resumeMs) / timing.rampMs));
-  const rampSpeed = AUTO_ROTATE_SPEED * easeInOutCubic(rampProgress);
+  const rampSpeed = AUTO_ADVANCE_SPEED * easeInOutCubic(rampProgress);
 
   if (epilogueCamera) {
-    // Symmetric to the ease-in: the drift eases out over one ramp window as the
+    // Symmetric to the ease-in: the advance eases out over one ramp window as the
     // closing camera takes over, rather than halting at the arm point.
     const fade = Math.min(1, (idleMs - cameraAt) / timing.rampMs);
     const speed = rampSpeed * (1 - easeInOutCubic(fade));
     return {
       autoCamera: speed > 0 ? 'ramping' : 'off',
-      autoRotateSpeed: speed,
+      autoAdvanceSpeed: speed,
       rampProgress,
       epilogueCamera,
       epilogueText,
@@ -136,7 +139,7 @@ export function resolveViewerControl(
   }
   return {
     autoCamera: rampProgress >= 1 ? 'on' : 'ramping',
-    autoRotateSpeed: rampSpeed,
+    autoAdvanceSpeed: rampSpeed,
     rampProgress,
     epilogueCamera,
     epilogueText,

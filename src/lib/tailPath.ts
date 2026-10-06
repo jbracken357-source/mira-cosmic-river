@@ -43,6 +43,16 @@ export function tailSpread(t: number): number {
   return 0.3 + t * 3.0;
 }
 
+// 去向 (the heading): the direction the pair travels in free viewing (#86). The
+// tail is the wake they leave behind, so the heading is the far end of the same
+// centerline read backwards, in world space (the yaw the explore camera sees).
+// Derived from the path, never hardcoded — bending the tail bends the heading.
+export function tailHeading(length: number): Vec3 {
+  const far = yawY(tailCenterline(1, length));
+  const n = Math.hypot(far[0], far[1], far[2]);
+  return [-far[0] / n, -far[1] / n, -far[2] / n];
+}
+
 export function yawY(p: Vec3, yaw: number = TAIL_YAW): Vec3 {
   const c = Math.cos(yaw);
   const s = Math.sin(yaw);

@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import {
-  AUTO_ROTATE_SPEED,
+  AUTO_ADVANCE_SPEED,
   DEFAULT_IDLE_TIMING,
   idleTiming,
   resolveViewerControl,
@@ -39,11 +39,19 @@ test.describe('idle timing', () => {
 });
 
 test.describe('auto camera resume', () => {
+  test('the idle advance is 极慢: a full minute of it barely moves the camera', () => {
+    // #86: the idle camera creeps along the tail’s heading instead of orbiting the
+    // pair. Pin the slowness itself — at this speed a minute of stillness covers
+    // less ground than the pair’s own separation, so the framing never runs away.
+    expect(AUTO_ADVANCE_SPEED).toBeLessThanOrEqual(0.1);
+    expect(AUTO_ADVANCE_SPEED * 60).toBeLessThan(4.5);
+  });
+
   test('stays off while the viewer is active', () => {
     for (const idleMs of [0, 10_000, 29_999]) {
       const control = resolveViewerControl(idleMs, 0, FREE);
       expect(control.autoCamera).toBe('off');
-      expect(control.autoRotateSpeed).toBe(0);
+      expect(control.autoAdvanceSpeed).toBe(0);
       expect(control.rampProgress).toBe(0);
       expect(control.epilogueCamera).toBe(false);
       expect(control.epilogueText).toBe(false);
@@ -56,30 +64,30 @@ test.describe('auto camera resume', () => {
     const atStart = resolveViewerControl(30_000, 0, FREE);
     expect(atStart.autoCamera).toBe('ramping');
     expect(atStart.rampProgress).toBe(0);
-    expect(atStart.autoRotateSpeed).toBe(0);
+    expect(atStart.autoAdvanceSpeed).toBe(0);
 
     const mid = resolveViewerControl(31_500, 0, FREE);
     expect(mid.autoCamera).toBe('ramping');
     expect(mid.rampProgress).toBeCloseTo(0.5, 6);
-    expect(mid.autoRotateSpeed).toBeGreaterThan(0);
-    expect(mid.autoRotateSpeed).toBeLessThan(AUTO_ROTATE_SPEED);
+    expect(mid.autoAdvanceSpeed).toBeGreaterThan(0);
+    expect(mid.autoAdvanceSpeed).toBeLessThan(AUTO_ADVANCE_SPEED);
 
     const done = resolveViewerControl(33_000, 0, FREE);
     expect(done.autoCamera).toBe('on');
     expect(done.rampProgress).toBe(1);
-    expect(done.autoRotateSpeed).toBeCloseTo(AUTO_ROTATE_SPEED, 6);
+    expect(done.autoAdvanceSpeed).toBeCloseTo(AUTO_ADVANCE_SPEED, 6);
   });
 
   test('moves monotonically through the ramp with no jump', () => {
     let previous = 0;
     for (let idleMs = 30_000; idleMs <= 33_000; idleMs += 250) {
-      const { autoRotateSpeed } = resolveViewerControl(idleMs, 0, FREE);
-      expect(autoRotateSpeed).toBeGreaterThanOrEqual(previous);
+      const { autoAdvanceSpeed } = resolveViewerControl(idleMs, 0, FREE);
+      expect(autoAdvanceSpeed).toBeGreaterThanOrEqual(previous);
       // A snap would show a step near the full speed; the ramp keeps steps small.
-      expect(autoRotateSpeed - previous).toBeLessThan(AUTO_ROTATE_SPEED / 3);
-      previous = autoRotateSpeed;
+      expect(autoAdvanceSpeed - previous).toBeLessThan(AUTO_ADVANCE_SPEED / 3);
+      previous = autoAdvanceSpeed;
     }
-    expect(previous).toBeCloseTo(AUTO_ROTATE_SPEED, 6);
+    expect(previous).toBeCloseTo(AUTO_ADVANCE_SPEED, 6);
   });
 
   test('auto camera motion does not restamp the clock: later idle measures from the same origin', () => {
@@ -106,22 +114,22 @@ test.describe('epilogue', () => {
     expect(text.epilogueText).toBe(true);
   });
 
-  test('the epilogue eases the drift out instead of snapping it off', () => {
+  test('the epilogue eases the idle advance out instead of snapping it off', () => {
     const cameraAt = 60_000 - TRANSITIONS.CLOSING_CAMERA * 1000; // 52s
 
-    // Arming the closing camera does not cut the drift: full speed at the arm point.
+    // Arming the closing camera does not cut the advance: full speed at the arm point.
     const atArm = resolveViewerControl(cameraAt, 0, FREE);
     expect(atArm.epilogueCamera).toBe(true);
     expect(atArm.autoCamera).toBe('ramping');
-    expect(atArm.autoRotateSpeed).toBeCloseTo(AUTO_ROTATE_SPEED, 6);
+    expect(atArm.autoAdvanceSpeed).toBeCloseTo(AUTO_ADVANCE_SPEED, 6);
 
-    // Symmetric to the 3s ease-in: the drift eases to zero over one ramp window.
-    let previous = atArm.autoRotateSpeed;
+    // Symmetric to the 3s ease-in: the advance eases to zero over one ramp window.
+    let previous = atArm.autoAdvanceSpeed;
     for (let idleMs = cameraAt + 250; idleMs <= cameraAt + 3_000; idleMs += 250) {
-      const { autoRotateSpeed } = resolveViewerControl(idleMs, 0, FREE);
-      expect(autoRotateSpeed).toBeLessThanOrEqual(previous);
-      expect(previous - autoRotateSpeed).toBeLessThan(AUTO_ROTATE_SPEED / 3);
-      previous = autoRotateSpeed;
+      const { autoAdvanceSpeed } = resolveViewerControl(idleMs, 0, FREE);
+      expect(autoAdvanceSpeed).toBeLessThanOrEqual(previous);
+      expect(previous - autoAdvanceSpeed).toBeLessThan(AUTO_ADVANCE_SPEED / 3);
+      previous = autoAdvanceSpeed;
     }
     expect(previous).toBe(0);
     expect(resolveViewerControl(cameraAt + 3_000, 0, FREE).autoCamera).toBe('off');
@@ -141,7 +149,7 @@ test.describe('suppression holds', () => {
       for (const idleMs of [0, 45_000, 90_000, 600_000]) {
         const control = resolveViewerControl(idleMs, 0, held(hold));
         expect(control.autoCamera).toBe('off');
-        expect(control.autoRotateSpeed).toBe(0);
+        expect(control.autoAdvanceSpeed).toBe(0);
         expect(control.epilogueCamera).toBe(false);
         expect(control.epilogueText).toBe(false);
         expect(control.holdsIdle).toBe(true);
@@ -191,7 +199,7 @@ test.describe('reduced motion', () => {
     for (const idleMs of [0, 34_000, 51_999, 60_000, 600_000]) {
       const control = resolveViewerControl(idleMs, 0, held({ reduceMotion: true }));
       expect(control.autoCamera).toBe('off');
-      expect(control.autoRotateSpeed).toBe(0);
+      expect(control.autoAdvanceSpeed).toBe(0);
       // No closing camera flight — the preference forbids forced motion.
       expect(control.epilogueCamera).toBe(false);
       expect(control.reason).toBe('reduced-motion');

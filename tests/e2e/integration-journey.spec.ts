@@ -8,7 +8,7 @@ import path from 'node:path';
 // order a returning viewer actually lives them — first visit plays the full cinematic,
 // the reload enters directly, free exploration hands over instantly, an info card holds
 // the idle takeover while it is read, ambient sound starts on its own toggle, tonight's
-// frame saves from the live view, idle drift returns the camera and brings the epilogue,
+// frame saves from the live view, the idle advance creeps the camera on and brings the epilogue,
 // one keystroke interrupts it, and replaying the opening neither stacks audio nor breaks
 // the landing. Each leg is covered in depth by its own suite; this test proves the legs
 // compose — the seams between features are where integration breaks.
@@ -29,7 +29,7 @@ async function firstFrame(page: Page) {
 }
 
 // The camera is within `tolerance` of the explore framing [8, 7, 28]. The tolerance
-// admits the fast idle drift that begins the moment control hands back (the exact-value
+// admits the fast idle advance that begins the moment control hands back (the exact-value
 // assertion belongs to full-opening.spec, which runs without the idle overrides).
 async function expectExploreFraming(canvas: ReturnType<Page['locator']>) {
   await expect(async () => {
@@ -72,7 +72,7 @@ test.describe('Integration journey', () => {
     await firstFrame(page);
     await expect(page.getByTestId('explore-ui')).toBeVisible({ timeout: 45000 });
     // The settle beat lands on the explore framing; the tolerance also admits the fast
-    // idle drift that begins the moment the opening hands control back.
+    // idle advance that begins the moment the opening hands control back.
     await expectExploreFraming(canvas);
     const firstNight = await skyAttributes(page);
 
@@ -167,8 +167,8 @@ test.describe('Integration journey', () => {
     expect(probe.live).toBe(1);
     expect(probe.state).toBe('running');
     await expect(page.getByTestId('explore-ui')).toBeVisible({ timeout: 45000 });
-    // The fast idle drift may already own the camera after the hand-back; returning to
-    // the main view is the explicit way back and eases onto the framing.
+    // The fast idle advance may already own the camera after the hand-back; returning
+    // to the main view is the explicit way back and eases onto the framing.
     await page.getByTestId('return-to-view').click();
     await expectExploreFraming(canvas);
 

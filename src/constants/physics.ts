@@ -42,7 +42,7 @@ export const PHYSICS = {
 export function calculateOrbitalPosition(
   time: number,
   config: typeof PHYSICS.ORBIT
-): { primary: [number, number, number]; secondary: [number, number, number] } {
+): { primary: [number, number, number]; companion: [number, number, number] } {
   const angle = (time * config.period) % (2 * Math.PI);
   const r = config.semiMajorAxis * (1 - config.eccentricity * config.eccentricity) /
             (1 + config.eccentricity * Math.cos(angle));
@@ -57,11 +57,11 @@ export function calculateOrbitalPosition(
 
   // Mira B position (orbiting around Mira A)
   const inclinationRad = (config.inclination * Math.PI) / 180;
-  const secondary: [number, number, number] = [
+  const companion: [number, number, number] = [
     r * Math.cos(angle),
     r * Math.sin(angle) * Math.sin(inclinationRad),
     r * Math.sin(angle) * Math.cos(inclinationRad),
   ];
 
-  return { primary, secondary };
+  return { primary, companion };
 }
