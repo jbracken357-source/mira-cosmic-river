@@ -3,8 +3,10 @@ import type { Page } from '@playwright/test';
 import { MID_DECLINE_EPOCH, openTailCardViaKeyboard } from './helpers';
 
 // Interface (#20): keyboard reachability of the star info cards, Esc + focus
-// restore, 44px targets and accessible names, slider labelling, document language
+// restore, 44px targets and accessible names, document language
 // sync, interaction-hint exit and rediscovery, and the narrow/landscape viewports.
+// #89: the cards open on the relationship line with the science paragraph second,
+// and the tail card no longer carries a time-speed control.
 //
 // `?quality=low` keeps the scene light enough for software rendering (headless CI
 // has no GPU). Behaviour is identical; only detail level differs. The epoch pins
@@ -98,14 +100,79 @@ test.describe('keyboard access to the star info', () => {
     await expect(card).toHaveCount(0);
   });
 
-  test('the time-speed slider has an associated label', async ({ page }) => {
+  test('the tail card carries no time-speed control (#89)', async ({ page }) => {
     await gotoExplore(page);
 
     await openTailCardViaKeyboard(page);
-    // Default language is Chinese.
-    const slider = page.getByLabel('时间速度');
-    await expect(slider).toHaveAttribute('type', 'range');
-    await expect(slider).toHaveAttribute('id', 'tail-time-speed');
+    const card = page.getByTestId('info-card');
+    await expect(card).toBeVisible();
+    // The slider is gone from the scene's only remaining card surface.
+    await expect(card.locator('input[type="range"]')).toHaveCount(0);
+    await expect(card.locator('#tail-time-speed')).toHaveCount(0);
+    // The tail's own body is untouched this ticket.
+    await expect(card.getByTestId('info-card-science')).toContainText('13');
+    await expect(card.getByTestId('info-card-first-line')).toHaveCount(0);
+  });
+});
+
+test.describe('the card opens on the relationship line (#89)', () => {
+  test('Mira B: first the companionship line, then the whole science paragraph', async ({ page }) => {
+    await gotoExplore(page);
+
+    const trigger = page.getByTestId('star-trigger-miraB');
+    await trigger.focus();
+    await page.keyboard.press('Enter');
+
+    const card = page.getByTestId('info-card');
+    await expect(card.getByTestId('info-card-first-line')).toHaveText('它还在旁边。你哪天来，都在。');
+    const science = card.getByTestId('info-card-science');
+    await expect(science).toContainText('新星爆发');
+    // The relationship line is what meets the eye first: it precedes the science.
+    const body = await card.innerText();
+    expect(body.indexOf('它还在旁边。你哪天来，都在。')).toBeLessThan(body.indexOf('新星爆发'));
+  });
+
+  test('Mira A: the first line never counts the 332 days; the phase line stays', async ({ page }) => {
+    await gotoExplore(page);
+
+    const trigger = page.getByTestId('star-trigger-miraA');
+    await trigger.focus();
+    await page.keyboard.press('Enter');
+
+    const card = page.getByTestId('info-card');
+    const firstLine = card.getByTestId('info-card-first-line');
+    await expect(firstLine).toHaveText('亮度一直在变。你看到的是这一晚。');
+    expect(await firstLine.innerText()).not.toContain('332');
+    // The science paragraph keeps the full original copy, period included…
+    await expect(card.getByTestId('info-card-science')).toContainText('332');
+    // …and the phase line still answers days-to-next-extremum and direction.
+    const phaseLine = card.locator('[data-phase-days-to-max]');
+    await expect(phaseLine).toBeVisible();
+    expect(Number(await phaseLine.getAttribute('data-phase-days-to-max'))).toBeGreaterThanOrEqual(0);
+    await expect(card.getByTestId('info-card-first-line')).toBeVisible();
+  });
+
+  test('both first lines switch with the language toggle', async ({ page }) => {
+    await gotoExplore(page);
+
+    const triggerA = page.getByTestId('star-trigger-miraA');
+    await triggerA.focus();
+    await page.keyboard.press('Enter');
+    const card = page.getByTestId('info-card');
+    await expect(card.getByTestId('info-card-first-line')).toHaveText('亮度一直在变。你看到的是这一晚。');
+
+    await page.getByTestId('language-toggle').click();
+    await expect(card.getByTestId('info-card-first-line')).toHaveText(
+      'The light keeps changing. This is the night you caught.',
+    );
+
+    const triggerB = page.getByTestId('star-trigger-miraB');
+    await triggerB.focus();
+    await page.keyboard.press('Enter');
+    await expect(card.getByTestId('info-card-first-line')).toHaveText(
+      'It is still right beside the other. Any day you come, it is here.',
+    );
+    await expect(card.getByTestId('info-card-science')).toContainText('nova');
   });
 });
 

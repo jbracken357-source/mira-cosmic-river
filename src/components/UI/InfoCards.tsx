@@ -14,8 +14,6 @@ interface InfoCardsProps {
 
 export default function InfoCards({ selectedStar, onSelectStar }: InfoCardsProps) {
   const language = useBinaryStar((state) => state.language);
-  const timeSpeed = useBinaryStar((state) => state.parameters.timeSpeed);
-  const setParameter = useBinaryStar((state) => state.setParameter);
   const sky = useBinaryStar((state) => state.sky);
   const t = TRANSLATIONS[language];
   const isMobile = useMobile();
@@ -78,21 +76,26 @@ export default function InfoCards({ selectedStar, onSelectStar }: InfoCardsProps
     return () => window.removeEventListener('keydown', onKey);
   }, [selectedStar, onSelectStar]);
 
-  const cardData: Record<StarName, { title: string; desc: string; color: string; accent: string }> = {
+  // The first line says the relationship; the science paragraph follows whole (#89).
+  // The tail's body is unchanged this ticket — it carries no first line.
+  const cardData: Record<StarName, { title: string; firstLine: string | null; desc: string; color: string; accent: string }> = {
     miraA: {
       title: t.miraA,
+      firstLine: t.miraAFirstLine,
       desc: t.miraADesc,
       color: 'from-orange-500/20',
       accent: 'border-orange-400/40',
     },
     miraB: {
       title: t.miraB,
+      firstLine: t.miraBFirstLine,
       desc: t.miraBDesc,
       color: 'from-blue-400/20',
       accent: 'border-blue-300/40',
     },
     tail: {
       title: t.tailLabel,
+      firstLine: null,
       desc: t.tailDesc,
       color: 'from-violet-500/20',
       accent: 'border-violet-400/40',
@@ -137,7 +140,19 @@ export default function InfoCards({ selectedStar, onSelectStar }: InfoCardsProps
           {cardData[selectedStar].title}
         </h3>
 
-        <p className="text-xs md:text-sm text-white/65 font-extralight leading-relaxed mb-4 text-pretty">
+        {cardData[selectedStar].firstLine && (
+          <p
+            data-testid="info-card-first-line"
+            className="text-xs md:text-sm text-white/80 font-extralight leading-relaxed mb-2 text-pretty"
+          >
+            {cardData[selectedStar].firstLine}
+          </p>
+        )}
+
+        <p
+          data-testid="info-card-science"
+          className="text-xs md:text-sm text-white/65 font-extralight leading-relaxed mb-4 text-pretty"
+        >
           {cardData[selectedStar].desc}
         </p>
 
@@ -157,37 +172,6 @@ export default function InfoCards({ selectedStar, onSelectStar }: InfoCardsProps
                 {readout.direction === 'brightening' ? t.phaseBrightening : t.phaseFading}
               </p>
             )}
-          </div>
-        )}
-
-        {selectedStar === 'tail' && (
-          <div className="flex items-center gap-3">
-            <label
-              htmlFor="tail-time-speed"
-              className="text-[10px] tracking-[0.2em] uppercase text-white/40 font-extralight"
-            >
-              {t.timeSpeed}
-            </label>
-            <input
-              id="tail-time-speed"
-              type="range"
-              min="0.1"
-              max="5"
-              step="0.1"
-              value={timeSpeed}
-              onChange={(e) => setParameter('timeSpeed', parseFloat(e.target.value))}
-              className="flex-1 h-[3px] bg-white/15 rounded-full appearance-none cursor-pointer
-                [&::-webkit-slider-thumb]:appearance-none
-                [&::-webkit-slider-thumb]:w-3.5
-                [&::-webkit-slider-thumb]:h-3.5
-                [&::-webkit-slider-thumb]:rounded-full
-                [&::-webkit-slider-thumb]:bg-orange-400/80
-                [&::-webkit-slider-thumb]:cursor-pointer
-                [&::-webkit-slider-thumb]:shadow-[0_0_8px_rgba(255,107,53,0.5)]"
-            />
-            <span className="text-[10px] text-white/45 font-mono w-8 text-right">
-              {timeSpeed.toFixed(1)}x
-            </span>
           </div>
         )}
       </div>
