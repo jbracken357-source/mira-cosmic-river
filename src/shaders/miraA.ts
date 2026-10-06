@@ -213,7 +213,7 @@ export const MiraA_Shader = {
       // The photosphere's light breathes with the same phase as the radius — bright
       // when swollen, dim when shrunk, or the surface reads as a static shell behind
       // a breathing halo (#87). pulsePhase is the radius sine lifted to 0..1; the two
-      // curves below are pulsationSurfaceLight and pulsationCellLift in
+      // curves below are surfacePulseLight and surfacePulseCellLift in
       // src/lib/binaryLighting.ts, run at theta = uTime * PULSE_RATE + pi/2.
       float pulsePhase = sin(uTime * ${PULSE_RATE}) * .5 + .5;
       // The granulation's hot network swells toward maximum and sinks into the ember

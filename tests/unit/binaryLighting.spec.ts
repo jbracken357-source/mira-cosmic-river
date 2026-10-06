@@ -10,10 +10,10 @@ import {
   SURFACE_DETAIL_FLOOR,
   surfaceDetailStrength,
   PULSE_LIGHT_SWING,
-  pulsationSurfaceLight,
+  surfacePulseLight,
   PULSE_CELL_LIFT_DIM,
   PULSE_CELL_LIFT_BRIGHT,
-  pulsationCellLift,
+  surfacePulseCellLift,
   HIGHLIGHT_KNEE,
   HIGHLIGHT_CEILING,
   highlightShoulder,
@@ -35,6 +35,12 @@ import {
 function rgb(hex: string): [number, number, number] {
   const c = new THREE.Color(hex);
   return [c.r, c.g, c.b];
+}
+
+// The amber end of the ember→amber mix for a surface colour: heat 1 lands here, so
+// the ember floor and uColorCore do not enter the texel.
+function amberEnd(surface: [number, number, number]): number[] {
+  return surface.map((s, i) => s + ([1, 0.38, 0.065][i] - s) * 0.65);
 }
 
 test.describe('surface detail strength', () => {
@@ -71,8 +77,8 @@ test.describe('surface detail strength', () => {
 
 test.describe("Mira A's breathing photosphere (#87)", () => {
   test('the surface light swings with the pulsation phase, within bounds', () => {
-    expect(pulsationSurfaceLight(0)).toBeCloseTo(1 - PULSE_LIGHT_SWING, 10);
-    expect(pulsationSurfaceLight(Math.PI)).toBeCloseTo(1 + PULSE_LIGHT_SWING, 10);
+    expect(surfacePulseLight(0)).toBeCloseTo(1 - PULSE_LIGHT_SWING, 10);
+    expect(surfacePulseLight(Math.PI)).toBeCloseTo(1 + PULSE_LIGHT_SWING, 10);
     // Readable in the opening close-up, but the star never goes out at the dim end
     // nor lifts the whole disc into a flat bright shell at the bright end.
     expect(PULSE_LIGHT_SWING).toBeGreaterThanOrEqual(0.15);
@@ -80,27 +86,27 @@ test.describe("Mira A's breathing photosphere (#87)", () => {
   });
 
   test('the two half-turns of a cycle produce distinguishable light', () => {
-    const dim = pulsationSurfaceLight(0);
-    const bright = pulsationSurfaceLight(Math.PI);
+    const dim = surfacePulseLight(0);
+    const bright = surfacePulseLight(Math.PI);
     expect(bright).toBeGreaterThan(dim * 1.35);
   });
 
   test('a parked clock sits at the mid light, so a frozen frame is the settled star', () => {
     // The shader runs this curve at theta = uTime * rate + pi/2; reduced motion holds
     // uTime at 0 and capture parks it at 8s — both land within a hair of mid-phase.
-    expect(pulsationSurfaceLight(Math.PI / 2)).toBeCloseTo(1, 10);
-    expect(pulsationCellLift(Math.PI / 2)).toBeCloseTo((PULSE_CELL_LIFT_DIM + PULSE_CELL_LIFT_BRIGHT) / 2, 10);
+    expect(surfacePulseLight(Math.PI / 2)).toBeCloseTo(1, 10);
+    expect(surfacePulseCellLift(Math.PI / 2)).toBeCloseTo((PULSE_CELL_LIFT_DIM + PULSE_CELL_LIFT_BRIGHT) / 2, 10);
   });
 
   test('the hot network sinks toward the ember floor at minimum and lifts at maximum', () => {
-    expect(pulsationCellLift(0)).toBeCloseTo(PULSE_CELL_LIFT_DIM, 10);
-    expect(pulsationCellLift(Math.PI)).toBeCloseTo(PULSE_CELL_LIFT_BRIGHT, 10);
+    expect(surfacePulseCellLift(0)).toBeCloseTo(PULSE_CELL_LIFT_DIM, 10);
+    expect(surfacePulseCellLift(Math.PI)).toBeCloseTo(PULSE_CELL_LIFT_BRIGHT, 10);
     // The cells never vanish at the dim end, and never flood the disc at the bright end.
     expect(PULSE_CELL_LIFT_DIM).toBeGreaterThan(0.2);
     expect(PULSE_CELL_LIFT_BRIGHT).toBeLessThan(0.75);
-    let previous = pulsationCellLift(0);
+    let previous = surfacePulseCellLift(0);
     for (let theta = 0.1; theta <= Math.PI; theta += 0.1) {
-      const lift = pulsationCellLift(theta);
+      const lift = surfacePulseCellLift(theta);
       expect(lift).toBeGreaterThan(previous);
       previous = lift;
     }
@@ -111,12 +117,10 @@ test.describe("Mira A's breathing photosphere (#87)", () => {
   // strength, the real clock at maximum (uBrightness = uColorShift = 1).
   function giantHottestTexel(phaseAngle: number): [number, number, number] {
     const surface = rgb(COLORS.MIRA_A_SURFACE);
-    // heat 1 picks the amber end of the ember→amber mix, so the ember floor and
-    // uColorCore do not enter this texel.
-    const amber = surface.map((s, i) => s + ([1, 0.38, 0.065][i] - s) * 0.65);
-    const lift = pulsationCellLift(phaseAngle);
+    const amber = amberEnd(surface);
+    const lift = surfacePulseCellLift(phaseAngle);
     let color = amber.map((a, i) => a + [1.2, 0.58, 0.16][i] * lift);
-    const light = pulsationSurfaceLight(phaseAngle) * (0.68 + 0.55 * 1);
+    const light = surfacePulseLight(phaseAngle) * (0.68 + 0.55 * 1);
     color = color.map((c) => c * light);
     color = color.map((c, i) => c * [1, 1, 0.94][i]);
     return color.map(highlightShoulder) as [number, number, number];
@@ -160,7 +164,7 @@ test.describe('the two star bodies keep their scale and their own light (#87)', 
   // even this most ordinary texel stays red-dominant.
   function giantParkedTexel(): [number, number, number] {
     const surface = rgb(COLORS.MIRA_A_SURFACE);
-    const amber = surface.map((s, i) => s + ([1, 0.38, 0.065][i] - s) * 0.65);
+    const amber = amberEnd(surface);
     return amber.map(highlightShoulder) as [number, number, number];
   }
 

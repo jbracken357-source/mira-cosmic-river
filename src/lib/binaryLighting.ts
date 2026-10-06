@@ -63,7 +63,7 @@ export const PULSE_LIGHT_SWING = 0.2;
 // brightest, and the two half-turns have to read differently. The shader runs the
 // same curve at theta = uTime * PULSE_RATE + pi/2, where it is one multiply against
 // the radius pulse's own sine.
-export function pulsationSurfaceLight(phaseAngle: number): number {
+export function surfacePulseLight(phaseAngle: number): number {
   return 1 - PULSE_LIGHT_SWING * Math.cos(phaseAngle);
 }
 
@@ -75,7 +75,7 @@ export function pulsationSurfaceLight(phaseAngle: number): number {
 export const PULSE_CELL_LIFT_DIM = 0.3;
 export const PULSE_CELL_LIFT_BRIGHT = 0.62;
 
-export function pulsationCellLift(phaseAngle: number): number {
+export function surfacePulseCellLift(phaseAngle: number): number {
   const phase01 = 0.5 - 0.5 * Math.cos(phaseAngle); // 0 at the dimmest, 1 at the brightest
   return PULSE_CELL_LIFT_DIM + (PULSE_CELL_LIFT_BRIGHT - PULSE_CELL_LIFT_DIM) * phase01;
 }

@@ -20,10 +20,10 @@ import { AccretionDisk_Shader } from '../../src/shaders/accretionDisk';
 import {
   SURFACE_DETAIL_FLOOR,
   PULSE_LIGHT_SWING,
-  pulsationSurfaceLight,
+  surfacePulseLight,
   PULSE_CELL_LIFT_DIM,
   PULSE_CELL_LIFT_BRIGHT,
-  pulsationCellLift,
+  surfacePulseCellLift,
   HIGHLIGHT_KNEE,
   HIGHLIGHT_CEILING,
   DISK_ARC_TRACE,
@@ -115,8 +115,8 @@ test.describe('Mira A shader stays in step with binaryLighting', () => {
     for (const uTime of [0, 1.3, 4, 8, 12.7]) {
       const theta = uTime * PULSE_RATE + Math.PI / 2;
       const pulsePhase = 0.5 + 0.5 * Math.sin(uTime * PULSE_RATE);
-      expect(pulsationSurfaceLight(theta)).toBeCloseTo(1 + PULSE_LIGHT_SWING * (pulsePhase * 2 - 1), 10);
-      expect(pulsationCellLift(theta)).toBeCloseTo(
+      expect(surfacePulseLight(theta)).toBeCloseTo(1 + PULSE_LIGHT_SWING * (pulsePhase * 2 - 1), 10);
+      expect(surfacePulseCellLift(theta)).toBeCloseTo(
         PULSE_CELL_LIFT_DIM + (PULSE_CELL_LIFT_BRIGHT - PULSE_CELL_LIFT_DIM) * pulsePhase,
         10,
       );
