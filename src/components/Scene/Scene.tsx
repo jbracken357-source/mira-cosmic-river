@@ -155,7 +155,7 @@ function SceneContent({
 
   const positionsRef = useRef({
     primary: [0, 0, 0] as [number, number, number],
-    secondary: [0, 0, 0] as [number, number, number],
+    companion: [0, 0, 0] as [number, number, number],
   });
 
   // Background click to deselect
@@ -340,19 +340,19 @@ function SceneContent({
       journey.primary[1] + newPositions.primary[1],
       journey.primary[2] + newPositions.primary[2],
     ];
-    const secondary: [number, number, number] = [
-      journey.companion[0] + newPositions.secondary[0],
-      journey.companion[1] + newPositions.secondary[1],
-      journey.companion[2] + newPositions.secondary[2],
+    const companion: [number, number, number] = [
+      journey.companion[0] + newPositions.companion[0],
+      journey.companion[1] + newPositions.companion[1],
+      journey.companion[2] + newPositions.companion[2],
     ];
-    positionsRef.current = { primary, secondary };
+    positionsRef.current = { primary, companion };
 
     // Both stars move every frame now, so they are positioned imperatively rather
     // than through props: prop values are only re-applied on re-render, which stops
     // once the cinematic ends and would leave the pair frozen in explore mode.
     miraAAnchorRef.current?.position.set(primary[0], primary[1], primary[2]);
-    miraBGroupRef.current?.position.set(secondary[0], secondary[1], secondary[2]);
-    miraBTargetRef.current?.position.set(secondary[0], secondary[1], secondary[2]);
+    miraBGroupRef.current?.position.set(companion[0], companion[1], companion[2]);
+    miraBTargetRef.current?.position.set(companion[0], companion[1], companion[2]);
 
     // Ambient sound (#22): the distance to the orbit target (pan is disabled, so
     // the target is the fixed look-at) feeds the barely-there tone shift. A plain

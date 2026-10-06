@@ -191,9 +191,9 @@ export default function MiraB({ position, radius, segments = 64, positionsRef }:
       // vector (0, -sin t, cos t).
       const live = positionsRef?.current;
       if (live) {
-        const wx = live.primary[0] - live.secondary[0];
-        const wy = live.primary[1] - live.secondary[1];
-        const wz = live.primary[2] - live.secondary[2];
+        const wx = live.primary[0] - live.companion[0];
+        const wy = live.primary[1] - live.companion[1];
+        const wz = live.primary[2] - live.companion[2];
         const localZ = -wy * Math.sin(DISK_TILT) + wz * Math.cos(DISK_TILT);
         diskMaterialRef.current.uniforms.uImpactAngle.value = Math.atan2(localZ, wx);
       }

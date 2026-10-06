@@ -49,5 +49,5 @@ export interface TranslationDict {
 // point at a star (the stream, the disk's hot spot) read it.
 export interface OrbitPositions {
   primary: [number, number, number];
-  secondary: [number, number, number];
+  companion: [number, number, number];
 }
