@@ -21,3 +21,11 @@ export async function openTailCardViaKeyboard(page: Page) {
   await page.keyboard.press('Enter');
   await expect(page.getByTestId('info-card')).toBeVisible();
 }
+
+// A star's keyboard entry, same gesture as the tail's.
+export async function openStarCardViaKeyboard(page: Page, star: 'miraA' | 'miraB') {
+  const trigger = page.getByTestId(`star-trigger-${star}`);
+  await trigger.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('info-card')).toBeVisible();
+}

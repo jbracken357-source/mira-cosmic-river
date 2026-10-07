@@ -1,7 +1,7 @@
 Self-hosted font subsets for the interface (#20). Google Fonts is no longer linked;
 these two woff2 files are the whole font payload.
 
-file: mira-serif-sc.woff2 (142 KB, 724 glyphs, variable wght 200-900 kept)
+file: mira-serif-sc.woff2 (143 KB, 724 glyphs, variable wght 200-900 kept)
 family-name: "Mira Serif SC" (custom name; the OFL reserved font names stay untouched)
 source-font: Noto Serif SC (Source Han Serif SC), variable TTF NotoSerifSC[wght].ttf
 source-url: https://raw.githubusercontent.com/google/fonts/main/ofl/notoserifsc/NotoSerifSC%5Bwght%5D.ttf

@@ -336,7 +336,6 @@ function SceneContent({
     if (introComplete) {
       journeyPhaseRef.current = advanceTime(journeyPhaseRef.current, delta, {
         reduceMotion,
-        scale: 1,
       });
     } else {
       // The journey belongs to free viewing: the opening always finds the pair at
