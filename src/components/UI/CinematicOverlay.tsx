@@ -98,6 +98,7 @@ export default function CinematicOverlay({
         {segment.title && (
           <motion.div
             key="text-final"
+            data-testid="final-title"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: finalFade }}

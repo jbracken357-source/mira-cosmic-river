@@ -7,7 +7,7 @@
 
 import * as THREE from 'three';
 import { MIRA_A_REACH, MIRA_B_REACH, MIRA_B_GAIN, RIVER_SHADOW_FLOOR } from '../lib/riverLighting';
-import { TAIL_FADE_IN } from '../lib/tailPath';
+import { TAIL_FADE_IN, TAIL_FAR_FADE } from '../lib/tailPath';
 
 export const TailVertexShader = `
   uniform float uTime;
@@ -17,6 +17,7 @@ export const TailVertexShader = `
   uniform float uParticleSize;
   uniform vec3 uMiraBPos;
   uniform vec3 uReach;  // x: Mira A reach, y: Mira B reach, z: Mira B gain
+  uniform float uFarFade;  // far-fade window scale: 1 landscape, <1 lets the mist reach the far end (竖屏长卷)
 
   attribute float aSeed;
   attribute float aSize;
@@ -120,8 +121,11 @@ export const TailVertexShader = `
 
     // Depth-based alpha (fades far particles into background). The near fade is the
     // occupancy's own constant (#91): the road's gas reaches back to the root between
-    // the pair instead of starting a sixth of the tail downstream.
-    float depthFade = smoothstep(0.0, ${TAIL_FADE_IN}, aLength) * (1.0 - smoothstep(0.85, 1.0, aLength));
+    // the pair instead of starting a sixth of the tail downstream. The far window is
+    // the occupancy's constant too; uFarFade scales it for the 竖屏长卷 (#92 review —
+    // the tall frame lets the mist reach the road's far end) and binds the identity
+    // 1 in landscape, where the multiply by 1.0 is bit-exact.
+    float depthFade = smoothstep(0.0, ${TAIL_FADE_IN}, aLength) * (1.0 - smoothstep(${TAIL_FAR_FADE}, 1.0, aLength * uFarFade));
     vAlpha = depthFade * uOpacity;
 
     vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
@@ -214,6 +218,7 @@ export function createTailMaterial(): THREE.ShaderMaterial {
       uColorCool: { value: new THREE.Color('#dbe6ff') },
       uMiraBPos: { value: new THREE.Vector3(0, 0, 0) },
       uReach: { value: new THREE.Vector3(MIRA_A_REACH, MIRA_B_REACH, MIRA_B_GAIN) },
+      uFarFade: { value: 1 },
       uShadowFloor: { value: RIVER_SHADOW_FLOOR },
       uSkyGain: { value: 1 },
       uSkyWarmth: { value: 0 },

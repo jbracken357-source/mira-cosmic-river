@@ -56,16 +56,18 @@ export const CAMERA = {
   // The pull-back's fov range is CLOSE.fov → FAR.fov; the opening timeline reads it
   // from those poses so the portrait table can diverge without a second source.
 } as const;
-// The same space is composed diagonally in portrait, giving the river room below
-// the pair instead of simply cutting the sides off the desktop composition. The fov
-// values intentionally match the landscape ones: fittedFov (Scene.tsx) already
-// widens the vertical field to preserve the horizontal composition, so the stored
-// fov names the shared horizontal framing, not the on-screen vertical angle.
+// The same space is composed as a long scroll in portrait (竖屏长卷, #92): the pair
+// sits high on the right, the 根 between them, and the road runs down the screen's
+// long axis into the lower half — its own composition, never the desktop one with
+// the sides cut off. The stored fov names the shared horizontal framing: fittedFov
+// (lib/freeViewCamera) widens the on-screen vertical angle to preserve it. EXPLORE
+// is the calibrated composition at the reference aspect (390×844); at any other
+// portrait aspect lib/portraitFraming re-aims it so the 根 holds its screen point.
 export const PORTRAIT_CAMERA = {
   ...CAMERA,
-  // Portrait keeps its own hold and waypoint: the pair sits in the upper part of the
-  // frame (the look-at drops below it) with the river's direction kept below, so the
-  // tight framing never hangs on empty black.
+  // Portrait keeps its own hold and waypoint: the pair stays the subject and the
+  // river keeps its direction below it, so the tight framing never hangs on empty
+  // black.
   CLOSE: {
     position: [8, 4, 13] as [number, number, number],
     lookAt: [0, -2, 0] as [number, number, number],
@@ -76,23 +78,32 @@ export const PORTRAIT_CAMERA = {
     lookAt: [-1, -2, 3] as [number, number, number],
     fov: 45,
   },
-  // Far, explore and the epilogue step onto the river's side and lift. In the
-  // tall frame the tail runs downward and the pair sits small above it. Close
-  // and the mid waypoint stay with the pair. Distance to the orbit target stays
-  // inside the explore zoom limit, so the landing is a place the viewer can keep.
-  EXPLORE: {
-    position: [-6, 22, 26] as [number, number, number],
-    lookAt: [-2, -6, 14] as [number, number, number],
-    fov: 45,
-  },
+  // The reveal stands on the river's side, high: the pair reads small in the upper
+  // frame while the road gathers below it, and the pair's discs stay above the
+  // 终幕标题's band (the title lives here, FINAL_TEXT → EXPLORE_MODE).
   FAR: {
-    position: [-5, 23, 30] as [number, number, number],
-    lookAt: [-2, -8, 13] as [number, number, number],
+    position: [-4.5, 17.5, 27] as [number, number, number],
+    lookAt: [-3.2, -17, 8] as [number, number, number],
     fov: 50,
   },
+  // 竖屏长卷 home: the pair above the title band and clear of the 顶栏, the road
+  // running down the long axis — its strong-alpha body past the midline, its far
+  // end two thirds down the frame (the review round on #92 pushed the visible
+  // reach deeper: the camera stands closer to the road's far side and higher over
+  // it, so the river fills more of the tall frame instead of dissolving at the
+  // midline). The fov narrows against the landscape 45 — standing this close is
+  // what lets the road fill the tall frame. Distance to the orbit target stays
+  // inside the explore zoom limit, so the landing is a place the viewer can keep.
+  EXPLORE: {
+    position: [-8.6, 22.6, 25] as [number, number, number],
+    lookAt: [-5.6, -2.8, 11.4] as [number, number, number],
+    fov: 36,
+  },
+  // The epilogue hold: farther along the same composition, the pair pushed right
+  // of the centered line, the road still running down the frame.
   CLOSING: {
-    position: [-8, 26, 32] as [number, number, number],
-    lookAt: [-8, -10, 16] as [number, number, number],
+    position: [-4, 22, 27] as [number, number, number],
+    lookAt: [-6.5, -10, 10] as [number, number, number],
     fov: 48,
   },
 } as const;

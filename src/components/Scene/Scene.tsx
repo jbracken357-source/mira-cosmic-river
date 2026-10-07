@@ -21,7 +21,8 @@ import { cameraAwayFromMainView } from '../../lib/topBarVisibility';
 import { cancelReturnFlight, fittedFov, initialFreeViewState, stepFreeViewCamera } from '../../lib/freeViewCamera';
 import type { FlightPose } from '../../lib/freeViewCamera';
 import { sharedJourney } from '../../lib/sharedJourney';
-import { TAIL_OCCUPANCY, tailFarEnd, tailHeading } from '../../lib/tailPath';
+import { PORTRAIT_TILT } from '../../lib/portraitFraming';
+import { TAIL_OCCUPANCY, TAIL_ROOT, tailFarEnd, tailHeading, tailMidProbe } from '../../lib/tailPath';
 import {
   driveQualityGovernor,
   governorProbeFrameMs,
@@ -54,6 +55,10 @@ const Z_AXIS = new THREE.Vector3(0, 0, 1);
 // across the frame measurably more than the stars — the foreground/background
 // difference the specs read off data-tail-far-screen.
 const TAIL_FAR_WORLD = tailFarEnd(PHYSICS.TAIL.length);
+// The mid-road anchor (#92 review): the point the 竖屏长卷 assertions read for
+// the river's VISIBLE reach — full alpha out here, unlike the far end, whose own
+// alpha fades to zero. The far end stays on the probe table as an in-frame bound.
+const TAIL_MID_WORLD = tailMidProbe(PHYSICS.TAIL.length);
 
 // Place the camera (and its orbit target) exactly on a pose lib/freeViewCamera has
 // already fitted for the current aspect: the explore landing, the reduced-motion
@@ -145,11 +150,18 @@ function SceneContent({
   const miraBTargetRef = useRef<THREE.Mesh>(null);
   const tailTargetRef = useRef<THREE.Mesh>(null);
   const tailFarAnchorRef = useRef<THREE.Group>(null);
+  // 根 (#91) joins the probe table in #92: the pair's midpoint is the point the
+  // 竖屏长卷 pins to its calibrated screen position.
+  const tailRootAnchorRef = useRef<THREE.Group>(null);
+  // The mid-road anchor (#92 review): the visible-reach probe.
+  const tailMidAnchorRef = useRef<THREE.Group>(null);
   const previousAspect = useRef(1);
   const miraAScreenRef = useRef(new THREE.Vector3());
   const miraBScreenRef = useRef(new THREE.Vector3());
   const tailScreenRef = useRef(new THREE.Vector3());
   const tailFarScreenRef = useRef(new THREE.Vector3());
+  const tailRootScreenRef = useRef(new THREE.Vector3());
+  const tailMidScreenRef = useRef(new THREE.Vector3());
   // The dev-only probe seams: one row per projected anchor, consumed by the frame
   // loop's write-on-change loop. The refs are stable, so the table is built once.
   const probeSeams = useMemo(
@@ -158,6 +170,8 @@ function SceneContent({
       { anchor: miraBTargetRef, key: 'miraBScreen', vec: miraBScreenRef },
       { anchor: tailTargetRef, key: 'tailScreen', vec: tailScreenRef },
       { anchor: tailFarAnchorRef, key: 'tailFarScreen', vec: tailFarScreenRef },
+      { anchor: tailRootAnchorRef, key: 'tailRootScreen', vec: tailRootScreenRef },
+      { anchor: tailMidAnchorRef, key: 'tailMidScreen', vec: tailMidScreenRef },
     ],
     [],
   );
@@ -283,7 +297,7 @@ function SceneContent({
     // camera, so a drag still pivots the pair instead of chasing it.
     if (flight.pose === null && flight.controlsEnabled && control.autoAdvanceSpeed > 0 && orbit) {
       advanceVecRef.current.set(heading[0], heading[1], heading[2]);
-      if (portrait) advanceVecRef.current.applyAxisAngle(Z_AXIS, Math.PI / 3);
+      if (portrait) advanceVecRef.current.applyAxisAngle(Z_AXIS, PORTRAIT_TILT);
       const step = control.autoAdvanceSpeed * delta;
       camera.position.addScaledVector(advanceVecRef.current, step);
       orbit.target.addScaledVector(advanceVecRef.current, step);
@@ -343,7 +357,7 @@ function SceneContent({
 
       // The whole opening — hold, river pass, settle, and the reduced-motion pin — is
       // resolved by the pure timeline so the frame loop only applies the pose.
-      const pose = resolveOpeningPose(t, { reduceMotion, portrait });
+      const pose = resolveOpeningPose(t, { reduceMotion, portrait, aspect: camera.aspect });
       camera.position.set(pose.position[0], pose.position[1], pose.position[2]);
       camera.fov = fittedFov(pose.fov, camera.aspect);
       camera.updateProjectionMatrix();
@@ -453,9 +467,11 @@ function SceneContent({
       el.dataset.frameCount = String(frameCountRef.current);
       // The screen-percentage probes, one seam per anchor: Mira A and the companion
       // (the gap is an acceptance the specs read off the two projections, #91), the
-      // tail's click target (the scene itself is the tail's entry, #88), and the
-      // road's far end (the parallax probe — under a drag or a zoom it sweeps
-      // measurably more than the pair, #91). Write-on-change guards stay per key.
+      // tail's click target (the scene itself is the tail's entry, #88), the road's
+      // far end (the parallax probe — under a drag or a zoom it sweeps measurably
+      // more than the pair, #91), and the mid-road anchor (the 竖屏长卷's
+      // visible-reach probe — full alpha there, #92 review). Write-on-change guards
+      // stay per key.
       for (const { anchor, key, vec } of probeSeams) {
         if (anchor.current) {
           const projected = screenPercent(anchor.current, camera, vec.current);
@@ -479,7 +495,7 @@ function SceneContent({
       {/* Portrait stands farther down the tail, so the haze has to reach that far
           or the river fades out just as the scale of it should read. */}
       <fog attach="fog" args={[COLORS.VOID_BLACK, portrait ? 20 : 15, portrait ? 80 : 50]} />
-      <group rotation-z={portrait ? Math.PI / 3 : 0}>
+      <group rotation-z={portrait ? PORTRAIT_TILT : 0}>
       {/* The sky stays home: the star field is what the journey moves against. */}
       <StarField count={lod.starCount} />
 
@@ -546,6 +562,7 @@ function SceneContent({
           particleCount={lod.tailParticles}
           tailLength={PHYSICS.TAIL.length}
           miraBRef={miraBGroupRef}
+          portrait={portrait}
           tier={tier}
         />
       </group>
@@ -565,6 +582,15 @@ function SceneContent({
       {/* The road's far end, anchored in the journey frame so the parallax probe
           rides the shared journey exactly like the road itself (#91). */}
       <group ref={tailFarAnchorRef} position={TAIL_FAR_WORLD} />
+
+      {/* The mid-road anchor (#92 review): the visible-reach probe rides the same
+          journey, anchored like the far end. */}
+      <group ref={tailMidAnchorRef} position={TAIL_MID_WORLD} />
+
+      {/* 根 (#91): the road's root between the pair — the probe the 竖屏长卷 (#92)
+          pins to its calibrated screen point. Unyawed: it sits between the stars,
+          not inside the tail's yawed frame. */}
+      <group ref={tailRootAnchorRef} position={TAIL_ROOT} />
 
       {/* Ambient haze around the tail — anchors it against the star field in explore mode. */}
       {cinematicPhase === 'explore' && (

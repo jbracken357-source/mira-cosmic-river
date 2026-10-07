@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { CAMERA, PORTRAIT_CAMERA, TRANSITIONS } from '../../src/constants/animation';
+import { portraitExplorePose } from '../../src/lib/portraitFraming';
 import {
   cancelReturnFlight,
   fittedFov,
@@ -83,7 +84,9 @@ test.describe('the landing (explore hand-off)', () => {
   test('portrait lands on the portrait composition with a widened fov', () => {
     const step = stepFreeViewCamera(initialFreeViewState(), frame({ portrait: true, aspect: PORT }));
     expect(step.pose!.position).toEqual([...PORTRAIT_CAMERA.EXPLORE.position]);
-    expect(step.pose!.lookAt).toEqual([...PORTRAIT_CAMERA.EXPLORE.lookAt]);
+    // 竖屏长卷 (#92): the aim is the aspect-pinned solve, not the raw constant —
+    // lib/portraitFraming's own spec pins what the solve promises.
+    expect(step.pose!.lookAt).toEqual(portraitExplorePose(PORT).lookAt);
     expect(step.pose!.fov).toBeGreaterThan(PORTRAIT_CAMERA.EXPLORE.fov);
   });
 
@@ -91,7 +94,7 @@ test.describe('the landing (explore hand-off)', () => {
     const lengthOf = (p: readonly number[]) => Math.hypot(p[0], p[1], p[2]);
     const step = stepFreeViewCamera(initialFreeViewState(), frame({ portrait: true, aspect: PORT }));
     expect(lengthOf(step.pose!.position)).toBeGreaterThan(lengthOf(CAMERA.EXPLORE.position) + 3);
-    expect(step.pose!.lookAt).toEqual([...PORTRAIT_CAMERA.EXPLORE.lookAt]);
+    expect(step.pose!.lookAt).toEqual(portraitExplorePose(PORT).lookAt);
   });
 });
 

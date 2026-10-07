@@ -17,7 +17,7 @@ import {
 import { TailVertexShader, TailFragmentShader, createTailMaterial } from '../../src/shaders/tail';
 import { MiraA_Shader, HIGHLIGHT_SHOULDER_GLSL, PULSE_RATE } from '../../src/shaders/miraA';
 import { AccretionDisk_Shader } from '../../src/shaders/accretionDisk';
-import { TAIL_FADE_IN } from '../../src/lib/tailPath';
+import { TAIL_FADE_IN, TAIL_FAR_FADE, PORTRAIT_FAR_FADE_SCALE } from '../../src/lib/tailPath';
 import {
   SURFACE_DETAIL_FLOOR,
   PULSE_LIGHT_SWING,
@@ -72,6 +72,20 @@ test.describe('tail shader stays in step with riverLighting', () => {
   test('the near fade-in is the shared constant, so the root gas is actually visible', () => {
     expect(TAIL_FADE_IN).toBeLessThan(0.15);
     expect(TailVertexShader).toContain(`smoothstep(0.0, ${TAIL_FADE_IN}, aLength)`);
+  });
+
+  // #92 review: the far window is the occupancy's constant, and the portrait
+  // softening is a uniform — landscape binds the identity 1, so the shared shader
+  // is bit-exact there (x * 1.0 === x in IEEE, at any GPU precision).
+  test('the far fade is the shared constant, scaled by a portrait-only uniform', () => {
+    expect(TailVertexShader).toContain(`smoothstep(${TAIL_FAR_FADE}, 1.0, aLength * uFarFade)`);
+    const material = createTailMaterial();
+    expect(material.uniforms.uFarFade.value).toBe(1);
+    material.dispose();
+    // The scale eases the fade later without ever reaching the identity: portrait
+    // keeps a soft landing at the far end instead of a hard cutoff.
+    expect(PORTRAIT_FAR_FADE_SCALE).toBeGreaterThan(0.85);
+    expect(PORTRAIT_FAR_FADE_SCALE).toBeLessThan(1);
   });
 });
 

@@ -56,6 +56,31 @@ export const TAIL_ROOT_SPREAD = 0.9;
 // the pair; 0.07 lets the root's gas actually show.
 export const TAIL_FADE_IN = 0.07;
 
+// Where the far fade's window starts (aLength fraction): alpha eases out across
+// the last stretch so the road dissolves into the starfield instead of ending in
+// a hard edge. The landscape window, unchanged since the tail's first frame.
+export const TAIL_FAR_FADE = 0.85;
+
+// 竖屏长卷 (#92 review): in the tall frame the road's far reach IS the lower
+// half's foreground, so the portrait fade eases later — aLength scaled by 0.93
+// keeps the mist nearly full to t≈0.91 and lands it softly (alpha ≈ 0.45) at the
+// far end instead of vanishing across the last sixth of the tail. Landscape
+// binds the identity 1, bit-exact.
+export const PORTRAIT_FAR_FADE_SCALE = 0.93;
+
+// The mid-road probe anchor (#92 review): the point the portrait assertions read
+// for the river's VISIBLE reach — deep inside the strong-alpha body (the far
+// fade only starts past t=0.85 even unscaled), never the far end, whose own
+// alpha is zero. t=0.7 sits in the lower half of the long scroll at both named
+// portrait sizes.
+export const TAIL_MID_PROBE_T = 0.7;
+
+// The mid-road anchor in the journey frame's world orientation (the yaw
+// applied), anchored like tailFarEnd so the probe rides the shared journey.
+export function tailMidProbe(length: number): Vec3 {
+  return yawY(tailCenterline(TAIL_MID_PROBE_T, length));
+}
+
 // smoothstep(0, TAIL_ROOT_FADE, t), the bend's falloff shape.
 function rootFade(t: number): number {
   const s = Math.min(1, Math.max(0, t / TAIL_ROOT_FADE));

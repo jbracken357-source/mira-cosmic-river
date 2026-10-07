@@ -18,6 +18,7 @@
 // and MID on its own — the pair stays the subject and the river keeps its direction
 // below it, rather than cropping the desktop framing.
 import { CINEMATIC, CAMERA, PORTRAIT_CAMERA } from '../constants/animation';
+import { portraitExplorePose, PORTRAIT_REFERENCE_ASPECT } from './portraitFraming';
 import type { CinematicPhase } from '../types';
 
 type Vec3 = [number, number, number];
@@ -81,18 +82,21 @@ function tailRamp(t: number): number {
 
 export function resolveOpeningPose(
   t: number,
-  { reduceMotion, portrait }: { reduceMotion: boolean; portrait: boolean },
+  { reduceMotion, portrait, aspect = PORTRAIT_REFERENCE_ASPECT }: { reduceMotion: boolean; portrait: boolean; aspect?: number },
 ): OpeningPose {
   const cam = portrait ? PORTRAIT_CAMERA : CAMERA;
+  // 竖屏长卷 (#92): the portrait landing is the aspect-pinned explore framing, so
+  // the settle and the reduced-motion pin agree with free viewing's home.
+  const explore = portrait ? portraitExplorePose(aspect) : cam.EXPLORE;
   const tailOpacity = tailRamp(t);
 
   if (reduceMotion) {
-    return { position: [...cam.EXPLORE.position], lookAt: [...cam.EXPLORE.lookAt], fov: cam.EXPLORE.fov, tailOpacity };
+    return { position: [...explore.position], lookAt: [...explore.lookAt], fov: explore.fov, tailOpacity };
   }
   if (t >= CINEMATIC.EXPLORE_MODE) {
     // Past the end the pose IS the explore framing, so the introComplete hand-off
     // has nothing left to move.
-    return { position: [...cam.EXPLORE.position], lookAt: [...cam.EXPLORE.lookAt], fov: cam.EXPLORE.fov, tailOpacity: TAIL_FULL_OPACITY };
+    return { position: [...explore.position], lookAt: [...explore.lookAt], fov: explore.fov, tailOpacity: TAIL_FULL_OPACITY };
   }
   if (t < CINEMATIC.PULL_BACK_START) {
     return { position: [...cam.CLOSE.position], lookAt: [...cam.CLOSE.lookAt], fov: cam.CLOSE.fov, tailOpacity };
@@ -116,9 +120,9 @@ export function resolveOpeningPose(
   }
   const settle = easeInOutCubic(clamp01((t - CINEMATIC.FINAL_TEXT) / (CINEMATIC.EXPLORE_MODE - CINEMATIC.FINAL_TEXT)));
   return {
-    position: lerpVec(cam.FAR.position, cam.EXPLORE.position, settle),
-    lookAt: lerpVec(cam.FAR.lookAt, cam.EXPLORE.lookAt, settle),
-    fov: lerp(cam.FAR.fov, cam.EXPLORE.fov, settle),
+    position: lerpVec(cam.FAR.position, explore.position, settle),
+    lookAt: lerpVec(cam.FAR.lookAt, explore.lookAt, settle),
+    fov: lerp(cam.FAR.fov, explore.fov, settle),
     tailOpacity,
   };
 }
