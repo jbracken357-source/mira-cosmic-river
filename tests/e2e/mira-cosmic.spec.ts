@@ -32,12 +32,12 @@ test.describe('Mira Cosmic River - E2E Tests', () => {
   });
 
   test('cinematic sequence opens and ends on its own', async ({ page }) => {
-    // While the opening plays it offers a way out
-    const skip = page.getByTestId('look-myself');
-    await expect(skip).toBeVisible({ timeout: 15000 });
+    // While the opening plays it offers 「我自己看」 as the way out
+    const lookMyself = page.getByTestId('look-myself');
+    await expect(lookMyself).toBeVisible({ timeout: 15000 });
 
     // It must finish by itself — no clicking required — and hand over to exploration
-    await expect(skip).toBeHidden({ timeout: 40000 });
+    await expect(lookMyself).toBeHidden({ timeout: 40000 });
     await expect(page.getByTestId('explore-ui')).toBeVisible();
   });
 

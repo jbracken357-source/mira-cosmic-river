@@ -4,7 +4,7 @@ import { useBinaryStar, useMobile, useEntryReadiness, useTonightSave } from '../
 import { TRANSLATIONS } from '../../constants/translations';
 import { TRANSITIONS } from '../../constants/animation';
 import { openingSegment } from '../../lib/openingTimeline';
-import { topBarChrome } from '../../lib/chromeVisibility';
+import { topBarVisibility } from '../../lib/topBarVisibility';
 import { rememberFlag, rememberedFlag } from '../../lib/rememberedFlag';
 import type { StarName } from './InfoCards';
 import AmbientToggle from './AmbientToggle';
@@ -32,7 +32,7 @@ export default function CinematicOverlay({
   const segment = openingSegment(cinematicTime);
   const caption = segment.caption ? t[segment.caption] : null;
 
-  const handleEnterEarly = () => {
+  const handleLookMyself = () => {
     useBinaryStar.getState().setIntroComplete(true);
   };
 
@@ -61,10 +61,10 @@ export default function CinematicOverlay({
         <AmbientToggle />
         <button
           data-testid="look-myself"
-          onClick={handleEnterEarly}
+          onClick={handleLookMyself}
           className="whisper-btn min-h-11 px-4 inline-flex items-center justify-center text-[11px] md:text-xs font-extralight tracking-widest border border-white/15 rounded-full hover:border-white/35"
         >
-          {t.enterEarly}
+          {t.lookMyself}
         </button>
         <button
           data-testid="language-toggle"
@@ -158,18 +158,19 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
   // 顶栏 (#90): the quiet first look holds 环境音, 语言 and 完整开场 only; the
   // visit's first drag or zoom graduates 暂停 and 今晚的 Mira, and 主视角 exists
   // only while the camera is off the main view.
-  const chrome = topBarChrome({ manipulated, awayFromMainView });
+  const bar = topBarVisibility({ manipulated, awayFromMainView });
 
   // The interaction hint leaves once the viewer has actually manipulated the scene
   // (drag/zoom land on the canvas; presses on UI buttons do not count). 学会 is
   // remembered across visits like the seen-opening flag — and once learned, no
   // 「?」 recall ever takes the hint's place (#90). The same first manipulation
-  // graduates the quiet top bar for this visit.
+  // graduates the quiet top bar for this visit. Once the flag is on, gestures
+  // never write storage again — the read-back guard keeps them to a cheap lookup.
   const [hintDismissed, setHintDismissed] = useState(() => hasLearnedControls());
   useEffect(() => {
     const note = (event: Event) => {
       if (!(event.target instanceof HTMLCanvasElement)) return;
-      persistLearnedControls();
+      if (!hasLearnedControls()) persistLearnedControls();
       setHintDismissed(true);
       useBinaryStar.getState().noteExploreManipulation();
     };
@@ -189,12 +190,16 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
       className="relative z-10 flex h-dvh w-full pointer-events-none select-none overflow-hidden"
     >
       {/* 顶栏: the exit is the epilogue's own budget (#90, TRANSITIONS.
-          CHROME_EPILOGUE_EXIT, 0.3–0.5s); the slower 1.2s belongs to the return
-          after the interrupt. CSS takes the duration from the destination state,
-          so one property carries both. */}
+          TOP_BAR_EPILOGUE_EXIT, 0.3–0.5s); the slower return (TRANSITIONS.
+          TOP_BAR_EPILOGUE_RETURN) comes after the interrupt. CSS takes the
+          duration from the destination state, so one property carries both. */}
       <header
         data-testid="top-bar"
-        style={{ transitionDuration: epilogueHush ? `${TRANSITIONS.CHROME_EPILOGUE_EXIT * 1000}ms` : '1200ms' }}
+        style={{
+          transitionDuration: epilogueHush
+            ? `${TRANSITIONS.TOP_BAR_EPILOGUE_EXIT * 1000}ms`
+            : `${TRANSITIONS.TOP_BAR_EPILOGUE_RETURN * 1000}ms`,
+        }}
         className={`absolute top-0 left-0 right-0 px-4 md:px-14 pt-[max(1rem,env(safe-area-inset-top))] pb-4 md:pb-8 flex items-center justify-between transition-opacity ${
           epilogueHush ? 'opacity-0 pointer-events-none' : 'opacity-100'
         }`}
@@ -211,7 +216,7 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
         </div>
 
         <div className="flex items-center justify-end flex-wrap gap-3 md:gap-7">
-          {chrome.returnToView && (
+          {bar.returnToView && (
             <button
               data-testid="return-to-view"
               onClick={() => useBinaryStar.getState().requestReturnToExplore()}
@@ -220,9 +225,9 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
               {t.returnToView}
             </button>
           )}
-          {chrome.tonightSave && <TonightSave />}
+          {bar.tonightSave && <TonightSave />}
           <AmbientToggle />
-          {chrome.pause && (
+          {bar.pause && (
             <button
               data-testid="pause-toggle"
               aria-pressed={!isPlaying}

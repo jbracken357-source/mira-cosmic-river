@@ -3,8 +3,8 @@ import { CAMERA, PORTRAIT_CAMERA } from '../../src/constants/animation';
 import {
   cameraAwayFromMainView,
   MAIN_VIEW_AWAY_TOLERANCE,
-  topBarChrome,
-} from '../../src/lib/chromeVisibility';
+  topBarVisibility,
+} from '../../src/lib/topBarVisibility';
 
 // 顶栏 (#90): the free-viewing top bar as a pure verdict. 自由观看第一眼 the bar
 // holds three controls only — 环境音, 语言, 完整开场 (the constants, not this
@@ -14,7 +14,7 @@ import {
 
 test.describe('the quiet first look and the graduation', () => {
   test('the first look shows neither 暂停 nor 今晚的 Mira nor 主视角', () => {
-    expect(topBarChrome({ manipulated: false, awayFromMainView: false })).toEqual({
+    expect(topBarVisibility({ manipulated: false, awayFromMainView: false })).toEqual({
       pause: false,
       tonightSave: false,
       returnToView: false,
@@ -22,23 +22,23 @@ test.describe('the quiet first look and the graduation', () => {
   });
 
   test('the first drag or zoom of the visit brings 暂停 and 今晚的 Mira', () => {
-    const chrome = topBarChrome({ manipulated: true, awayFromMainView: false });
-    expect(chrome.pause).toBe(true);
-    expect(chrome.tonightSave).toBe(true);
+    const bar = topBarVisibility({ manipulated: true, awayFromMainView: false });
+    expect(bar.pause).toBe(true);
+    expect(bar.tonightSave).toBe(true);
     // Manipulation alone never conjures 主视角: the pair can fill the frame and the
     // camera still be home.
-    expect(chrome.returnToView).toBe(false);
+    expect(bar.returnToView).toBe(false);
   });
 
   test('主视角 follows the camera alone: away shows it, back home hides it', () => {
-    expect(topBarChrome({ manipulated: false, awayFromMainView: true }).returnToView).toBe(true);
-    expect(topBarChrome({ manipulated: true, awayFromMainView: true })).toEqual({
+    expect(topBarVisibility({ manipulated: false, awayFromMainView: true }).returnToView).toBe(true);
+    expect(topBarVisibility({ manipulated: true, awayFromMainView: true })).toEqual({
       pause: true,
       tonightSave: true,
       returnToView: true,
     });
     // 回到之后没有.
-    expect(topBarChrome({ manipulated: true, awayFromMainView: false }).returnToView).toBe(false);
+    expect(topBarVisibility({ manipulated: true, awayFromMainView: false }).returnToView).toBe(false);
   });
 });
 

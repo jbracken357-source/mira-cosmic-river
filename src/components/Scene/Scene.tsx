@@ -17,7 +17,7 @@ import {
 import { advanceTime, captureMode, resolveCapturePose } from '../../lib/captureMode';
 import { cinematicTimeScale, openingSegment, resolveOpeningPose, TAIL_FULL_OPACITY } from '../../lib/openingTimeline';
 import { returnSettleWindowOpen, viewerControlNow } from '../../lib/viewerControl';
-import { cameraAwayFromMainView } from '../../lib/chromeVisibility';
+import { cameraAwayFromMainView } from '../../lib/topBarVisibility';
 import { cancelReturnFlight, fittedFov, initialFreeViewState, stepFreeViewCamera } from '../../lib/freeViewCamera';
 import type { FlightPose } from '../../lib/freeViewCamera';
 import { sharedJourney } from '../../lib/sharedJourney';

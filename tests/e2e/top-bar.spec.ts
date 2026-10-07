@@ -92,14 +92,16 @@ test.describe('the epilogue hush', () => {
   test('the bar lets go of the screen within its 0.3–0.5s budget', async ({ page }) => {
     await gotoExplore(page, `${APP}${IDLE_FAST}`);
     const topBar = page.getByTestId('top-bar');
-    // At rest the bar's fade is the slow 1.2s return from the interrupt.
-    expect(await topBar.evaluate((el) => getComputedStyle(el).transitionDuration)).toBe('1.2s');
+    // At rest the bar's fade is the slow return from the interrupt.
+    expect(await topBar.evaluate((el) => getComputedStyle(el).transitionDuration)).toBe(
+      `${TRANSITIONS.TOP_BAR_EPILOGUE_RETURN}s`,
+    );
 
     await expect(page.getByTestId('epilogue-text')).toBeVisible({ timeout: 15000 });
     // The exit runs on the epilogue's own budget (the window itself is pinned by
     // tests/unit/animationTiming.spec.ts)…
     expect(await topBar.evaluate((el) => getComputedStyle(el).transitionDuration)).toBe(
-      `${TRANSITIONS.CHROME_EPILOGUE_EXIT}s`,
+      `${TRANSITIONS.TOP_BAR_EPILOGUE_EXIT}s`,
     );
     // …and once it has run, the bar is fully gone while the epilogue holds the screen.
     await expect(topBar).toHaveCSS('opacity', '0', { timeout: 5000 });

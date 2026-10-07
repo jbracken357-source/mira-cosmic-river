@@ -16,12 +16,16 @@ test.describe('info card motion windows', () => {
   });
 });
 
-// 顶栏的结语退场 (#90): when the epilogue appears the top bar lets go of the
-// screen in about 0.3–0.5s — never the slow 1.2s re-entry the other way. The
-// header reads this constant; the pin keeps casual bumps off the window.
+// 顶栏的结语退场与归来 (#90): when the epilogue appears the top bar lets go of
+// the screen in about 0.3–0.5s — never the slow 1.2s re-entry the other way. The
+// header reads these constants; the pins keep casual bumps off the values.
 test.describe('the top bar’s epilogue exit', () => {
   test('stays within 0.3–0.5s', () => {
-    expect(TRANSITIONS.CHROME_EPILOGUE_EXIT).toBeGreaterThanOrEqual(0.3);
-    expect(TRANSITIONS.CHROME_EPILOGUE_EXIT).toBeLessThanOrEqual(0.5);
+    expect(TRANSITIONS.TOP_BAR_EPILOGUE_EXIT).toBeGreaterThanOrEqual(0.3);
+    expect(TRANSITIONS.TOP_BAR_EPILOGUE_EXIT).toBeLessThanOrEqual(0.5);
+  });
+
+  test('the return after the interrupt keeps its 1.2s', () => {
+    expect(TRANSITIONS.TOP_BAR_EPILOGUE_RETURN).toBe(1.2);
   });
 });

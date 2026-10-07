@@ -38,7 +38,7 @@ export const TRANSLATIONS = {
     // 「我自己看」(#90): leaving the full cinematic early, in the viewer's own
     // words — never a "skip". The pill it sits on stays clear of the language
     // switch beside it.
-    enterEarly: 'I’ll look myself.',
+    lookMyself: 'I’ll look myself.',
     replayOpening: 'Full cinematic',
     pause: 'Pause',
     resume: 'Resume',
@@ -112,7 +112,7 @@ export const TRANSLATIONS = {
     interactionHintMobile: '拖拽旋转 · 双指缩放',
     // 「我自己看」(#90)：观看者用自己的话离开完整开场——不是"跳过"。按钮做成
     // 安静的细边 pill，和旁边的语言开关分得开。
-    enterEarly: '我自己看',
+    lookMyself: '我自己看',
     replayOpening: '完整开场',
     pause: '暂停',
     resume: '恢复',

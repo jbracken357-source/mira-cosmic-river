@@ -17,7 +17,7 @@
 //                        flight — and is gone again once the viewer is back on it.
 //
 // The epilogue's hush of the whole bar (and its ~0.4s exit, TRANSITIONS.
-// CHROME_EPILOGUE_EXIT) is a rendering concern of the header, not of this verdict.
+// TOP_BAR_EPILOGUE_EXIT) is a rendering concern of the header, not of this verdict.
 import { CAMERA, PORTRAIT_CAMERA } from '../constants/animation';
 
 export interface TopBarInput {
@@ -27,13 +27,13 @@ export interface TopBarInput {
 
 // Only the conditional controls are answered here; 环境音 / 语言 / 完整开场 never
 // leave the free-viewing bar.
-export interface TopBarChrome {
+export interface TopBarVisibility {
   pause: boolean;
   tonightSave: boolean;
   returnToView: boolean;
 }
 
-export function topBarChrome(input: TopBarInput): TopBarChrome {
+export function topBarVisibility(input: TopBarInput): TopBarVisibility {
   return {
     pause: input.manipulated,
     tonightSave: input.manipulated,
