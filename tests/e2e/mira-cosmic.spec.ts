@@ -32,17 +32,17 @@ test.describe('Mira Cosmic River - E2E Tests', () => {
   });
 
   test('cinematic sequence opens and ends on its own', async ({ page }) => {
-    // While the opening plays it offers a way out
-    const skip = page.getByTestId('skip-cinematic');
-    await expect(skip).toBeVisible({ timeout: 15000 });
+    // While the opening plays it offers 「我自己看」 as the way out
+    const lookMyself = page.getByTestId('look-myself');
+    await expect(lookMyself).toBeVisible({ timeout: 15000 });
 
     // It must finish by itself — no clicking required — and hand over to exploration
-    await expect(skip).toBeHidden({ timeout: 40000 });
+    await expect(lookMyself).toBeHidden({ timeout: 40000 });
     await expect(page.getByTestId('explore-ui')).toBeVisible();
   });
 
   test('language toggle works', async ({ page }) => {
-    await page.getByTestId('skip-cinematic').click();
+    await page.getByTestId('look-myself').click();
     await expect(page.getByTestId('explore-ui')).toBeVisible();
 
     const langToggle = page.getByRole('button', { name: /^(中文|EN)$/ });
@@ -56,7 +56,7 @@ test.describe('Mira Cosmic River - E2E Tests', () => {
   test('info card opens when a star is clicked', async ({ page }) => {
     test.setTimeout(120000);
     // Exploration is the only state where stars are clickable
-    await page.getByTestId('skip-cinematic').click();
+    await page.getByTestId('look-myself').click();
     await expect(page.getByTestId('explore-ui')).toBeVisible();
 
     const canvas = page.locator('canvas');

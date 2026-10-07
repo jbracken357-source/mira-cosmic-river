@@ -11,7 +11,7 @@
 //                    cycle, then the closing line returns. The row never stacks the
 //                    hint next to the closing line.
 //   panel attention  tonight's save (and on mobile an open info card) owns the
-//                    viewer's attention; the row hushes with the rest of the chrome.
+//                    viewer's attention; the row hushes with the rest of the interface.
 //
 // During the full cinematic itself the row stays empty: the closing line never
 // appears early beneath the three captions, and while the final beat holds the

@@ -108,6 +108,12 @@ export const TRANSITIONS = {
   // it leaves faster than it came.
   EPILOGUE_ENTER: 0.8,
   EPILOGUE_EXIT: 0.3,
+  // 顶栏的结语退场与归来 (#90): the top bar lets go of the screen in 0.3–0.5s
+  // when the epilogue appears; the slower 1.2s belongs to its return after the
+  // interrupt, never to the exit. The exit window is pinned by
+  // tests/unit/animationTiming.spec.ts.
+  TOP_BAR_EPILOGUE_EXIT: 0.4,
+  TOP_BAR_EPILOGUE_RETURN: 1.2,
   // The milestone hint's own enter/exit fade while it borrows the lower edge.
   MILESTONE_HINT_FADE: 0.4,
 } as const;

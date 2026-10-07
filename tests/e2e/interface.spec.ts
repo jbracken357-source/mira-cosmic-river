@@ -1,11 +1,12 @@
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { MID_DECLINE_EPOCH, openStarCardViaKeyboard, openTailCardViaKeyboard } from './helpers';
+import { dragOffMainView, manipulateScene, MID_DECLINE_EPOCH, openStarCardViaKeyboard, openTailCardViaKeyboard } from './helpers';
 
 // Interface (#20): keyboard reachability of the star info cards, Esc + focus
 // restore, 44px targets and accessible names, document language
-// sync, interaction-hint exit and rediscovery, and the narrow/landscape viewports.
-// #89: the cards open on the relationship line with the science paragraph second,
+// sync, the interaction hint's one-way exit (#90), and the narrow/landscape
+// viewports.
+// #89: the cards open on their first line with the science paragraph second,
 // and the tail card no longer carries a time-speed control.
 //
 // `?quality=low` keeps the scene light enough for software rendering (headless CI
@@ -172,6 +173,12 @@ test.describe('touch targets and focus', () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await gotoExplore(page);
 
+    // The quiet first look graduates with the visit's first manipulation (#90):
+    // 暂停 and 今晚的 Mira join after a zoom, 主视角 once the camera is off the
+    // main view.
+    await manipulateScene(page);
+    await dragOffMainView(page);
+
     for (const testId of [
       'return-to-view',
       'tonight-save',
@@ -190,9 +197,10 @@ test.describe('touch targets and focus', () => {
   test('tabbing to a control shows the shared focus ring', async ({ page }) => {
     await gotoExplore(page);
 
-    const pause = page.getByTestId('pause-toggle');
-    await pause.focus();
-    const outline = await pause.evaluate((el) => getComputedStyle(el).outlineStyle);
+    // 完整开场 never leaves the quiet bar (#90), so it is always there to be tabbed to.
+    const control = page.getByTestId('replay-opening');
+    await control.focus();
+    const outline = await control.evaluate((el) => getComputedStyle(el).outlineStyle);
     expect(outline).toBe('solid');
   });
 });
@@ -208,28 +216,28 @@ test.describe('language sync', () => {
     await expect(page.locator('html')).toHaveAttribute('lang', 'en');
     await expect(page.getByTestId('language-toggle')).toHaveText('中文');
 
-    // Replay the opening: the direct-entry button follows the same language.
+    // Replay the opening: 「我自己看」 follows the same language.
     await page.getByTestId('replay-opening').click();
     await expect(page.getByTestId('cinematic-overlay')).toBeVisible();
-    await expect(page.getByTestId('skip-cinematic')).toHaveText('Enter early');
+    await expect(page.getByTestId('look-myself')).toHaveText('I’ll look myself.');
 
     await page.getByTestId('language-toggle').click();
     await expect(page.locator('html')).toHaveAttribute('lang', 'zh-CN');
-    await expect(page.getByTestId('skip-cinematic')).toHaveText('提前进入');
+    await expect(page.getByTestId('look-myself')).toHaveText('我自己看');
   });
 
-  test('the direct-entry button keeps a 44px target during the opening', async ({ page }) => {
+  test('the 「我自己看」 button keeps a 44px target during the opening', async ({ page }) => {
     await page.addInitScript(() => {
       localStorage.removeItem('mira:seen-opening');
     });
     await page.goto(APP);
     await expect(page.getByTestId('cinematic-overlay')).toBeVisible({ timeout: 15000 });
-    await expectMinTarget(page, 'skip-cinematic');
+    await expectMinTarget(page, 'look-myself');
   });
 });
 
-test.describe('interaction hint exit and rediscovery', () => {
-  test('the first scene manipulation retires the hint; a quiet entry brings it back', async ({ page }) => {
+test.describe('interaction hint exit (#90)', () => {
+  test('the first scene manipulation retires the hint for good — no 「?」 stays behind', async ({ page }) => {
     await gotoExplore(page);
 
     const hint = page.getByTestId('interaction-hint');
@@ -242,14 +250,11 @@ test.describe('interaction hint exit and rediscovery', () => {
     // The learned state is written at dismissal…
     expect(await page.evaluate(() => localStorage.getItem('mira:learned-controls'))).toBe('1');
 
-    const recall = page.getByTestId('interaction-hint-recall');
-    await expect(recall).toBeVisible();
-    await expectMinTarget(page, 'interaction-hint-recall');
-    await recall.click();
-    await expect(hint).toBeVisible();
+    // …and once learned, no recall affordance takes the hint's place.
+    await expect(page.getByTestId('interaction-hint-recall')).toHaveCount(0);
   });
 
-  test('a returning visit does not show the hint again, but the recall entry stays', async ({ page }) => {
+  test('a returning visit shows neither the hint nor a 「?」', async ({ page }) => {
     await page.addInitScript(() => {
       localStorage.setItem('mira:seen-opening', '1');
       localStorage.setItem('mira:learned-controls', '1');
@@ -259,7 +264,7 @@ test.describe('interaction hint exit and rediscovery', () => {
     await expect(page.locator('canvas')).toHaveAttribute('data-camera-pose', /.+/, { timeout: 30000 });
 
     await expect(page.getByTestId('interaction-hint')).toHaveCount(0);
-    await expect(page.getByTestId('interaction-hint-recall')).toBeVisible();
+    await expect(page.getByTestId('interaction-hint-recall')).toHaveCount(0);
   });
 });
 
@@ -291,7 +296,13 @@ for (const viewport of VIEWPORTS) {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     await gotoExplore(page);
 
-    for (const testId of ['pause-toggle', 'replay-opening', 'language-toggle']) {
+    // 第一眼的三件 (#90) are present at once; 暂停 and 今晚的 Mira join after the
+    // visit's first manipulation.
+    for (const testId of ['ambient-toggle', 'replay-opening', 'language-toggle']) {
+      await expect(page.getByTestId(testId)).toBeVisible();
+    }
+    await manipulateScene(page);
+    for (const testId of ['pause-toggle', 'tonight-save']) {
       await expect(page.getByTestId(testId)).toBeVisible();
     }
     // The closing line of the full cinematic holds the lower edge at every size (#88).

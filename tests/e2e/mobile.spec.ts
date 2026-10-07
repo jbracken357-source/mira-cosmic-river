@@ -30,7 +30,7 @@ test.describe('Mobile first-class', () => {
 
     await expect(page.getByTestId('explore-ui')).toBeVisible({ timeout: 10000 });
     await expect(page.getByTestId('explore-ui').getByText('Mira', { exact: true })).toBeVisible();
-    await expect(page.getByTestId('skip-cinematic')).toHaveCount(0);
+    await expect(page.getByTestId('look-myself')).toHaveCount(0);
 
     // Direct entry must not wait out the 15s sequence.
     await page.waitForTimeout(2500);

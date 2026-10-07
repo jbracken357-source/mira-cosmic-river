@@ -13,8 +13,8 @@ test.describe('Language Toggle Test', () => {
     await page.goto(APP);
     await page.waitForLoadState('networkidle');
 
-    // Skip the opening to reach exploration straight away
-    await page.getByTestId('skip-cinematic').click();
+    // Leave the opening early (「我自己看」) to reach exploration straight away
+    await page.getByTestId('look-myself').click();
     await expect(page.getByTestId('explore-ui')).toBeVisible();
 
     // The toggle shows the language you would switch *to*

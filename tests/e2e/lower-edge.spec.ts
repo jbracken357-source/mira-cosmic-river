@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { MIRA_MAXIMUM_EPOCH_MS } from '../../src/lib/starClock';
 import { TRANSLATIONS } from '../../src/constants/translations';
-import { IDLE_FAST, MID_DECLINE_EPOCH } from './helpers';
+import { IDLE_FAST, manipulateScene, MID_DECLINE_EPOCH } from './helpers';
 
 // 下缘 (#88): the closing line of the full cinematic holds the lower edge through
 // free viewing — direct entry opens with it already there from the first frame,
@@ -190,6 +190,8 @@ test.describe('the closing line at the lower edge', () => {
     // The sky line is the closing line of the full cinematic…
     await expect(page.getByTestId('lower-edge-closing-line')).toHaveText(TRANSLATIONS.ch.subtitle);
     // …and tonight's Mira keeps its own saved phrase — a memory, not the sky line.
+    // The save entry joins the quiet bar after the visit's first manipulation (#90).
+    await manipulateScene(page);
     await page.getByTestId('tonight-save').click();
     await expect(page.getByTestId('tonight-panel')).toBeVisible();
     await expect(page.getByTestId('tonight-toggle-phrase')).toHaveAttribute('aria-pressed', 'true');
