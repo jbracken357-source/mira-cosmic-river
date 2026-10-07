@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useCallback } from 'react';
+import { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls as DreiOrbitControls } from '@react-three/drei';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
@@ -150,6 +150,17 @@ function SceneContent({
   const miraBScreenRef = useRef(new THREE.Vector3());
   const tailScreenRef = useRef(new THREE.Vector3());
   const tailFarScreenRef = useRef(new THREE.Vector3());
+  // The dev-only probe seams: one row per projected anchor, consumed by the frame
+  // loop's write-on-change loop. The refs are stable, so the table is built once.
+  const probeSeams = useMemo(
+    () => [
+      { anchor: miraAAnchorRef, key: 'miraAScreen', vec: miraAScreenRef },
+      { anchor: miraBTargetRef, key: 'miraBScreen', vec: miraBScreenRef },
+      { anchor: tailTargetRef, key: 'tailScreen', vec: tailScreenRef },
+      { anchor: tailFarAnchorRef, key: 'tailFarScreen', vec: tailFarScreenRef },
+    ],
+    [],
+  );
   const ambientLookRef = useRef(new THREE.Vector3());
   const firstFrameMarkedRef = useRef(false);
   // Quality governor (#26): the state lives outside React — it is fed every frame
@@ -440,31 +451,16 @@ function SceneContent({
       if (el.dataset.cameraPose !== pose) el.dataset.cameraPose = pose;
       frameCountRef.current += 1;
       el.dataset.frameCount = String(frameCountRef.current);
-      // Mira A and the tail's click target, projected to screen percentages through
-      // one seam: the click probes read where each anchor actually is this frame.
-      if (miraAAnchorRef.current) {
-        const miraA = screenPercent(miraAAnchorRef.current, camera, miraAScreenRef.current);
-        if (el.dataset.miraAScreen !== miraA) el.dataset.miraAScreen = miraA;
-      }
-      // The companion through the same seam (#91): the gap between the two stars is
-      // an acceptance the specs read off the two projections directly.
-      if (miraBTargetRef.current) {
-        const miraB = screenPercent(miraBTargetRef.current, camera, miraBScreenRef.current);
-        if (el.dataset.miraBScreen !== miraB) el.dataset.miraBScreen = miraB;
-      }
-      // The tail's click target, projected the same way (#88): with the treasure-hunt
-      // hint gone from the lower edge, the scene itself is the tail's entry and specs
-      // click it where it actually is.
-      if (tailTargetRef.current) {
-        const tail = screenPercent(tailTargetRef.current, camera, tailScreenRef.current);
-        if (el.dataset.tailScreen !== tail) el.dataset.tailScreen = tail;
-      }
-      // The road's far end through the same seam (#91): the parallax probe — under a
-      // drag or a zoom it sweeps measurably more than the pair, which is how the
-      // specs read the foreground/background difference.
-      if (tailFarAnchorRef.current) {
-        const far = screenPercent(tailFarAnchorRef.current, camera, tailFarScreenRef.current);
-        if (el.dataset.tailFarScreen !== far) el.dataset.tailFarScreen = far;
+      // The screen-percentage probes, one seam per anchor: Mira A and the companion
+      // (the gap is an acceptance the specs read off the two projections, #91), the
+      // tail's click target (the scene itself is the tail's entry, #88), and the
+      // road's far end (the parallax probe — under a drag or a zoom it sweeps
+      // measurably more than the pair, #91). Write-on-change guards stay per key.
+      for (const { anchor, key, vec } of probeSeams) {
+        if (anchor.current) {
+          const projected = screenPercent(anchor.current, camera, vec.current);
+          if (el.dataset[key] !== projected) el.dataset[key] = projected;
+        }
       }
     }
 

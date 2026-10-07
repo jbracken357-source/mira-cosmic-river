@@ -3,7 +3,8 @@
 // resolveOpeningPose(t) is the single source of the opening's camera path and tail
 // ramp; the scene's frame loop only applies the result. Three beats:
 //
-//   起 hold       0–4s     tight on the pair (CLOSE), the tail still dark
+//   起 hold       0–4s     tight on the pair (CLOSE), the tail dark until the road
+//                          begins to gather at 3s (TAIL_FORMING_START, #91)
 //   中 pull-back  4–12s    the scale reveal. The path bows through MID toward the
 //                          river, so its near edge sweeps past the lens (前景经过)
 //                          instead of the camera retreating in a straight line;
@@ -57,19 +58,25 @@ function bowedPath(close: readonly number[], mid: readonly number[], far: readon
 
 // The tail's opacity envelope, shared with the scene's explore-state value so the
 // ramp can never drift away from where the opening lands.
-// The pull-back glimmer (up to TAIL_GLIMMER) is the floor the reveal grows from —
-// resetting to zero at the tail-reveal mark read as a pop. #91: the real rise begins
-// at TAIL_FORMING_START, inside the second caption's window — when 「彼此牵引，一起
-// 走向更远。」 is on screen the road is already forming, no longer just the base glow.
+// #91's strict reading of 「出现时…已经…不再只是底光」: the rise begins inside the
+// FIRST caption's window (TAIL_FORMING_START) and crosses the base glow exactly as
+// the second caption appears — opacity at PULL_BACK_START is TAIL_EMERGING, twice
+// the glimmer floor. The first caption itself never carries more than the old
+// floor, so its own beat stays quiet. Both joins are slope-zero eases: a reset or
+// a kink at either mark read as a pop.
 export const TAIL_GLIMMER = 0.15;
+export const TAIL_EMERGING = 0.3;
 export const TAIL_FULL_OPACITY = 0.85;
 
 function tailRamp(t: number): number {
-  if (t < CINEMATIC.PULL_BACK_START) return 0;
-  if (t < CINEMATIC.TAIL_FORMING_START) {
-    return clamp01((t - CINEMATIC.PULL_BACK_START) / (CINEMATIC.TAIL_FORMING_START - CINEMATIC.PULL_BACK_START)) * TAIL_GLIMMER;
+  if (t < CINEMATIC.TAIL_FORMING_START) return 0;
+  if (t < CINEMATIC.PULL_BACK_START) {
+    // The gathering: dark → TAIL_EMERGING across the first caption's latter half.
+    return easeInOutCubic(clamp01((t - CINEMATIC.TAIL_FORMING_START) / (CINEMATIC.PULL_BACK_START - CINEMATIC.TAIL_FORMING_START))) * TAIL_EMERGING;
   }
-  return TAIL_GLIMMER + easeInOutCubic(clamp01((t - CINEMATIC.TAIL_FORMING_START) / (CINEMATIC.TAIL_FULL - CINEMATIC.TAIL_FORMING_START))) * (TAIL_FULL_OPACITY - TAIL_GLIMMER);
+  // Full visibility is a hard state, not the float sum of two eased segments.
+  if (t >= CINEMATIC.TAIL_FULL) return TAIL_FULL_OPACITY;
+  return TAIL_EMERGING + easeInOutCubic(clamp01((t - CINEMATIC.PULL_BACK_START) / (CINEMATIC.TAIL_FULL - CINEMATIC.PULL_BACK_START))) * (TAIL_FULL_OPACITY - TAIL_EMERGING);
 }
 
 export function resolveOpeningPose(

@@ -108,9 +108,9 @@ export function highlightShoulder(x: number): number {
 // The disk is a puff, not a mathematical plane: the camera's azimuth is unrestricted,
 // and a flat band is exactly edge-on at two points of every revolution, where it
 // degenerates into a one-pixel bar. A thickness under a sixth of the radius read as
-// that bar from the explore axis (the sideways white blob of #91); a third keeps a
-// soft vertical extent from every angle. Real disks flared like this are just as
-// thin.
+// that bar from the explore axis (the sideways white blob of #91); three tenths
+// keeps a soft vertical extent from every angle. Real disks flared like this are
+// just as thin.
 export const DISK_GEOMETRY = {
   tilt: Math.PI / 9, // radians about X, off the orbital plane
   scale: 4.8, // outer radius in white-dwarf radii — clears the star's own bloom
