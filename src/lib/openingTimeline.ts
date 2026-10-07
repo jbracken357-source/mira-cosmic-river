@@ -65,7 +65,7 @@ function bowedPath(close: readonly number[], mid: readonly number[], far: readon
 // floor, so its own beat stays quiet. Both joins are slope-zero eases: a reset or
 // a kink at either mark read as a pop.
 export const TAIL_GLIMMER = 0.15;
-export const TAIL_EMERGING = 0.3;
+export const TAIL_EMERGING = TAIL_GLIMMER * 2;
 export const TAIL_FULL_OPACITY = 0.85;
 
 function tailRamp(t: number): number {
