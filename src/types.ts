@@ -13,11 +13,6 @@ export interface StarSystemState {
   cinematicTime: number; // 0-15 seconds
 }
 
-// Adjustable parameters for the visualization
-export interface StarParameters {
-  timeSpeed: number;       // 0.1-5.0x (only control in new design)
-}
-
 // Translation dictionary (simplified for new design)
 export interface TranslationDict {
   title: string;
@@ -26,12 +21,13 @@ export interface TranslationDict {
   cinematic2: string;
   cinematic3: string;
   miraA: string;
+  miraAFirstLine: string;
   miraADesc: string;
   miraB: string;
+  miraBFirstLine: string;
   miraBDesc: string;
   tailLabel: string;
   tailDesc: string;
-  timeSpeed: string;
   interactionHint: string;
   replayOpening: string;
   pause: string;

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { StarSystemState, StarParameters, Language, CinematicPhase } from '../types';
+import type { StarSystemState, Language, CinematicPhase } from '../types';
 import type { SkyState } from '../lib/starClock';
 import { currentSkyState } from '../lib/starClock';
 import { captureMode, registerPauseSource } from '../lib/captureMode';
@@ -11,14 +11,12 @@ import { rememberFlag, rememberedFlag } from '../lib/rememberedFlag';
 export const SEEN_OPENING_KEY = 'mira:seen-opening';
 
 interface BinaryStarStore extends StarSystemState {
-  parameters: StarParameters;
   sky: SkyState;
   setLanguage: (language: Language) => void;
   setPlaying: (isPlaying: boolean) => void;
   setIntroComplete: (complete: boolean) => void;
   setCinematicPhase: (phase: CinematicPhase) => void;
   setCinematicTime: (time: number) => void;
-  setParameter: (key: keyof StarParameters, value: number) => void;
   setSky: (sky: SkyState) => void;
   epilogueVisible: boolean;
   setEpilogueVisible: (visible: boolean) => void;
@@ -49,10 +47,6 @@ interface BinaryStarStore extends StarSystemState {
   returnToExploreAt: number;
   requestReturnToExplore: () => void;
 }
-
-const defaultParameters: StarParameters = {
-  timeSpeed: 1.0,
-};
 
 function hasSeenOpening(): boolean {
   return rememberedFlag(SEEN_OPENING_KEY);
@@ -88,7 +82,6 @@ export const useBinaryStar = create<BinaryStarStore>((set, get) => ({
   tonightSaveOpen: false,
   autoCamera: 'off',
   returnToExploreAt: 0,
-  parameters: defaultParameters,
   sky: initialSky,
 
   setLanguage: (language) => set({ language }),
@@ -134,9 +127,6 @@ export const useBinaryStar = create<BinaryStarStore>((set, get) => ({
   },
   requestReturnToExplore: () =>
     set({ returnToExploreAt: Date.now(), epilogueVisible: false, epilogueText: false, lastIntentionalInputAt: Date.now() }),
-  setParameter: (key, value) => set((state) => ({
-    parameters: { ...state.parameters, [key]: value },
-  })),
   setSky: (sky) => set({ sky }),
 }));
 

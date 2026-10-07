@@ -83,7 +83,6 @@ function SceneContent({
 }) {
   const portrait = useThree(state => state.size.height > state.size.width);
   const CAMERA = portrait ? PORTRAIT_CAMERA : LANDSCAPE_CAMERA;
-  const timeSpeed = useBinaryStar((state) => state.parameters.timeSpeed);
   const cinematicPhase = useBinaryStar((state) => state.cinematicPhase);
   const setCinematicPhase = useBinaryStar((state) => state.setCinematicPhase);
   const setCinematicTime = useBinaryStar((state) => state.setCinematicTime);
@@ -286,11 +285,10 @@ function SceneContent({
       // opening at one instant for phase evidence; `?cinematic-scale=` multiplies the
       // wall clock so e2e reaches the natural ending in seconds.
       const frozen = capture.active ? capture.cinematicT : null;
-      const elapsed =
+      const t =
         frozen !== null
           ? frozen / 1000
           : ((Date.now() - cinematicStartRef.current) / 1000) * cinematicTimeScale();
-      const t = elapsed / timeSpeed;
       cinematicElapsedRef.current = t;
 
       const segment = openingSegment(t);
@@ -323,10 +321,12 @@ function SceneContent({
       tailOpacityRef.current = pose.tailOpacity;
     }
 
-    // Orbital mechanics (always running unless the viewer paused the scene)
+    // Orbital mechanics (always running unless the viewer paused the scene). The
+    // orbit speed is fixed — the time-speed control is gone (#89); what was its
+    // default (1.0x) is now simply the speed.
     timeRef.current = advanceTime(timeRef.current, delta, {
       reduceMotion,
-      scale: timeSpeed * .08,
+      scale: 0.08,
     });
     // 共同前行 (#86): the shared ride along the heading runs on its own scene
     // clock, and only in free viewing — the full cinematic owns the framing and
@@ -336,7 +336,6 @@ function SceneContent({
     if (introComplete) {
       journeyPhaseRef.current = advanceTime(journeyPhaseRef.current, delta, {
         reduceMotion,
-        scale: timeSpeed,
       });
     } else {
       // The journey belongs to free viewing: the opening always finds the pair at

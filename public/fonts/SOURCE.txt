@@ -1,7 +1,7 @@
 Self-hosted font subsets for the interface (#20). Google Fonts is no longer linked;
 these two woff2 files are the whole font payload.
 
-file: mira-serif-sc.woff2 (142 KB, 721 glyphs, variable wght 200-900 kept)
+file: mira-serif-sc.woff2 (143 KB, 724 glyphs, variable wght 200-900 kept)
 family-name: "Mira Serif SC" (custom name; the OFL reserved font names stay untouched)
 source-font: Noto Serif SC (Source Han Serif SC), variable TTF NotoSerifSC[wght].ttf
 source-url: https://raw.githubusercontent.com/google/fonts/main/ofl/notoserifsc/NotoSerifSC%5Bwght%5D.ttf
@@ -11,7 +11,7 @@ subset-of: every character in src/constants/translations.ts (en + ch) + printabl
   by experiments/build-font-subset.mjs and guarded by tests/unit/fontSubset.spec.ts
 subset-command: pyftsubset (fontTools 4.63.0) --flavor=woff2 --layout-features='*'
   --no-hinting --desubroutinize --text-file=subset-glyphs.txt
-subsetted-on: 2026-09-18
+subsetted-on: 2026-10-06
 
 file: mira-wenkai.woff2 (66 KB, 494 glyphs, Regular)
 family-name: "Mira WenKai" (custom name; the OFL reserved font names stay untouched)

@@ -13,8 +13,10 @@ export const TRANSLATIONS = {
     title: 'Mira',
     subtitle: 'Together, Until the End of Time',
 
-    // Star info cards
+    // Star info cards: the first line says the relationship; the science
+    // paragraph follows whole, as the second line (#89).
     miraA: 'Mira A',
+    miraAFirstLine: 'The light keeps changing. This is the night you caught.',
     miraADesc: 'Red Giant. 300× the Sun\'s radius. Pulsing every 332 days. Temperature: 3,000K.',
     phaseDaysToMax: 'About {n} days to next maximum',
     phaseDaysToMin: 'About {n} days to next minimum',
@@ -25,12 +27,12 @@ export const TRANSLATIONS = {
     milestoneMaximum: 'Mira is at its brightest this cycle',
     milestoneMinimum: 'Mira is at its faintest this cycle',
     miraB: 'Mira B',
+    miraBFirstLine: 'It is still right beside the other. Any day you come, it is here.',
     miraBDesc: 'White Dwarf. Accreting matter from its companion. One day, it may trigger a nova.',
     tailLabel: 'The Tail',
     tailDesc: '13 light-years long. Discovered by GALEX in 2007. The longest stellar tail ever observed.',
 
     // UI
-    timeSpeed: 'Time Speed',
     interactionHint: 'Drag to Rotate · Scroll to Zoom',
     interactionHintMobile: 'Drag to Rotate · Pinch to Zoom',
     // Direct entry mid-opening: the viewer cuts the full cinematic short
@@ -84,8 +86,10 @@ export const TRANSLATIONS = {
     title: 'Mira',
     subtitle: '在宇宙的尽头，我们依然相伴。',
 
-    // Star info cards
+    // Star info cards: the first line says the relationship; the science
+    // paragraph follows whole, as the second line (#89).
     miraA: '蒭藁增二 A',
+    miraAFirstLine: '亮度一直在变。你看到的是这一晚。',
     miraADesc: '红巨星。太阳半径的 300 倍。每 332 天脉动一次。表面温度 3,000K。',
     phaseDaysToMax: '距下次最亮约 {n} 天',
     phaseDaysToMin: '距下次最暗约 {n} 天',
@@ -96,12 +100,12 @@ export const TRANSLATIONS = {
     milestoneMaximum: '本周期最亮',
     milestoneMinimum: '本周期最暗',
     miraB: '蒭藁增二 B',
+    miraBFirstLine: '它还在旁边。你哪天来，都在。',
     miraBDesc: '白矮星。从伴星吸积物质。终有一天，它可能触发新星爆发。',
     tailLabel: '尾巴',
     tailDesc: '13 光年长。2007 年由 GALEX 卫星发现。人类观测到的最长的恒星尾巴。',
 
     // UI
-    timeSpeed: '时间速度',
     interactionHint: '拖拽旋转 · 滚轮缩放',
     interactionHintMobile: '拖拽旋转 · 双指缩放',
     // 直达：观看者在完整开场中途提前进入场景
