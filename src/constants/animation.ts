@@ -86,15 +86,18 @@ export const PORTRAIT_CAMERA = {
     lookAt: [-3.2, -17, 8] as [number, number, number],
     fov: 50,
   },
-  // 竖屏长卷 home: the pair above the title band and clear of the 顶栏, the road's
-  // far end past the midline into the lower half. The fov narrows against the
-  // landscape 45 — standing this close is what lets the road fill the tall frame.
-  // Distance to the orbit target stays inside the explore zoom limit, so the
-  // landing is a place the viewer can keep.
+  // 竖屏长卷 home: the pair above the title band and clear of the 顶栏, the road
+  // running down the long axis — its strong-alpha body past the midline, its far
+  // end two thirds down the frame (the review round on #92 pushed the visible
+  // reach deeper: the camera stands closer to the road's far side and higher over
+  // it, so the river fills more of the tall frame instead of dissolving at the
+  // midline). The fov narrows against the landscape 45 — standing this close is
+  // what lets the road fill the tall frame. Distance to the orbit target stays
+  // inside the explore zoom limit, so the landing is a place the viewer can keep.
   EXPLORE: {
-    position: [-4.4, 20, 26.2] as [number, number, number],
-    lookAt: [-3.4, -10.7, 8] as [number, number, number],
-    fov: 38,
+    position: [-8.6, 22.6, 25] as [number, number, number],
+    lookAt: [-5.6, -2.8, 11.4] as [number, number, number],
+    fov: 36,
   },
   // The epilogue hold: farther along the same composition, the pair pushed right
   // of the centered line, the road still running down the frame.

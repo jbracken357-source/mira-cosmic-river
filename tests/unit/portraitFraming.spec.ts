@@ -10,7 +10,7 @@ import {
   projectToScreenPercent,
   screenDiscRadiusPercent,
 } from '../../src/lib/portraitFraming';
-import { TAIL_ROOT, tailCenterline, tailFarEnd, yawY } from '../../src/lib/tailPath';
+import { TAIL_ROOT, tailCenterline, tailFarEnd, tailMidProbe, yawY } from '../../src/lib/tailPath';
 
 // 竖屏长卷 (#92): the portrait free-viewing framing as geometry, not pixels. The
 // pair's home configuration and the road's anchors are projected through the poses
@@ -34,7 +34,11 @@ const DISC_MARGIN = 1.4;
 
 // 终幕标题: the final beat's title block opens at top-1/3 of the frame.
 const TITLE_TOP_PERCENT = 100 / 3;
-// 顶栏 at 390×844: padding + the 44px controls ≈ 76px of the 844px frame.
+// 顶栏: 76px measured in e2e at both named widths (the first-read row: padding +
+// the 44px controls). Once the viewer's first drag or zoom grows the bar （暂停 and
+// 今晚的 Mira join), it wraps to a second row (132px) — no composition can clear
+// a two-row bar AND keep the pair above the title band, so the pin's standard is
+// the first-read row, the bar's state when the long scroll lands.
 const TOP_BAR_BOTTOM_PERCENT = (76 / 844) * 100;
 const TOP_BAR_BOTTOM_PERCENT_SE = (76 / 568) * 100;
 
@@ -88,6 +92,12 @@ test.describe('竖屏长卷: the road runs down the long axis at 390×844', () =
   const root = projectToScreenPercent(TAIL_ROOT, pose, REF, PORTRAIT_TILT);
   const mid = projectToScreenPercent(yawY(tailCenterline(0.5, TAIL_LENGTH)), pose, REF, PORTRAIT_TILT);
   const far = projectToScreenPercent(tailFarEnd(TAIL_LENGTH), pose, REF, PORTRAIT_TILT);
+  // The visible-reach stations (#92 review): t=0.7 is the e2e's probe anchor —
+  // deep inside the strong-alpha body; t=0.92 is where the portrait-softened far
+  // fade (PORTRAIT_FAR_FADE_SCALE, 0.93) is still nearly full. No alpha-zero
+  // point stands in for visibility here.
+  const reach = projectToScreenPercent(tailMidProbe(TAIL_LENGTH), pose, REF, PORTRAIT_TILT);
+  const softEnd = projectToScreenPercent(yawY(tailCenterline(0.92, TAIL_LENGTH)), pose, REF, PORTRAIT_TILT);
 
   test('both stars are in frame, high on the right', () => {
     for (const star of [a, b]) {
@@ -103,10 +113,27 @@ test.describe('竖屏长卷: the road runs down the long axis at 390×844', () =
     expect(root.y).toBeLessThan(mid.y);
     expect(mid.y).toBeLessThan(far.y);
     expect(mid.y).toBeGreaterThan(35);
-    expect(far.y).toBeGreaterThan(60);
+    expect(far.y).toBeGreaterThan(64);
     expect(far.y).toBeLessThan(85);
     expect(far.x).toBeGreaterThan(20);
     expect(far.x).toBeLessThan(65);
+  });
+
+  test('the river\'s VISIBLE reach sweeps deep into the lower half', () => {
+    // The review round's promise: the strong-alpha body crosses the midline and
+    // the softened fade's strong end lands clearly past 60% — below the ticket's
+    // first calibration, where the river dissolved by 58–65% and the lower screen
+    // went back to starfield. The geometric far end runs deeper still.
+    expect(reach.y).toBeGreaterThan(50);
+    expect(softEnd.y).toBeGreaterThan(62);
+    expect(far.y).toBeGreaterThan(softEnd.y);
+    // 近处有气: the near reach (root cone, t≤0.3) wraps the pair's region instead
+    // of starting downstream — it begins right at the root and spreads.
+    const near = projectToScreenPercent(yawY(tailCenterline(0.2, TAIL_LENGTH)), pose, REF, PORTRAIT_TILT);
+    expect(near.y).toBeLessThan(mid.y);
+    expect(near.y).toBeGreaterThan(root.y);
+    const mist = screenDiscRadiusPercent(root, 1.2, pose, REF, PORTRAIT_TILT);
+    expect(mist).toBeGreaterThan(2);
   });
 
   test('the pair clears the 顶栏 with the disc margin', () => {
@@ -132,6 +159,39 @@ test.describe('竖屏长卷: the road runs down the long axis at 390×844', () =
     }
   });
 
+  test('the pair\'s dense discs clear the real 320×568 顶栏 (#92 review)', () => {
+    // The e2e at this size measures the bar's box (76px) and asserts the same
+    // disc standard as 390×844's unit pin (photosphere + dense atmosphere, ×1.4,
+    // both stars). The companion's ×4.8 accretion reach — the disk's outer radius
+    // in its own plane — is pinned by the 390×844 e2e; at 320×568 that spherical
+    // standard is geometrically incompatible with the long scroll itself (the
+    // pair would have to fit between the bar and the title band with no room for
+    // the road), so the claim here is the one both stars genuinely satisfy.
+    const poseSe = portraitExplorePose(SE);
+    for (const [home, radius] of [
+      [HOME_A, PHYSICS.MIRA_A.radius],
+      [HOME_B, PHYSICS.MIRA_B.radius],
+    ] as const) {
+      const star = projectToScreenPercent(home, poseSe, SE, PORTRAIT_TILT);
+      const disc = screenDiscRadiusPercent(star, radius * DISC_MARGIN, poseSe, SE, PORTRAIT_TILT);
+      expect(star.y - disc).toBeGreaterThan(TOP_BAR_BOTTOM_PERCENT_SE + 0.5);
+    }
+  });
+
+  test('the pair\'s discs clear the 终幕标题\'s band on the shortest portrait too (320×568)', () => {
+    // Not pinned before the review round: the title and the near-explore pose
+    // coexist for the settle's last frames (FINAL_TEXT → EXPLORE_MODE), and the
+    // recalibrated composition must keep the giant's atmosphere out of the title
+    // box there as well.
+    const poseSe = portraitExplorePose(SE);
+    const aSe = projectToScreenPercent(HOME_A, poseSe, SE, PORTRAIT_TILT);
+    const bSe = projectToScreenPercent(HOME_B, poseSe, SE, PORTRAIT_TILT);
+    const discA = screenDiscRadiusPercent(aSe, PHYSICS.MIRA_A.radius * DISC_MARGIN, poseSe, SE, PORTRAIT_TILT);
+    const discB = screenDiscRadiusPercent(bSe, PHYSICS.MIRA_B.radius * DISC_MARGIN, poseSe, SE, PORTRAIT_TILT);
+    expect(aSe.y + discA).toBeLessThan(TITLE_TOP_PERCENT - 0.3);
+    expect(bSe.y + discB).toBeLessThan(TITLE_TOP_PERCENT - 1);
+  });
+
   test('the explore framing clears the 终幕标题 band (reduced motion pins this framing)', () => {
     const disc = screenDiscRadiusPercent(a, PHYSICS.MIRA_A.radius * DISC_MARGIN, pose, REF, PORTRAIT_TILT);
     expect(a.y + disc).toBeLessThan(TITLE_TOP_PERCENT - 1);
@@ -143,6 +203,25 @@ test.describe('竖屏长卷: the road runs down the long axis at 390×844', () =
     const discA = screenDiscRadiusPercent(a, PHYSICS.MIRA_A.radius, pose, REF, PORTRAIT_TILT);
     const discB = screenDiscRadiusPercent(b, PHYSICS.MIRA_B.radius, pose, REF, PORTRAIT_TILT);
     expect(discA).toBeGreaterThan(discB * 4);
+  });
+});
+
+test.describe('竖屏长卷: the road reaches deeper still on the shortest portrait (320×568)', () => {
+  // The narrow frame widens the fitted vertical angle, so the river runs further
+  // down the screen here than at 390×844: the strong-alpha body ends past ~68%,
+  // the softened fade's strong end past ~72%, the far end past ~76%.
+  const poseSe = portraitExplorePose(SE);
+  const reach = projectToScreenPercent(tailMidProbe(TAIL_LENGTH), poseSe, SE, PORTRAIT_TILT);
+  const softEnd = projectToScreenPercent(yawY(tailCenterline(0.92, TAIL_LENGTH)), poseSe, SE, PORTRAIT_TILT);
+  const far = projectToScreenPercent(tailFarEnd(TAIL_LENGTH), poseSe, SE, PORTRAIT_TILT);
+
+  test('the visible reach and the far end at 320×568', () => {
+    expect(reach.y).toBeGreaterThan(55);
+    expect(softEnd.y).toBeGreaterThan(70);
+    expect(far.y).toBeGreaterThan(74);
+    expect(far.y).toBeLessThan(92);
+    expect(far.x).toBeGreaterThan(20);
+    expect(far.x).toBeLessThan(80);
   });
 });
 

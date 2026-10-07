@@ -125,7 +125,9 @@ let pinCache: { aspect: number; pose: FramingPose } | null = null;
 // The long scroll's explore framing for one aspect: the stored composition with
 // the aim re-solved so the 根 holds its calibrated screen point. The solve is a
 // two-line Newton on the view direction (below), exact to machine precision at
-// any portrait aspect, memoized per aspect.
+// any portrait aspect. pinCache is a single-entry memo: the frame loop asks for
+// the one aspect currently on screen, so keeping the last solve covers every
+// steady visit; a resize simply re-solves once.
 export function portraitExplorePose(aspect: number): FramingPose {
   const stored = PORTRAIT_CAMERA.EXPLORE;
   if (aspect === PORTRAIT_REFERENCE_ASPECT || aspect >= 1) {

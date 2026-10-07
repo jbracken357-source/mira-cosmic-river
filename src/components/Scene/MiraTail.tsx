@@ -7,7 +7,7 @@ import { useReducedMotion } from 'framer-motion';
 import RiverVeil from './RiverVeil';
 import { advanceTime, captureMode } from '../../lib/captureMode';
 import { dailySkyCoupling, tailBaseOpacity } from '../../lib/riverLighting';
-import { tailCenterline, tailSpread } from '../../lib/tailPath';
+import { tailCenterline, tailSpread, PORTRAIT_FAR_FADE_SCALE } from '../../lib/tailPath';
 import { useBinaryStar } from '../../hooks';
 import type { QualityTier } from '../../constants';
 
@@ -16,6 +16,9 @@ interface MiraTailProps {
   particleCount?: number;
   tailLength?: number;
   miraBRef: MutableRefObject<THREE.Group | null>;
+  // 竖屏长卷 (#92 review): in the tall frame the far fade eases later so the
+  // mist reaches the road's far end; landscape binds the identity, bit-exact.
+  portrait: boolean;
   // The governed tier, not the load-time sniff: the veil must follow the same
   // descent as the tail points (#26 / #50).
   tier: QualityTier;
@@ -62,6 +65,7 @@ export default function MiraTail({
   particleCount = 10000,
   tailLength = 25,
   miraBRef,
+  portrait,
   tier,
 }: MiraTailProps) {
   const textureReadyRef = useRef(false);
@@ -114,6 +118,9 @@ export default function MiraTail({
     mat.uniforms.uOpacity.value = opacityRef.current * tailBaseOpacity(textureReadyRef.current, particleCount, coupling.density);
     mat.uniforms.uSkyGain.value = coupling.gain;
     mat.uniforms.uSkyWarmth.value = coupling.warmth;
+    // 竖屏长卷 (#92 review): the far fade eases later in the tall frame; landscape
+    // binds the identity 1, bit-exact. Written with the rest so a rotation flips it.
+    mat.uniforms.uFarFade.value = portrait ? PORTRAIT_FAR_FADE_SCALE : 1;
     if (miraBRef.current) {
       miraBRef.current.getWorldPosition(bWorldPos.current);
       mat.uniforms.uMiraBPos.value.copy(bWorldPos.current);
