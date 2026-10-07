@@ -30,11 +30,13 @@ export const DISK_SHAPE = {
 } as const;
 
 // Both faces contribute. Restrained gains retain the sheared gas detail instead
-// of turning the entire disk into a white bloom halo.
+// of turning the entire disk into a white bloom halo. #91 softened them further:
+// the hot spot is a broad landing glow, and the ring never piles into a hard white
+// bar beside the star.
 export const DISK_GAIN = {
-  ring: 0.46,
-  hotSpot: 0.65,
-  innerGlow: 0.1,
+  ring: 0.34,
+  hotSpot: 0.42,
+  innerGlow: 0.08,
 } as const;
 
 // Shader materials take their uniforms object by assignment rather than by cloning, so each
@@ -129,7 +131,7 @@ export const AccretionDisk_Shader = {
       color += uColor * uInnerGlow * arc * exp(-max(r - uInner, 0.0) * 6.0) * smoothstep(0.12, uInner, r);
       color += uHotColor * spot * uHotGain;
 
-      float alpha = clamp(ring * beam * 0.48 + spot * 0.35, 0.0, 1.0) * uOpacity;
+      float alpha = clamp(ring * beam * 0.38 + spot * 0.26, 0.0, 1.0) * uOpacity;
 
       gl_FragColor = vec4(color, alpha);
     }

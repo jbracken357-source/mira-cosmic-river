@@ -95,6 +95,45 @@ export function highlightShoulder(x: number): number {
 
 // --- Mira B's accretion arcs ---------------------------------------------------
 
+// The disk's shape calibration (#91): the mesh (MiraB) and the hot-spot angle math
+// below share this one source, so the ring the shader paints and the ring the
+// geometry presents can never drift apart.
+//
+// The plane is tilted towards the viewer rather than lying in the 30-degree-inclined
+// orbital plane. Those are the same plane as far as the physics is concerned, but
+// the explore camera sits within a few degrees of the orbital plane, where a
+// coplanar disk is edge-on and collapses to a smear. A ninth of a pi keeps the ring
+// an unmistakable ellipse from the angles the camera actually reaches.
+//
+// The disk is a puff, not a mathematical plane: the camera's azimuth is unrestricted,
+// and a flat band is exactly edge-on at two points of every revolution, where it
+// degenerates into a one-pixel bar. A thickness under a sixth of the radius read as
+// that bar from the explore axis (the sideways white blob of #91); three tenths
+// keeps a soft vertical extent from every angle. Real disks flared like this are
+// just as thin.
+export const DISK_GEOMETRY = {
+  tilt: Math.PI / 9, // radians about X, off the orbital plane
+  scale: 4.8, // outer radius in white-dwarf radii — clears the star's own bloom
+  thickness: 0.3, // vertical half-thickness as a fraction of the outer radius
+} as const;
+
+// The disk-local azimuth of the direction from the companion toward the giant —
+// where the inflow lands, so the hot spot rides the pair's live separation (orbit
+// and shared journey alike) instead of sitting fixed on the sky. The disk mesh
+// only ever carries a rotation about X, so the world A-ward vector rotates into
+// the disk's own tilted plane by hand: local X is world X, and the plane's second
+// basis vector is (0, -sin tilt, cos tilt).
+export function impactAngleFor(
+  primary: readonly [number, number, number],
+  companion: readonly [number, number, number],
+): number {
+  const wx = primary[0] - companion[0];
+  const wy = primary[1] - companion[1];
+  const wz = primary[2] - companion[2];
+  const localZ = -wy * Math.sin(DISK_GEOMETRY.tilt) + wz * Math.cos(DISK_GEOMETRY.tilt);
+  return Math.atan2(localZ, wx);
+}
+
 // Outside the two arcs the orbit keeps only a faint trace of dust — enough to suggest
 // the disk plane, never enough to read as a complete ring.
 export const DISK_ARC_TRACE = 0.05;
@@ -122,11 +161,12 @@ export function arcClump(angle: number, time: number): number {
   return ARC_CLUMP_FLOOR + (1 - ARC_CLUMP_FLOOR) * smoothstep(0.2, 0.8, long * short);
 }
 
-// The hot spot sits where the stream actually lands: tight in angle, centred on its
-// own radius within the disk.
-export const HOT_SPOT_ANGLE_WIDTH = 0.42;
+// The hot spot sits where the stream actually lands: tight enough to be a place,
+// broad enough to read as a soft landing region rather than a white bead pasted
+// beside the star (#91).
+export const HOT_SPOT_ANGLE_WIDTH = 0.55;
 export const HOT_SPOT_RADIUS = 0.85;
-export const HOT_SPOT_RADIAL_WIDTH = 0.26;
+export const HOT_SPOT_RADIAL_WIDTH = 0.3;
 
 export function hotSpotProfile(deltaAngle: number, radius: number): number {
   return (

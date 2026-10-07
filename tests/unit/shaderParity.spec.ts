@@ -17,6 +17,7 @@ import {
 import { TailVertexShader, TailFragmentShader, createTailMaterial } from '../../src/shaders/tail';
 import { MiraA_Shader, HIGHLIGHT_SHOULDER_GLSL, PULSE_RATE } from '../../src/shaders/miraA';
 import { AccretionDisk_Shader } from '../../src/shaders/accretionDisk';
+import { TAIL_FADE_IN } from '../../src/lib/tailPath';
 import {
   SURFACE_DETAIL_FLOOR,
   PULSE_LIGHT_SWING,
@@ -64,6 +65,13 @@ test.describe('tail shader stays in step with riverLighting', () => {
     expect(TailVertexShader).toContain('float x = dist / reach;');
     expect(TailVertexShader).toContain('return 1.0 / (1.0 + x * x);');
     expect(TailFragmentShader).toContain('uShadowFloor + (1.0 - uShadowFloor) * vLight');
+  });
+
+  // #91: the near fade is the occupancy's constant, interpolated — the road's gas
+  // reaches the pair instead of starting a quarter of the tail downstream.
+  test('the near fade-in is the shared constant, so the root gas is actually visible', () => {
+    expect(TAIL_FADE_IN).toBeLessThan(0.15);
+    expect(TailVertexShader).toContain(`smoothstep(0.0, ${TAIL_FADE_IN}, aLength)`);
   });
 });
 
@@ -125,6 +133,14 @@ test.describe('Mira A shader stays in step with binaryLighting', () => {
 
   test('Mira B shares the same highlight shoulder snippet', () => {
     expect(miraBSource).toContain('${HIGHLIGHT_SHOULDER_GLSL}');
+  });
+
+  // #91: the disk's shape and its impact angle share one calibration source with the
+  // pure seam — the mesh tilt and the hot-spot math can never drift apart.
+  test('Mira B consumes the shared disk geometry and impact-angle math', () => {
+    expect(miraBSource).toContain('DISK_GEOMETRY');
+    expect(miraBSource).toContain('impactAngleFor(');
+    expect(miraBSource).not.toContain('const DISK_TILT');
   });
 
   test('the companion density fades on its own and does not join the entry gate', () => {

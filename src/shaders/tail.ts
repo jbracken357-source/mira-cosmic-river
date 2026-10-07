@@ -7,6 +7,7 @@
 
 import * as THREE from 'three';
 import { MIRA_A_REACH, MIRA_B_REACH, MIRA_B_GAIN, RIVER_SHADOW_FLOOR } from '../lib/riverLighting';
+import { TAIL_FADE_IN } from '../lib/tailPath';
 
 export const TailVertexShader = `
   uniform float uTime;
@@ -19,7 +20,7 @@ export const TailVertexShader = `
 
   attribute float aSeed;
   attribute float aSize;
-  attribute float aLength;  // 0 = near star, 1 = far end of tail
+  attribute float aLength;  // 0 = the root between the pair, 1 = far end of tail
   attribute float aSpread;  // lateral spread factor
 
   varying float vLength;
@@ -117,14 +118,16 @@ export const TailVertexShader = `
     pos.x += ripple * uMouseInfluence * 0.5 * (1.0 - aLength * 0.5);
     pos.y += ripple * uMouseInfluence * 0.3 * (1.0 - aLength * 0.5);
 
-    // Depth-based alpha (fades far particles into background)
-    float depthFade = smoothstep(0.0, 0.15, aLength) * (1.0 - smoothstep(0.85, 1.0, aLength));
+    // Depth-based alpha (fades far particles into background). The near fade is the
+    // occupancy's own constant (#91): the road's gas reaches back to the root between
+    // the pair instead of starting a sixth of the tail downstream.
+    float depthFade = smoothstep(0.0, ${TAIL_FADE_IN}, aLength) * (1.0 - smoothstep(0.85, 1.0, aLength));
     vAlpha = depthFade * uOpacity;
 
     vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
     gl_Position = projectionMatrix * mvPosition;
 
-    // Size attenuation: bigger near star, smaller at tail end
+    // Size attenuation: bigger near the root, smaller at tail end
     float sizeFactor = (1.0 - aLength * 0.7) * aSize * uParticleSize;
     gl_PointSize = sizeFactor * (200.0 / -mvPosition.z);
   }

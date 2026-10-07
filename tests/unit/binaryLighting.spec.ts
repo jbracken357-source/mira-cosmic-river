@@ -5,7 +5,7 @@
 import { test, expect } from '@playwright/test';
 import * as THREE from 'three';
 import { COLORS } from '../../src/constants/colors';
-import { PHYSICS } from '../../src/constants/physics';
+import { PHYSICS, calculateOrbitalPosition } from '../../src/constants/physics';
 import {
   SURFACE_DETAIL_FLOOR,
   surfaceDetailStrength,
@@ -24,11 +24,17 @@ import {
   arcEnvelope,
   ARC_CLUMP_FLOOR,
   arcClump,
+  DISK_GEOMETRY,
+  HOT_SPOT_ANGLE_WIDTH,
   HOT_SPOT_RADIUS,
   hotSpotProfile,
+  impactAngleFor,
   STREAM_CLUMP_FLOOR,
   streamClump,
 } from '../../src/lib/binaryLighting';
+import { DISK_GAIN } from '../../src/shaders/accretionDisk';
+import { sharedJourney } from '../../src/lib/sharedJourney';
+import { tailHeading } from '../../src/lib/tailPath';
 
 // The linear working-space channels of a palette colour, the same value a uniform
 // carries into the shader.
@@ -270,9 +276,91 @@ test.describe('arc clumping', () => {
 test.describe('hot spot', () => {
   test('peaks at the landing point on its own radius and falls off both ways', () => {
     expect(hotSpotProfile(0, HOT_SPOT_RADIUS)).toBeCloseTo(1, 10);
-    expect(hotSpotProfile(0.9, HOT_SPOT_RADIUS)).toBeLessThan(0.05);
+    // Softened azimuth (#91): the profile still dies well inside a third of a turn.
+    expect(hotSpotProfile(1.2, HOT_SPOT_RADIUS)).toBeLessThan(0.01);
     expect(hotSpotProfile(0, HOT_SPOT_RADIUS + 0.8)).toBeLessThan(0.001);
     expect(hotSpotProfile(0, 0)).toBeLessThan(0.05);
+  });
+});
+
+// #91: near the companion the accretion reads as soft, broken arcs — never a
+// complete hard ring, never a sideways white blob plastered beside the star.
+test.describe('the disk stays a soft, broken puff (#91)', () => {
+  test('the disk is a puff, not a sheet: edge-on it keeps a soft vertical extent', () => {
+    expect(DISK_GEOMETRY.thickness).toBeGreaterThanOrEqual(0.22);
+    expect(DISK_GEOMETRY.thickness).toBeLessThan(0.6);
+  });
+
+  test('the disk clears the star’s own body without swallowing the pair', () => {
+    expect(DISK_GEOMETRY.scale).toBeGreaterThan(2);
+    expect(DISK_GEOMETRY.scale).toBeLessThan(8);
+  });
+
+  test('the hot spot is a soft landing region, not a white blob', () => {
+    // Broadened in angle and held under the ring’s own gain: a glow where the stream
+    // lands, not a bead stuck on the star.
+    expect(HOT_SPOT_ANGLE_WIDTH).toBeGreaterThanOrEqual(0.5);
+    expect(DISK_GAIN.hotSpot).toBeLessThan(0.5);
+    expect(DISK_GAIN.ring).toBeLessThan(0.4);
+  });
+});
+
+// #91: 热斑与来流随两颗星保持连接 — the hot spot is aimed from the pair's live
+// separation, so it rides the shared journey and the orbit instead of sitting fixed.
+test.describe('the hot spot stays on the incoming stream (#91)', () => {
+  // The disk mesh carries only a rotation about X, so a disk-local azimuth maps back
+  // to world by that same rotation.
+  const diskLocalToWorld = (angle: number): [number, number, number] => {
+    const tilt = DISK_GEOMETRY.tilt;
+    return [Math.cos(angle), -Math.sin(angle) * Math.sin(tilt), Math.sin(angle) * Math.cos(tilt)];
+  };
+
+  test('the angle math reads the disk’s own tilt', () => {
+    // A companion straight "above" the giant lands at -π/2 only if the tilt's sign
+    // convention matches the mesh rotation.
+    expect(impactAngleFor([0, 4, 0], [0, 0, 0])).toBeCloseTo(-Math.PI / 2, 9);
+    expect(impactAngleFor([4, 0, 0], [0, 0, 0])).toBeCloseTo(0, 9);
+  });
+
+  test('the hot spot faces the giant at every orbit and journey phase', () => {
+    const heading = tailHeading(PHYSICS.TAIL.length);
+    const round = (2 * Math.PI) / PHYSICS.ORBIT.period;
+    for (let i = 0; i < 12; i += 1) {
+      const orbit = calculateOrbitalPosition((i / 12) * round, PHYSICS.ORBIT);
+      for (const phase of [0, 20, 60, 120]) {
+        const journey = sharedJourney(phase, heading);
+        const primary: [number, number, number] = [
+          journey.primary[0] + orbit.primary[0],
+          journey.primary[1] + orbit.primary[1],
+          journey.primary[2] + orbit.primary[2],
+        ];
+        const companion: [number, number, number] = [
+          journey.companion[0] + orbit.companion[0],
+          journey.companion[1] + orbit.companion[1],
+          journey.companion[2] + orbit.companion[2],
+        ];
+        const angle = impactAngleFor(primary, companion);
+        const world = diskLocalToWorld(angle);
+        const towardA = [
+          primary[0] - companion[0],
+          primary[1] - companion[1],
+          primary[2] - companion[2],
+        ];
+        const n = Math.hypot(...towardA);
+        const dot = (world[0] * towardA[0] + world[1] * towardA[1] + world[2] * towardA[2]) / n;
+        // The disk can only point in its own plane; within that limit the hot spot is
+        // the best possible answer — the projection of the true A-ward direction.
+        expect(dot).toBeGreaterThan(0.5);
+      }
+    }
+  });
+
+  test('the hot spot follows the pair as the separation direction turns', () => {
+    // Half an orbit apart the inflow arrives from the opposite side; the landing
+    // region must swing with it rather than hold a fixed sky.
+    const a = impactAngleFor([4, 0, 0], [0, 0, 0]);
+    const b = impactAngleFor([-4, 0, 0], [0, 0, 0]);
+    expect(Math.abs(wrapAngle(a - b))).toBeGreaterThan(2);
   });
 });
 

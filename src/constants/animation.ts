@@ -7,6 +7,11 @@ export const CINEMATIC = {
   STARS_APPEAR: 2.0,       // Stars materialize
   PULL_BACK_START: 4.0,    // Camera begins pulling back
   PULL_BACK_END: 12.0,     // Pull back completes (8 seconds)
+  // #91: the road's rise begins inside the FIRST caption's window, so when the
+  // second caption 「彼此牵引，一起走向更远。」 appears at PULL_BACK_START the tail
+  // is already past the base glow — 「出现时…已经…不再只是底光」. Not a caption
+  // mark: openingSegment never quantizes to this.
+  TAIL_FORMING_START: 3.0, // Tail begins gathering mid-first-caption
   TAIL_REVEAL_START: 8.0,  // Tail becomes visible during pull-back
   TAIL_FULL: 11.0,         // Tail fully visible
   FINAL_TEXT: 12.5,        // Final title text

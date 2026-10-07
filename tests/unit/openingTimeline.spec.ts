@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { CINEMATIC, CAMERA, PORTRAIT_CAMERA } from '../../src/constants/animation';
-import { cinematicTimeScale, openingSegment, resolveOpeningPose } from '../../src/lib/openingTimeline';
+import { cinematicTimeScale, openingSegment, resolveOpeningPose, TAIL_EMERGING, TAIL_GLIMMER } from '../../src/lib/openingTimeline';
 
 // Opening timeline (#28, ticket 03): the full cinematic as a pure function of time.
 // The three beats are 起 hold (CLOSE) → 中 pull-back with the river pass (MID bow)
@@ -81,12 +81,11 @@ test.describe('settle (末) — the hand-off to free exploration', () => {
 });
 
 test.describe('tail reveal', () => {
-  test('dark through the hold, a glimmer in the pull-back, then a continuous rise', () => {
+  test('dark until the gathering begins, then a continuous rise past the floor', () => {
     expect(resolveOpeningPose(0, LAND).tailOpacity).toBe(0);
-    expect(resolveOpeningPose(3.99, LAND).tailOpacity).toBe(0);
-    const glimmer = resolveOpeningPose(6, LAND).tailOpacity;
-    expect(glimmer).toBeGreaterThan(0);
-    expect(glimmer).toBeLessThanOrEqual(0.15);
+    expect(resolveOpeningPose(CINEMATIC.TAIL_FORMING_START - 0.01, LAND).tailOpacity).toBe(0);
+    // #91: by the pull-back the road has crossed the old glimmer floor (底光) for good.
+    expect(resolveOpeningPose(6, LAND).tailOpacity).toBeGreaterThan(TAIL_GLIMMER);
   });
 
   test('never pops at the tail-reveal mark: the ramp is monotone from pull-back on', () => {
@@ -98,6 +97,49 @@ test.describe('tail reveal', () => {
     }
     expect(resolveOpeningPose(CINEMATIC.TAIL_FULL, LAND).tailOpacity).toBe(0.85);
     expect(resolveOpeningPose(14, LAND).tailOpacity).toBe(0.85);
+  });
+
+  // #91, strict reading: 「第二句『彼此牵引，一起走向更远。』出现时，尾巴已经在显形，
+  // 不再只是底光。」 — the caption's APPEARANCE (PULL_BACK_START) is the moment that
+  // must already be past the base glow, so the rise has to begin inside the first
+  // caption's window. By the third caption the tail is clearly more than the glow.
+  test.describe('the road is already forming when the second caption appears (#91)', () => {
+    test('the forming begins inside the first caption’s window, not at the tail-reveal mark', () => {
+      expect(CINEMATIC.TAIL_FORMING_START).toBeGreaterThan(CINEMATIC.STARS_APPEAR);
+      expect(CINEMATIC.TAIL_FORMING_START).toBeLessThan(CINEMATIC.PULL_BACK_START);
+      expect(openingSegment(CINEMATIC.TAIL_FORMING_START).caption).toBe('cinematic1');
+    });
+
+    test('the first caption’s own beat stays quiet: never more than the old floor', () => {
+      // The onset is the glow gathering; it reaches the glimmer floor exactly as the
+      // caption changes, so caption 1's window is not visually disturbed.
+      expect(resolveOpeningPose(2.5, LAND).tailOpacity).toBe(0);
+      expect(resolveOpeningPose(CINEMATIC.PULL_BACK_START - 0.5, LAND).tailOpacity).toBeLessThanOrEqual(TAIL_GLIMMER + 1e-9);
+    });
+
+    test('at the second caption’s appearance the road is past the base glow, with margin', () => {
+      expect(openingSegment(CINEMATIC.PULL_BACK_START).caption).toBe('cinematic2');
+      expect(resolveOpeningPose(CINEMATIC.PULL_BACK_START, LAND).tailOpacity).toBe(TAIL_EMERGING);
+      expect(TAIL_EMERGING).toBeGreaterThan(TAIL_GLIMMER * 1.5);
+    });
+
+    test('the ramp is continuous across both joins', () => {
+      // Slope-zero eases at the forming mark and the pull-back mark: no pop, no kink.
+      expect(resolveOpeningPose(CINEMATIC.TAIL_FORMING_START, LAND).tailOpacity).toBe(0);
+      expect(resolveOpeningPose(CINEMATIC.TAIL_FORMING_START + 1e-3, LAND).tailOpacity).toBeLessThan(1e-3);
+      expect(resolveOpeningPose(CINEMATIC.PULL_BACK_START - 1e-3, LAND).tailOpacity).toBeCloseTo(TAIL_EMERGING, 3);
+      expect(resolveOpeningPose(CINEMATIC.PULL_BACK_START, LAND).tailOpacity).toBe(TAIL_EMERGING);
+    });
+
+    test('every moment the second caption is up shows more than the base glow', () => {
+      for (let t = CINEMATIC.PULL_BACK_START; t < CINEMATIC.TAIL_REVEAL_START; t += 0.25) {
+        expect(resolveOpeningPose(t, LAND).tailOpacity).toBeGreaterThan(TAIL_GLIMMER);
+      }
+    });
+
+    test('by the third caption the road is clearly forming', () => {
+      expect(resolveOpeningPose(CINEMATIC.TAIL_REVEAL_START, LAND).tailOpacity).toBeGreaterThanOrEqual(TAIL_GLIMMER * 2);
+    });
   });
 });
 

@@ -101,7 +101,7 @@ test.describe('keyboard access to the star info', () => {
     await expect(card).toHaveCount(0);
   });
 
-  test('the tail card carries no time-speed control (#89)', async ({ page }) => {
+  test('the tail card carries no time-speed control (#89) and opens on the road sentence (#91)', async ({ page }) => {
     await gotoExplore(page);
 
     await openTailCardViaKeyboard(page);
@@ -110,9 +110,9 @@ test.describe('keyboard access to the star info', () => {
     // The slider is gone from the scene's only remaining card surface.
     await expect(card.locator('input[type="range"]')).toHaveCount(0);
     await expect(card.locator('#tail-time-speed')).toHaveCount(0);
-    // The tail's own body is untouched this ticket.
+    // The first line is the road sentence; the science paragraph stays whole behind it.
+    await expect(card.getByTestId('info-card-first-line')).toHaveText('走过的路，留成一条光河。');
     await expect(card.getByTestId('info-card-science')).toContainText('13');
-    await expect(card.getByTestId('info-card-first-line')).toHaveCount(0);
   });
 });
 
@@ -148,7 +148,7 @@ test.describe('the card opens on its first line (#89)', () => {
     expect(Number(await phaseLine.getAttribute('data-phase-days-to-max'))).toBeGreaterThanOrEqual(0);
   });
 
-  test('both first lines switch with the language toggle', async ({ page }) => {
+  test('the first lines switch with the language toggle', async ({ page }) => {
     await gotoExplore(page);
 
     await openStarCardViaKeyboard(page, 'miraA');
@@ -165,6 +165,14 @@ test.describe('the card opens on its first line (#89)', () => {
       'It is still right beside the other. Any day you come, it is here.',
     );
     await expect(card.getByTestId('info-card-science')).toContainText('nova');
+
+    // The tail's first line is the road sentence in the same toggle (#91).
+    await openTailCardViaKeyboard(page);
+    await expect(card.getByTestId('info-card-first-line')).toHaveText(
+      'The way we came, left as a river of light.',
+    );
+    await page.getByTestId('language-toggle').click();
+    await expect(card.getByTestId('info-card-first-line')).toHaveText('走过的路，留成一条光河。');
   });
 });
 
