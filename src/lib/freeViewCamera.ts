@@ -15,6 +15,7 @@
 // still arrive without any camera motion (epilogueCamera is already false then).
 import { CAMERA, PORTRAIT_CAMERA, TRANSITIONS } from '../constants/animation';
 import { easeInOutCubic } from './openingTimeline';
+import { portraitExplorePose } from './portraitFraming';
 
 type Vec3 = [number, number, number];
 
@@ -150,7 +151,11 @@ export function stepFreeViewCamera(state: FreeViewState, frame: FreeViewFrame): 
   }
 
   const cam = frame.portrait ? PORTRAIT_CAMERA : CAMERA;
-  const target = (name: 'EXPLORE' | 'CLOSING') => cam[name];
+  // 竖屏长卷 (#92): the portrait explore framing is the calibrated composition
+  // re-aimed for this aspect, so the 根 holds its screen point on any tall frame.
+  // Everything else (CLOSING, the landscape table) reads the stored constants.
+  const target = (name: 'EXPLORE' | 'CLOSING') =>
+    frame.portrait && name === 'EXPLORE' ? portraitExplorePose(frame.aspect) : cam[name];
   const place = (name: 'EXPLORE' | 'CLOSING'): FlightPose => ({
     position: [...target(name).position] as Vec3,
     lookAt: [...target(name).lookAt] as Vec3,

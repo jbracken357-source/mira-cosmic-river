@@ -1,6 +1,15 @@
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { openTailCardViaKeyboard } from './helpers';
+import { calculateOrbitalPosition, PHYSICS } from '../../src/constants/physics';
+import { resolveOpeningPose } from '../../src/lib/openingTimeline';
+import {
+  PORTRAIT_REFERENCE_ASPECT,
+  PORTRAIT_TILT,
+  portraitExplorePose,
+  projectToScreenPercent,
+  screenDiscRadiusPercent,
+} from '../../src/lib/portraitFraming';
 
 // `?quality=low` keeps the scene light enough for software rendering (headless CI has no GPU).
 const APP = '/?quality=low';
@@ -78,5 +87,187 @@ test.describe('Mobile first-class', () => {
     await expect(page.getByTestId('explore-ui')).toBeVisible();
     await expect(canvas).toBeVisible();
     expect(errors).toEqual([]);
+  });
+});
+
+// 竖屏长卷 (#92): the portrait long scroll, proven geometrically — the scene's own
+// dev probes (screen percents it writes every frame) against the DOM boxes of the
+// 终幕标题 and the 顶栏, cross-checked against the pure framing math in
+// lib/portraitFraming. The named frame is 390×844.
+const PORTRAIT_FRAME = { width: 390, height: 844 };
+
+// Read one dev probe ("x,y" screen percents) off the canvas.
+async function probe(page: Page, name: string): Promise<[number, number]> {
+  const raw = await page.locator('canvas').getAttribute(name);
+  expect(raw, `${name} probe is written`).toBeTruthy();
+  const [x, y] = raw!.split(',').map(Number);
+  return [x, y];
+}
+
+async function gotoPortraitExplore(page: Page) {
+  await page.setViewportSize(PORTRAIT_FRAME);
+  await gotoWithFlags(page, { seenOpening: true });
+  await expect(page.getByTestId('explore-ui')).toBeVisible({ timeout: 15000 });
+  await expect(page.getByTestId('loading')).toHaveCount(0);
+  await expect(page.locator('canvas')).toHaveAttribute('data-camera-pose', /.+/, { timeout: 30000 });
+}
+
+test.describe('竖屏长卷 (#92): the portrait long scroll', () => {
+  test('the road enters the lower half with both stars in frame (390×844)', async ({ page }) => {
+    await gotoPortraitExplore(page);
+
+    const a = await probe(page, 'data-mira-a-screen');
+    const b = await probe(page, 'data-mira-b-screen');
+    const root = await probe(page, 'data-tail-root-screen');
+    const far = await probe(page, 'data-tail-far-screen');
+
+    // 双星与尾巴同时在画内.
+    for (const [x, y] of [a, b, root, far]) {
+      expect(x).toBeGreaterThan(3);
+      expect(x).toBeLessThan(97);
+      expect(y).toBeGreaterThan(3);
+      expect(y).toBeLessThan(97);
+    }
+    // 沿长边展开: the root high, the road's far end deep in the lower half.
+    expect(root[1]).toBeLessThan(30);
+    expect(a[1]).toBeLessThan(32);
+    expect(b[1]).toBeLessThan(28);
+    expect(far[1]).toBeGreaterThan(55);
+    expect(root[1]).toBeLessThan(far[1]);
+  });
+
+  test('the live framing matches the pure seam within reading distance (reduced motion)', async ({
+    page,
+  }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await gotoPortraitExplore(page);
+
+    // 减少动态效果 parks the orbit and the journey: the live probes sit exactly on
+    // the seam's projections of the home configuration.
+    const pose = portraitExplorePose(PORTRAIT_REFERENCE_ASPECT);
+    const home = calculateOrbitalPosition(0, PHYSICS.ORBIT);
+    const expectedA = projectToScreenPercent(home.primary, pose, PORTRAIT_REFERENCE_ASPECT, PORTRAIT_TILT);
+    const expectedB = projectToScreenPercent(home.companion, pose, PORTRAIT_REFERENCE_ASPECT, PORTRAIT_TILT);
+
+    const a = await probe(page, 'data-mira-a-screen');
+    const b = await probe(page, 'data-mira-b-screen');
+    const root = await probe(page, 'data-tail-root-screen');
+    const far = await probe(page, 'data-tail-far-screen');
+
+    for (const [live, expected] of [
+      [a, expectedA],
+      [b, expectedB],
+    ] as const) {
+      expect(Math.abs(live[0] - expected.x)).toBeLessThan(1.5);
+      expect(Math.abs(live[1] - expected.y)).toBeLessThan(1.5);
+    }
+    // …and the pair and the road still read: both stars in frame, the far end in
+    // the lower half, the root between the pair.
+    expect(far[1]).toBeGreaterThan(55);
+    expect(root[1]).toBeGreaterThan(Math.min(a[1], b[1]));
+    expect(root[1]).toBeLessThan(Math.max(a[1], b[1]));
+    for (const [x, y] of [a, b]) {
+      expect(x).toBeGreaterThan(3);
+      expect(x).toBeLessThan(97);
+      expect(y).toBeGreaterThan(3);
+      expect(y).toBeLessThan(97);
+    }
+  });
+
+  test('the 终幕标题 never covers the pair (390×844, frozen mid-settle)', async ({ page }) => {
+    await page.setViewportSize(PORTRAIT_FRAME);
+    // Frozen at 13s of the full cinematic: the final beat's title is up and the
+    // camera is mid-settle between the far pose and the explore framing. Capture
+    // mode parks the orbit at CAPTURE_TIME (8), so the pair's home for this frame
+    // is the orbital position at t=8 — the seam computes the same numbers.
+    await page.goto('/?quality=low&capture=1&cinematic-t=13000');
+    await page.waitForLoadState('networkidle');
+    await expect(page.getByTestId('final-title')).toBeVisible({ timeout: 30000 });
+    await expect(page.locator('canvas')).toHaveAttribute('data-camera-pose', /.+/, { timeout: 30000 });
+
+    const titleBox = await page.getByTestId('final-title').boundingBox();
+    expect(titleBox).toBeTruthy();
+
+    const parked = calculateOrbitalPosition(8, PHYSICS.ORBIT);
+    const pose = resolveOpeningPose(13, { reduceMotion: false, portrait: true, aspect: PORTRAIT_REFERENCE_ASPECT });
+    const disc = (star: 'primary' | 'companion') => {
+      const point = parked[star];
+      const projected = projectToScreenPercent(point, pose, PORTRAIT_REFERENCE_ASPECT, PORTRAIT_TILT);
+      const radius = (star === 'primary' ? PHYSICS.MIRA_A.radius : PHYSICS.MIRA_B.radius) * 1.4;
+      return {
+        projected,
+        margin: (screenDiscRadiusPercent(projected, radius, pose, PORTRAIT_REFERENCE_ASPECT) / 100) * PORTRAIT_FRAME.height,
+      };
+    };
+
+    // The live probes land within reading distance of the frozen pose's math…
+    for (const [name, star] of [
+      ['data-mira-a-screen', 'primary'],
+      ['data-mira-b-screen', 'companion'],
+    ] as const) {
+      const live = await probe(page, name);
+      const { projected, margin } = disc(star);
+      expect(Math.abs(live[0] - projected.x)).toBeLessThan(2);
+      expect(Math.abs(live[1] - projected.y)).toBeLessThan(2);
+      // …and the star's disc (photosphere + dense atmosphere, with margin) stays
+      // above the title's box: 字不压星.
+      const starPy = (live[1] / 100) * PORTRAIT_FRAME.height;
+      expect(starPy + margin).toBeLessThan(titleBox!.y);
+    }
+  });
+
+  test('the 顶栏 never covers the pair (390×844)', async ({ page }) => {
+    await gotoPortraitExplore(page);
+
+    const bar = await page.getByTestId('top-bar').boundingBox();
+    expect(bar).toBeTruthy();
+
+    // Disc margins in px at the explore pose, from the seam (the giant's inflated
+    // disc, the companion's accretion reach).
+    const pose = portraitExplorePose(PORTRAIT_REFERENCE_ASPECT);
+    const home = calculateOrbitalPosition(0, PHYSICS.ORBIT);
+    const a0 = projectToScreenPercent(home.primary, pose, PORTRAIT_REFERENCE_ASPECT, PORTRAIT_TILT);
+    const b0 = projectToScreenPercent(home.companion, pose, PORTRAIT_REFERENCE_ASPECT, PORTRAIT_TILT);
+    const marginA =
+      (screenDiscRadiusPercent(a0, PHYSICS.MIRA_A.radius * 1.4, pose, PORTRAIT_REFERENCE_ASPECT) / 100) * PORTRAIT_FRAME.height;
+    const marginB =
+      (screenDiscRadiusPercent(b0, PHYSICS.MIRA_B.radius * 4.8, pose, PORTRAIT_REFERENCE_ASPECT) / 100) * PORTRAIT_FRAME.height;
+
+    // The orbit wanders a little in the seconds the read takes; the margins above
+    // already carry the slack these bands need.
+    const barBottom = bar!.y + bar!.height;
+    const a = await probe(page, 'data-mira-a-screen');
+    const b = await probe(page, 'data-mira-b-screen');
+    expect((a[1] / 100) * PORTRAIT_FRAME.height - marginA).toBeGreaterThan(barBottom);
+    expect((b[1] / 100) * PORTRAIT_FRAME.height - marginB).toBeGreaterThan(barBottom);
+  });
+
+  test('landscape keeps its own wide vista — not the portrait frame cropped (844×390)', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 844, height: 390 });
+    await gotoWithFlags(page, { seenOpening: true });
+    await expect(page.getByTestId('explore-ui')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByTestId('loading')).toHaveCount(0);
+
+    // The landscape explore pose is the untouched wide vista (CAMERA.EXPLORE).
+    await expect(page.locator('canvas')).toHaveAttribute('data-camera-pose', '8.0,7.0,28.0', { timeout: 30000 });
+
+    const a = await probe(page, 'data-mira-a-screen');
+    const b = await probe(page, 'data-mira-b-screen');
+    const root = await probe(page, 'data-tail-root-screen');
+    const far = await probe(page, 'data-tail-far-screen');
+
+    for (const [x, y] of [a, b, root, far]) {
+      expect(x).toBeGreaterThan(3);
+      expect(x).toBeLessThan(97);
+      expect(y).toBeGreaterThan(3);
+      expect(y).toBeLessThan(97);
+    }
+    // The road still grows from between the pair toward the left — the vista the
+    // portrait work must not narrow.
+    expect(root[0]).toBeGreaterThan(Math.min(a[0], b[0]));
+    expect(root[0]).toBeLessThan(Math.max(a[0], b[0]));
+    expect(far[0]).toBeLessThan(root[0]);
   });
 });
