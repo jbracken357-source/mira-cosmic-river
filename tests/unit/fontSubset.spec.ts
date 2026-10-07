@@ -28,9 +28,9 @@ test.describe('font subset coverage', () => {
     ).toEqual([]);
   });
 
-  test('glyphs the chrome renders outside translations are covered', () => {
+  test('glyphs the interface renders outside translations are covered', () => {
     for (const ch of '×中文EN·…') {
-      expect(glyphs.has(ch), `missing chrome glyph ${JSON.stringify(ch)}`).toBe(true);
+      expect(glyphs.has(ch), `missing interface glyph ${JSON.stringify(ch)}`).toBe(true);
     }
   });
 

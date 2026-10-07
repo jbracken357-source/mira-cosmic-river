@@ -148,7 +148,7 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
   const isMobile = useMobile();
   const reduceMotion = Boolean(useReducedMotion());
 
-  // The epilogue is the emotional close: all chrome lets go of the screen, and the
+  // The epilogue is the emotional close: the whole interface lets go of the screen,
   // first intentional input (which ends the epilogue) brings it back.
   const epilogueHush = epilogueVisible;
   // While a panel owns the viewer's attention the ambient hints step aside — the
