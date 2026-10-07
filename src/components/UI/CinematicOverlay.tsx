@@ -4,6 +4,7 @@ import { useBinaryStar, useMobile, useEntryReadiness, useTonightSave } from '../
 import { TRANSLATIONS } from '../../constants/translations';
 import { TRANSITIONS } from '../../constants/animation';
 import { openingSegment } from '../../lib/openingTimeline';
+import { topBarChrome } from '../../lib/chromeVisibility';
 import { rememberFlag, rememberedFlag } from '../../lib/rememberedFlag';
 import type { StarName } from './InfoCards';
 import AmbientToggle from './AmbientToggle';
@@ -52,15 +53,16 @@ export default function CinematicOverlay({
       data-testid="cinematic-overlay"
       className="relative z-10 flex h-dvh w-full pointer-events-none select-none overflow-hidden"
     >
-      {/* Top-right control cluster during the opening. One place for every quiet
-          action (sound, enter early, language) so the corner reads as a single
-          group instead of a switch glued to a skip button. */}
+      {/* Top-right control cluster during the opening: 环境音 and 语言 stay through
+          the whole sequence, and 「我自己看」 (#90) leaves it early. The leave button
+          wears a quiet pill so it never reads as a sibling of the bare language
+          switch beside it. */}
       <div className="absolute top-[max(1rem,env(safe-area-inset-top))] right-[max(1rem,env(safe-area-inset-right))] pointer-events-auto z-50 flex items-center gap-5 md:gap-7">
         <AmbientToggle />
         <button
-          data-testid="skip-cinematic"
+          data-testid="look-myself"
           onClick={handleEnterEarly}
-          className="whisper-btn min-h-11 min-w-11 inline-flex items-center justify-center text-[11px] md:text-xs font-extralight tracking-widest uppercase"
+          className="whisper-btn min-h-11 px-4 inline-flex items-center justify-center text-[11px] md:text-xs font-extralight tracking-widest border border-white/15 rounded-full hover:border-white/35"
         >
           {t.enterEarly}
         </button>
@@ -139,6 +141,8 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
   const isPlaying = useBinaryStar((state) => state.isPlaying);
   const cardOpen = useBinaryStar((state) => state.cardOpen);
   const epilogueVisible = useBinaryStar((state) => state.epilogueVisible);
+  const manipulated = useBinaryStar((state) => state.exploreManipulated);
+  const awayFromMainView = useBinaryStar((state) => state.awayFromMainView);
   const tonightOpen = useTonightSave((state) => state.phase !== 'idle');
   const t = TRANSLATIONS[language];
   const isMobile = useMobile();
@@ -151,37 +155,47 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
   // mobile bottom sheet would sit on top of them anyway.
   const hintsQuiet = tonightOpen || (isMobile && cardOpen);
 
+  // 顶栏 (#90): the quiet first look holds 环境音, 语言 and 完整开场 only; the
+  // visit's first drag or zoom graduates 暂停 and 今晚的 Mira, and 主视角 exists
+  // only while the camera is off the main view.
+  const chrome = topBarChrome({ manipulated, awayFromMainView });
+
   // The interaction hint leaves once the viewer has actually manipulated the scene
-  // (drag/zoom land on the canvas; presses on UI buttons do not count), and stays
-  // gone on later visits. It stays rediscoverable: a quiet recall button takes its
-  // place in the footer.
-  const [hintVisible, setHintVisible] = useState(() => !hasLearnedControls());
+  // (drag/zoom land on the canvas; presses on UI buttons do not count). 学会 is
+  // remembered across visits like the seen-opening flag — and once learned, no
+  // 「?」 recall ever takes the hint's place (#90). The same first manipulation
+  // graduates the quiet top bar for this visit.
+  const [hintDismissed, setHintDismissed] = useState(() => hasLearnedControls());
   useEffect(() => {
-    if (!hintVisible) return;
-    const dismiss = (event: Event) => {
-      if (event.target instanceof HTMLCanvasElement) {
-        persistLearnedControls();
-        setHintVisible(false);
-      }
+    const note = (event: Event) => {
+      if (!(event.target instanceof HTMLCanvasElement)) return;
+      persistLearnedControls();
+      setHintDismissed(true);
+      useBinaryStar.getState().noteExploreManipulation();
     };
-    window.addEventListener('pointerdown', dismiss, { passive: true });
-    window.addEventListener('wheel', dismiss, { passive: true });
-    window.addEventListener('touchstart', dismiss, { passive: true });
+    window.addEventListener('pointerdown', note, { passive: true });
+    window.addEventListener('wheel', note, { passive: true });
+    window.addEventListener('touchstart', note, { passive: true });
     return () => {
-      window.removeEventListener('pointerdown', dismiss);
-      window.removeEventListener('wheel', dismiss);
-      window.removeEventListener('touchstart', dismiss);
+      window.removeEventListener('pointerdown', note);
+      window.removeEventListener('wheel', note);
+      window.removeEventListener('touchstart', note);
     };
-  }, [hintVisible]);
+  }, []);
 
   return (
     <div
       data-testid="explore-ui"
       className="relative z-10 flex h-dvh w-full pointer-events-none select-none overflow-hidden"
     >
-      {/* Top bar */}
+      {/* 顶栏: the exit is the epilogue's own budget (#90, TRANSITIONS.
+          CHROME_EPILOGUE_EXIT, 0.3–0.5s); the slower 1.2s belongs to the return
+          after the interrupt. CSS takes the duration from the destination state,
+          so one property carries both. */}
       <header
-        className={`absolute top-0 left-0 right-0 px-4 md:px-14 pt-[max(1rem,env(safe-area-inset-top))] pb-4 md:pb-8 flex items-center justify-between transition-opacity duration-[1200ms] ${
+        data-testid="top-bar"
+        style={{ transitionDuration: epilogueHush ? `${TRANSITIONS.CHROME_EPILOGUE_EXIT * 1000}ms` : '1200ms' }}
+        className={`absolute top-0 left-0 right-0 px-4 md:px-14 pt-[max(1rem,env(safe-area-inset-top))] pb-4 md:pb-8 flex items-center justify-between transition-opacity ${
           epilogueHush ? 'opacity-0 pointer-events-none' : 'opacity-100'
         }`}
       >
@@ -197,24 +211,28 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
         </div>
 
         <div className="flex items-center justify-end flex-wrap gap-3 md:gap-7">
-          <button
-            data-testid="return-to-view"
-            onClick={() => useBinaryStar.getState().requestReturnToExplore()}
-            className="pointer-events-auto whisper-btn min-h-11 min-w-11 inline-flex items-center justify-center text-[11px] md:text-xs font-extralight tracking-widest uppercase"
-          >
-            {t.returnToView}
-          </button>
-          <TonightSave />
+          {chrome.returnToView && (
+            <button
+              data-testid="return-to-view"
+              onClick={() => useBinaryStar.getState().requestReturnToExplore()}
+              className="pointer-events-auto whisper-btn min-h-11 min-w-11 inline-flex items-center justify-center text-[11px] md:text-xs font-extralight tracking-widest uppercase"
+            >
+              {t.returnToView}
+            </button>
+          )}
+          {chrome.tonightSave && <TonightSave />}
           <AmbientToggle />
-          <button
-            data-testid="pause-toggle"
-            aria-pressed={!isPlaying}
-            aria-label={isPlaying ? t.pause : t.resume}
-            onClick={() => useBinaryStar.getState().setPlaying(!isPlaying)}
-            className="pointer-events-auto whisper-btn min-h-11 min-w-11 inline-flex items-center justify-center text-[11px] md:text-xs font-extralight tracking-widest uppercase"
-          >
-            {isPlaying ? t.pause : t.resume}
-          </button>
+          {chrome.pause && (
+            <button
+              data-testid="pause-toggle"
+              aria-pressed={!isPlaying}
+              aria-label={isPlaying ? t.pause : t.resume}
+              onClick={() => useBinaryStar.getState().setPlaying(!isPlaying)}
+              className="pointer-events-auto whisper-btn min-h-11 min-w-11 inline-flex items-center justify-center text-[11px] md:text-xs font-extralight tracking-widest uppercase"
+            >
+              {isPlaying ? t.pause : t.resume}
+            </button>
+          )}
           <button
             data-testid="replay-opening"
             aria-label={t.replayOpening}
@@ -267,7 +285,7 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
           </button>
         </div>
         <AnimatePresence mode="wait">
-          {hintVisible ? (
+          {hintDismissed ? null : (
             <motion.div
               key="interaction-hint"
               data-testid="interaction-hint"
@@ -283,16 +301,6 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
                 </span>
               </div>
             </motion.div>
-          ) : (
-            <button
-              key="interaction-hint-recall"
-              data-testid="interaction-hint-recall"
-              aria-label={isMobile ? t.interactionHintMobile : t.interactionHint}
-              onClick={() => setHintVisible(true)}
-              className="pointer-events-auto whisper-btn min-h-11 min-w-11 inline-flex items-center justify-center text-xs font-extralight"
-            >
-              ?
-            </button>
           )}
         </AnimatePresence>
         {/* 终幕那句 lives at the lower edge; the milestone hint borrows the row. */}

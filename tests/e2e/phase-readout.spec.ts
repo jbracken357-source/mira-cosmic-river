@@ -21,7 +21,7 @@ async function clearMiraStorage(page: Page) {
 }
 
 async function reachExplore(page: Page) {
-  const skip = page.getByTestId('skip-cinematic');
+  const skip = page.getByTestId('look-myself');
   const explore = page.getByTestId('explore-ui');
   await expect(skip.or(explore).first()).toBeVisible({ timeout: 15000 });
   if (await skip.isVisible()) await skip.click();

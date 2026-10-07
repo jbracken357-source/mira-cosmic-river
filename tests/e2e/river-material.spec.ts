@@ -16,8 +16,8 @@ test('image-backed river loads without blocking exploration or replay', async ({
   await page.getByTestId('info-card').getByRole('button').click();
   await expect(page.getByTestId('info-card')).toBeHidden();
   await page.getByTestId('replay-opening').click();
-  await expect(page.getByTestId('skip-cinematic')).toBeVisible();
-  await page.getByTestId('skip-cinematic').click();
+  await expect(page.getByTestId('look-myself')).toBeVisible();
+  await page.getByTestId('look-myself').click();
   await expect(page.getByTestId('explore-ui')).toBeVisible();
   expect(errors).toEqual([]);
 });

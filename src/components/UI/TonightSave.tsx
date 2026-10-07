@@ -50,7 +50,8 @@ export default function TonightSave() {
         data-testid="tonight-save"
         aria-label={t.tonightSave}
         onClick={open}
-        className="pointer-events-auto whisper-btn min-h-11 min-w-11 inline-flex items-center justify-center text-[11px] md:text-xs font-extralight tracking-widest uppercase"
+        // 今晚的 Mira (#90): the name keeps its own casing — never all-caps MIRA.
+        className="pointer-events-auto whisper-btn min-h-11 min-w-11 inline-flex items-center justify-center text-[11px] md:text-xs font-extralight tracking-widest"
       >
         {t.tonightSave}
       </button>
@@ -67,7 +68,8 @@ export default function TonightSave() {
           className="pointer-events-auto fixed left-3 right-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] md:left-1/2 md:right-auto md:-translate-x-1/2 md:bottom-24 z-50 md:w-[min(92vw,26rem)] backdrop-blur-md bg-black/65 border border-white/10 rounded-xl p-4 md:p-5 flex flex-col gap-3 shadow-[0_24px_60px_rgba(0,0,0,0.55)] max-h-[calc(100dvh-1.5rem)] overflow-y-auto"
         >
           <div className="flex items-center justify-between">
-            <p className="text-[10px] tracking-[0.25em] uppercase text-white/45 font-extralight">
+            {/* The panel's own title is the same name — mixed case here too (#90). */}
+            <p className="text-[10px] tracking-[0.25em] text-white/45 font-extralight">
               {t.tonightSave}
             </p>
             <button

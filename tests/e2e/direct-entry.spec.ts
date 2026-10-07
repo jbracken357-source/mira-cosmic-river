@@ -28,12 +28,12 @@ test.describe('Direct entry + full-opening replay', () => {
     await gotoWithSeen(page, false);
 
     await expect(page.getByTestId('cinematic-overlay')).toBeVisible();
-    await expect(page.getByTestId('skip-cinematic')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByTestId('look-myself')).toBeVisible({ timeout: 15000 });
     await expect(page.getByText(OPENING_LINE)).toBeVisible({ timeout: 10000 });
     // 开场前三句期间，下缘不提前出现这句 (#88).
     await expect(page.getByTestId('lower-edge-closing-line')).toHaveCount(0);
 
-    await page.getByTestId('skip-cinematic').click();
+    await page.getByTestId('look-myself').click();
     await expect(page.getByTestId('explore-ui')).toBeVisible();
     await expect(page.getByTestId('replay-opening')).toBeVisible();
     expect(await page.evaluate((key) => localStorage.getItem(key), SEEN_KEY)).toBe('1');
@@ -45,7 +45,7 @@ test.describe('Direct entry + full-opening replay', () => {
     await gotoWithSeen(page, true);
 
     await expect(page.getByTestId('explore-ui')).toBeVisible({ timeout: 10000 });
-    await expect(page.getByTestId('skip-cinematic')).toHaveCount(0);
+    await expect(page.getByTestId('look-myself')).toHaveCount(0);
     await expect(page.getByTestId('cinematic-overlay')).toHaveCount(0);
 
     // 直达第一眼 (#88): the closing line is already at the lower edge, with no
@@ -60,7 +60,7 @@ test.describe('Direct entry + full-opening replay', () => {
     await page.waitForTimeout(2500);
     await expect(page.getByText(OPENING_LINE)).toHaveCount(0);
     await expect(page.getByTestId('explore-ui')).toBeVisible();
-    await expect(page.getByTestId('skip-cinematic')).toHaveCount(0);
+    await expect(page.getByTestId('look-myself')).toHaveCount(0);
   });
 
   test('replay plays the full opening then returns to explore', async ({ page }) => {
@@ -70,7 +70,7 @@ test.describe('Direct entry + full-opening replay', () => {
     await page.getByTestId('replay-opening').click();
 
     await expect(page.getByTestId('cinematic-overlay')).toBeVisible();
-    await expect(page.getByTestId('skip-cinematic')).toBeVisible();
+    await expect(page.getByTestId('look-myself')).toBeVisible();
     expect(await page.evaluate((key) => localStorage.getItem(key), SEEN_KEY)).toBe('1');
     // If the cinematic clock was not reset, explore would snap back immediately.
     await expect(page.getByText(OPENING_LINE)).toBeVisible({ timeout: 10000 });
@@ -78,7 +78,7 @@ test.describe('Direct entry + full-opening replay', () => {
     // The ritual moment holds the opening alone — the lower edge stays empty (#88).
     await expect(page.getByTestId('lower-edge-closing-line')).toHaveCount(0);
 
-    await page.getByTestId('skip-cinematic').click();
+    await page.getByTestId('look-myself').click();
     await expect(page.getByTestId('explore-ui')).toBeVisible();
     await expect(page.getByTestId('lower-edge-closing-line')).toBeVisible();
     expect(await page.evaluate((key) => localStorage.getItem(key), SEEN_KEY)).toBe('1');
@@ -88,18 +88,18 @@ test.describe('Direct entry + full-opening replay', () => {
     await page.goto(APP);
     await page.waitForLoadState('networkidle');
 
-    await page.getByTestId('skip-cinematic').click();
+    await page.getByTestId('look-myself').click();
     await expect(page.getByTestId('explore-ui')).toBeVisible();
 
     await page.reload();
     await page.waitForLoadState('networkidle');
     await expect(page.getByTestId('explore-ui')).toBeVisible({ timeout: 10000 });
-    await expect(page.getByTestId('skip-cinematic')).toHaveCount(0);
+    await expect(page.getByTestId('look-myself')).toHaveCount(0);
 
     await page.evaluate(() => localStorage.clear());
     await page.reload();
     await page.waitForLoadState('networkidle');
-    await expect(page.getByTestId('skip-cinematic')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByTestId('look-myself')).toBeVisible({ timeout: 15000 });
     await expect(page.getByTestId('cinematic-overlay')).toBeVisible();
   });
 });

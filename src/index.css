@@ -95,20 +95,6 @@ body {
   border-radius: 12px;
 }
 
-.glass-button {
-  background: var(--color-glass-base);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid var(--color-glass-border);
-  border-radius: 8px;
-  transition: all var(--animation-normal) ease-out;
-}
-
-.glass-button:hover {
-  background: var(--color-glass-highlight);
-  border-color: rgba(255, 255, 255, 0.2);
-}
-
 /* Whisper controls: the interface's default button voice. At rest they sit near
    the scene (white/45 reads on the deep-space ground where /30 vanished), and
    hover is two things at once — a colour lift plus a slow underline reveal —
@@ -132,8 +118,8 @@ body {
   text-decoration-color: transparent;
 }
 
-/* One focus ring for every interactive control (#20), .glass-button included:
-   the ring lives at the element level instead of being re-declared per class. */
+/* One focus ring for every interactive control (#20): the ring lives at the
+   element level instead of being re-declared per class. */
 button:focus-visible,
 input:focus-visible,
 [role='button']:focus-visible {
@@ -164,28 +150,6 @@ input:focus-visible,
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
-}
-
-@keyframes slideInFromRight {
-  from {
-    opacity: 0;
-    transform: translateX(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@keyframes slideInFromBottom {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }
 
 @keyframes scaleIn {

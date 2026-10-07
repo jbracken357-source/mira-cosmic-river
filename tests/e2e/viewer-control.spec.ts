@@ -102,7 +102,12 @@ test.describe('Viewer control', () => {
 
     await expect(wrapper(page)).toHaveAttribute('data-auto-camera', 'on', { timeout: 15000 });
 
+    // 暂停 joins the quiet bar only after the visit's first manipulation (#90): a
+    // wheel both interrupts the takeover and graduates the control.
+    await page.mouse.move(640, 360);
+    await page.mouse.wheel(0, 120);
     const pause = page.getByTestId('pause-toggle');
+    await expect(pause).toBeVisible();
     // React commits can lag several seconds under software rendering; the assertions
     // keep their meaning with a wider window.
     await expect(pause).toHaveAttribute('aria-pressed', 'false', { timeout: 15000 });

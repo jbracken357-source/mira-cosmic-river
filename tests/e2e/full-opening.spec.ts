@@ -72,7 +72,7 @@ test.describe('Full opening', () => {
   test('entering the scene early lands on the same explore framing', async ({ page }) => {
     await gotoOpening(page);
 
-    await page.getByTestId('skip-cinematic').click();
+    await page.getByTestId('look-myself').click();
     await expect(page.getByTestId('explore-ui')).toBeVisible();
     expect(await page.evaluate((key) => localStorage.getItem(key), SEEN_KEY)).toBe('1');
     await expect(page.locator('canvas')).toHaveAttribute('data-camera-pose', EXPLORE_POSE);

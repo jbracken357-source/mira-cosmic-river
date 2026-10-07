@@ -17,6 +17,7 @@ import {
 import { advanceTime, captureMode, resolveCapturePose } from '../../lib/captureMode';
 import { cinematicTimeScale, openingSegment, resolveOpeningPose, TAIL_FULL_OPACITY } from '../../lib/openingTimeline';
 import { returnSettleWindowOpen, viewerControlNow } from '../../lib/viewerControl';
+import { cameraAwayFromMainView } from '../../lib/chromeVisibility';
 import { cancelReturnFlight, fittedFov, initialFreeViewState, stepFreeViewCamera } from '../../lib/freeViewCamera';
 import type { FlightPose } from '../../lib/freeViewCamera';
 import { sharedJourney } from '../../lib/sharedJourney';
@@ -267,6 +268,15 @@ function SceneContent({
       camera.position.addScaledVector(advanceVecRef.current, step);
       orbit.target.addScaledVector(advanceVecRef.current, step);
     }
+
+    // 镜头离开主视角 (#90): publish whether the camera sits off the explore
+    // framing — after this frame's pose and idle advance are applied, so the
+    // verdict measures what is actually on screen. The full cinematic owns the
+    // camera then, and 主视角 is not a concept inside it.
+    store.setAwayFromMainView(
+      introComplete &&
+        cameraAwayFromMainView([camera.position.x, camera.position.y, camera.position.z], portrait),
+    );
 
     if (introComplete) {
       // Free exploration holds the tail at full reveal — the same value the opening

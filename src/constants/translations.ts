@@ -35,8 +35,10 @@ export const TRANSLATIONS = {
     // UI
     interactionHint: 'Drag to Rotate · Scroll to Zoom',
     interactionHintMobile: 'Drag to Rotate · Pinch to Zoom',
-    // Direct entry mid-opening: the viewer cuts the full cinematic short
-    enterEarly: 'Enter early',
+    // 「我自己看」(#90): leaving the full cinematic early, in the viewer's own
+    // words — never a "skip". The pill it sits on stays clear of the language
+    // switch beside it.
+    enterEarly: 'I’ll look myself.',
     replayOpening: 'Full cinematic',
     pause: 'Pause',
     resume: 'Resume',
@@ -108,8 +110,9 @@ export const TRANSLATIONS = {
     // UI
     interactionHint: '拖拽旋转 · 滚轮缩放',
     interactionHintMobile: '拖拽旋转 · 双指缩放',
-    // 直达：观看者在完整开场中途提前进入场景
-    enterEarly: '提前进入',
+    // 「我自己看」(#90)：观看者用自己的话离开完整开场——不是"跳过"。按钮做成
+    // 安静的细边 pill，和旁边的语言开关分得开。
+    enterEarly: '我自己看',
     replayOpening: '完整开场',
     pause: '暂停',
     resume: '恢复',

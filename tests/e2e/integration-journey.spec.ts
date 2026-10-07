@@ -3,6 +3,7 @@ import type { Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { dragOffMainView } from './helpers';
 
 // 全体验集成 (#29, ticket 11): one continuous journey through every capability in the
 // order a returning viewer actually lives them — first visit plays the full cinematic,
@@ -167,8 +168,12 @@ test.describe('Integration journey', () => {
     expect(probe.live).toBe(1);
     expect(probe.state).toBe('running');
     await expect(page.getByTestId('explore-ui')).toBeVisible({ timeout: 45000 });
-    // The fast idle advance may already own the camera after the hand-back; returning
-    // to the main view is the explicit way back and eases onto the framing.
+    // The ritual returns the bar to its quiet first look (#90): 主视角 exists only
+    // once the camera has actually left the main view — drag off it, then the
+    // control offers the way back and settles on the framing.
+    await expect(page.getByTestId('return-to-view')).toHaveCount(0);
+    await dragOffMainView(page);
+    await expect(page.getByTestId('return-to-view')).toBeVisible({ timeout: 15000 });
     await page.getByTestId('return-to-view').click();
     await expectExploreFraming(canvas);
 

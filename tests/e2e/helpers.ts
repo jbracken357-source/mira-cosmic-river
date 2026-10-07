@@ -29,3 +29,30 @@ export async function openStarCardViaKeyboard(page: Page, star: 'miraA' | 'miraB
   await page.keyboard.press('Enter');
   await expect(page.getByTestId('info-card')).toBeVisible();
 }
+
+// 第一次拖拽或缩放 (#90): a wheel-zoom on the canvas counts as scene manipulation —
+// it graduates the quiet top bar (暂停 and 今晚的 Mira appear) and retires the
+// gesture hint. Presses on UI controls never count, which is why the specs drive
+// the canvas itself.
+export async function manipulateScene(page: Page) {
+  const canvas = page.locator('canvas');
+  const box = await canvas.boundingBox();
+  if (!box) throw new Error('canvas has no box');
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.wheel(0, 120);
+}
+
+// 镜头离开主视角 (#90): a real drag that carries the camera off the main view, so
+// 「主视角」 appears. Starts from empty sky (upper right) so no click target opens
+// a card on the way.
+export async function dragOffMainView(page: Page) {
+  const canvas = page.locator('canvas');
+  const box = await canvas.boundingBox();
+  if (!box) throw new Error('canvas has no box');
+  const cx = box.x + box.width * 0.8;
+  const cy = box.y + box.height * 0.25;
+  await page.mouse.move(cx, cy);
+  await page.mouse.down();
+  await page.mouse.move(cx + 160, cy + 40, { steps: 8 });
+  await page.mouse.up();
+}

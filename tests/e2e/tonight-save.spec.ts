@@ -3,11 +3,14 @@ import type { Download, Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { manipulateScene } from './helpers';
 
 // 今晚的 Mira (#23) end-to-end: the save entry locks the current frame at press
 // time, the camera holds while the flow is open, export yields a real decodable
 // PNG, failure retries the same snapshot, and a lost WebGL context is reported
 // honestly. Software WebGL (?quality=low) keeps these runnable anywhere.
+// The save entry joins the quiet top bar only after the visit's first drag or
+// zoom (#90), so every journey here manipulates the scene once on the way in.
 
 interface DecodedPng {
   width: number;
@@ -26,6 +29,10 @@ async function directEntry(page: Page, query = '') {
   const canvas = page.locator('canvas');
   // Frames are really running once the pose attribute lands (see phase-readout).
   await expect(canvas).toHaveAttribute('data-camera-pose', /.+/, { timeout: 30000 });
+  // 今晚的 Mira lives behind the graduated bar: one zoom on the canvas brings it
+  // out, the way the viewer's own first manipulation would (#90).
+  await manipulateScene(page);
+  await expect(page.getByTestId('tonight-save')).toBeVisible();
   return canvas;
 }
 

@@ -91,7 +91,7 @@ test.describe('Resilient entry', () => {
 
     // The fallback path is a real画面: end the opening and the procedural
     // scene is visibly non-empty.
-    await page.getByTestId('skip-cinematic').click();
+    await page.getByTestId('look-myself').click();
     await expect(page.getByTestId('explore-ui')).toBeVisible();
     await page.waitForTimeout(500);
     const stats = await screenshotStats(page);

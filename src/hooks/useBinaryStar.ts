@@ -46,6 +46,15 @@ interface BinaryStarStore extends StarSystemState {
   setAutoCamera: (state: AutoCameraState) => void;
   returnToExploreAt: number;
   requestReturnToExplore: () => void;
+  // 顶栏 (#90): the first drag or zoom of the visit graduates the quiet bar (暂停
+  // and 今晚的 Mira appear). Per visit — every landing starts quiet again; the
+  // remembered graduation belongs to the gesture hint alone (学会后不留「?」).
+  exploreManipulated: boolean;
+  noteExploreManipulation: () => void;
+  // 镜头离开主视角 (#90): the frame loop publishes whether the camera sits off the
+  // explore framing, write-on-change (the same discipline as setAutoCamera).
+  awayFromMainView: boolean;
+  setAwayFromMainView: (away: boolean) => void;
 }
 
 function hasSeenOpening(): boolean {
@@ -82,6 +91,8 @@ export const useBinaryStar = create<BinaryStarStore>((set, get) => ({
   tonightSaveOpen: false,
   autoCamera: 'off',
   returnToExploreAt: 0,
+  exploreManipulated: false,
+  awayFromMainView: false,
   sky: initialSky,
 
   setLanguage: (language) => set({ language }),
@@ -96,7 +107,9 @@ export const useBinaryStar = create<BinaryStarStore>((set, get) => ({
       return;
     }
     // Replay: the seen flag stays. Clearing storage is how a first visit is restored.
-    set({ introComplete: false, cinematicPhase: 'dark', cinematicTime: 0, epilogueVisible: false, epilogueText: false, cardOpen: false });
+    // The quiet bar resets with the ritual (#90): the next landing is a fresh first
+    // look — 暂停 and 今晚的 Mira wait for the visit's first drag or zoom again.
+    set({ introComplete: false, cinematicPhase: 'dark', cinematicTime: 0, epilogueVisible: false, epilogueText: false, cardOpen: false, exploreManipulated: false, awayFromMainView: false });
   },
   setCinematicPhase: (phase) => set({ cinematicPhase: phase }),
   setCinematicTime: (time) => set({ cinematicTime: time }),
@@ -127,6 +140,13 @@ export const useBinaryStar = create<BinaryStarStore>((set, get) => ({
   },
   requestReturnToExplore: () =>
     set({ returnToExploreAt: Date.now(), epilogueVisible: false, epilogueText: false, lastIntentionalInputAt: Date.now() }),
+  // Idempotent graduation: only the first manipulation of the visit is a write.
+  noteExploreManipulation: () => {
+    if (!get().exploreManipulated) set({ exploreManipulated: true });
+  },
+  setAwayFromMainView: (awayFromMainView) => {
+    if (get().awayFromMainView !== awayFromMainView) set({ awayFromMainView });
+  },
   setSky: (sky) => set({ sky }),
 }));
 
