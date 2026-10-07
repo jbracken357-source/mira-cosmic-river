@@ -21,7 +21,7 @@ import { cameraAwayFromMainView } from '../../lib/topBarVisibility';
 import { cancelReturnFlight, fittedFov, initialFreeViewState, stepFreeViewCamera } from '../../lib/freeViewCamera';
 import type { FlightPose } from '../../lib/freeViewCamera';
 import { sharedJourney } from '../../lib/sharedJourney';
-import { TAIL_OCCUPANCY, tailHeading } from '../../lib/tailPath';
+import { TAIL_OCCUPANCY, tailFarEnd, tailHeading } from '../../lib/tailPath';
 import {
   driveQualityGovernor,
   governorProbeFrameMs,
@@ -48,6 +48,12 @@ interface SceneProps {
 type OrbitControlsImpl = React.ElementRef<typeof DreiOrbitControls>;
 
 const Z_AXIS = new THREE.Vector3(0, 0, 1);
+
+// The road's far end in the journey frame (#91): the parallax probe anchor. It sits
+// much closer to the explore camera than the pair, so a drag or a zoom sweeps it
+// across the frame measurably more than the stars — the foreground/background
+// difference the specs read off data-tail-far-screen.
+const TAIL_FAR_WORLD = tailFarEnd(PHYSICS.TAIL.length);
 
 // Place the camera (and its orbit target) exactly on a pose lib/freeViewCamera has
 // already fitted for the current aspect: the explore landing, the reduced-motion
@@ -138,9 +144,12 @@ function SceneContent({
   const miraBGroupRef = useRef<THREE.Group>(null);
   const miraBTargetRef = useRef<THREE.Mesh>(null);
   const tailTargetRef = useRef<THREE.Mesh>(null);
+  const tailFarAnchorRef = useRef<THREE.Group>(null);
   const previousAspect = useRef(1);
   const miraAScreenRef = useRef(new THREE.Vector3());
+  const miraBScreenRef = useRef(new THREE.Vector3());
   const tailScreenRef = useRef(new THREE.Vector3());
+  const tailFarScreenRef = useRef(new THREE.Vector3());
   const ambientLookRef = useRef(new THREE.Vector3());
   const firstFrameMarkedRef = useRef(false);
   // Quality governor (#26): the state lives outside React — it is fed every frame
@@ -437,12 +446,25 @@ function SceneContent({
         const miraA = screenPercent(miraAAnchorRef.current, camera, miraAScreenRef.current);
         if (el.dataset.miraAScreen !== miraA) el.dataset.miraAScreen = miraA;
       }
+      // The companion through the same seam (#91): the gap between the two stars is
+      // an acceptance the specs read off the two projections directly.
+      if (miraBTargetRef.current) {
+        const miraB = screenPercent(miraBTargetRef.current, camera, miraBScreenRef.current);
+        if (el.dataset.miraBScreen !== miraB) el.dataset.miraBScreen = miraB;
+      }
       // The tail's click target, projected the same way (#88): with the treasure-hunt
       // hint gone from the lower edge, the scene itself is the tail's entry and specs
       // click it where it actually is.
       if (tailTargetRef.current) {
         const tail = screenPercent(tailTargetRef.current, camera, tailScreenRef.current);
         if (el.dataset.tailScreen !== tail) el.dataset.tailScreen = tail;
+      }
+      // The road's far end through the same seam (#91): the parallax probe — under a
+      // drag or a zoom it sweeps measurably more than the pair, which is how the
+      // specs read the foreground/background difference.
+      if (tailFarAnchorRef.current) {
+        const far = screenPercent(tailFarAnchorRef.current, camera, tailFarScreenRef.current);
+        if (el.dataset.tailFarScreen !== far) el.dataset.tailFarScreen = far;
       }
     }
 
@@ -544,6 +566,9 @@ function SceneContent({
         <boxGeometry args={occupancy.click.size} />
         <meshBasicMaterial visible={false} side={THREE.DoubleSide} />
       </mesh>
+      {/* The road's far end, anchored in the journey frame so the parallax probe
+          rides the shared journey exactly like the road itself (#91). */}
+      <group ref={tailFarAnchorRef} position={TAIL_FAR_WORLD} />
 
       {/* Ambient haze around the tail — anchors it against the star field in explore mode. */}
       {cinematicPhase === 'explore' && (

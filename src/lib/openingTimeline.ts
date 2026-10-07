@@ -58,16 +58,18 @@ function bowedPath(close: readonly number[], mid: readonly number[], far: readon
 // The tail's opacity envelope, shared with the scene's explore-state value so the
 // ramp can never drift away from where the opening lands.
 // The pull-back glimmer (up to TAIL_GLIMMER) is the floor the reveal grows from —
-// resetting to zero at the tail-reveal mark read as a pop.
+// resetting to zero at the tail-reveal mark read as a pop. #91: the real rise begins
+// at TAIL_FORMING_START, inside the second caption's window — when 「彼此牵引，一起
+// 走向更远。」 is on screen the road is already forming, no longer just the base glow.
 export const TAIL_GLIMMER = 0.15;
 export const TAIL_FULL_OPACITY = 0.85;
 
 function tailRamp(t: number): number {
   if (t < CINEMATIC.PULL_BACK_START) return 0;
-  if (t < CINEMATIC.TAIL_REVEAL_START) {
-    return clamp01((t - CINEMATIC.PULL_BACK_START) / (CINEMATIC.TAIL_REVEAL_START - CINEMATIC.PULL_BACK_START)) * TAIL_GLIMMER;
+  if (t < CINEMATIC.TAIL_FORMING_START) {
+    return clamp01((t - CINEMATIC.PULL_BACK_START) / (CINEMATIC.TAIL_FORMING_START - CINEMATIC.PULL_BACK_START)) * TAIL_GLIMMER;
   }
-  return TAIL_GLIMMER + easeInOutCubic(clamp01((t - CINEMATIC.TAIL_REVEAL_START) / (CINEMATIC.TAIL_FULL - CINEMATIC.TAIL_REVEAL_START))) * (TAIL_FULL_OPACITY - TAIL_GLIMMER);
+  return TAIL_GLIMMER + easeInOutCubic(clamp01((t - CINEMATIC.TAIL_FORMING_START) / (CINEMATIC.TAIL_FULL - CINEMATIC.TAIL_FORMING_START))) * (TAIL_FULL_OPACITY - TAIL_GLIMMER);
 }
 
 export function resolveOpeningPose(

@@ -30,6 +30,9 @@ export const TRANSLATIONS = {
     miraBFirstLine: 'It is still right beside the other. Any day you come, it is here.',
     miraBDesc: 'White Dwarf. Accreting matter from its companion. One day, it may trigger a nova.',
     tailLabel: 'The Tail',
+    // The tail card's first line (#91): the road sentence — the science paragraph
+    // follows whole, as the second line.
+    tailFirstLine: 'The way we came, left as a river of light.',
     tailDesc: '13 light-years long. Discovered by GALEX in 2007. The longest stellar tail ever observed.',
 
     // UI
@@ -105,6 +108,8 @@ export const TRANSLATIONS = {
     miraBFirstLine: '它还在旁边。你哪天来，都在。',
     miraBDesc: '白矮星。从伴星吸积物质。终有一天，它可能触发新星爆发。',
     tailLabel: '尾巴',
+    // 尾巴信息卡的第一句（#91）：走过的路那句；科学说明整段留在第二句。
+    tailFirstLine: '走过的路，留成一条光河。',
     tailDesc: '13 光年长。2007 年由 GALEX 卫星发现。人类观测到的最长的恒星尾巴。',
 
     // UI

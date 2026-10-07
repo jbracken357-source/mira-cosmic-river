@@ -21,8 +21,10 @@ interface MiraTailProps {
   tier: QualityTier;
 }
 
-// Generate tail particle positions - curved stream behind Mira A
-// Based on real Mira bow shock geometry: matter flowing away from orbital motion
+// Generate tail particle positions - curved stream behind the pair
+// Based on real Mira bow shock geometry: matter flowing away from orbital motion.
+// t = 0 is the root (根, #91): the tail springs from between the pair, not from
+// inside the giant — tailCenterline owns that bend.
 function generateTailData(count: number, length: number) {
   const positions = new Float32Array(count * 3);
   const seeds = new Float32Array(count);
@@ -37,7 +39,7 @@ function generateTailData(count: number, length: number) {
     return seed / 4294967296;
   };
   for (let i = 0; i < count; i++) {
-    const t = i / count; // 0 = near star, 1 = far end
+    const t = i / count; // 0 = the root between the pair, 1 = far end
     const [cx, cy, cz] = tailCenterline(t, length);
     const spread = tailSpread(t);
     const angle = random() * Math.PI * 2;

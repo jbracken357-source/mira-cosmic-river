@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { AccretionDisk_Shader, makeDiskUniforms } from '../../shaders/accretionDisk';
 import { MIRA_B_CORONA, HIGHLIGHT_SHOULDER_GLSL } from '../../shaders/miraA';
 import { COLORS } from '../../constants';
+import { DISK_GEOMETRY, impactAngleFor } from '../../lib/binaryLighting';
 import type { OrbitPositions } from '../../types';
 import GlowShell from './GlowShell';
 import type { MutableRefObject } from 'react';
@@ -91,20 +92,9 @@ const miraBShaderMaterial = {
   `,
 };
 
-// The disk plane is tilted towards the viewer rather than lying in the 30-degree-inclined
-// orbital plane. Those are the same plane as far as the physics is concerned, but the explore
-// camera sits within a few degrees of the orbital plane, where a coplanar disk is edge-on and
-// collapses to a smear. A ninth of a pi keeps the ring an unmistakable ellipse from the
-// angles the camera actually reaches.
-const DISK_TILT = Math.PI / 9;
-// Outer radius of the disk, in white dwarf radii. Far enough out that the arcs clear the
-// star's own bloom — a disk you cannot see past the star is not a disk.
-const DISK_SCALE = 4.8;
-// The disk is a puff, not a mathematical plane: the camera's azimuth is unrestricted, and a
-// flat band is exactly edge-on at two points of every revolution, where it degenerates into a
-// one-pixel bar. About a sixth of the radius as vertical thickness means the worst case is still
-// a lens with a readable height to it. Real disks flared like this are just as thin.
-const DISK_THICKNESS = 0.16;
+// The disk's shape — tilt, scale, thickness — is the shared calibration in
+// lib/binaryLighting (DISK_GEOMETRY): the mesh and the hot-spot angle math read the
+// same numbers, so the ring presented and the ring painted never drift apart (#91).
 
 export default function MiraB({ position, radius, segments = 64, positionsRef }: MiraBProps) {
   const meshRef = useRef<THREE.Mesh>(null);
@@ -159,7 +149,7 @@ export default function MiraB({ position, radius, segments = 64, positionsRef }:
     };
   }, []);
 
-  const diskRadius = radius * DISK_SCALE;
+  const diskRadius = radius * DISK_GEOMETRY.scale;
 
   useFrame((_, delta) => {
     timeRef.current = advanceTime(timeRef.current, delta, { reduceMotion });
@@ -185,17 +175,13 @@ export default function MiraB({ position, radius, segments = 64, positionsRef }:
     if (diskMaterialRef.current) {
       diskMaterialRef.current.uniforms.uTime.value = time;
 
-      // Aim the hot spot at Mira A. The stream arrives from that direction; the disk only ever
-      // carries a rotation about X, so the world-space A→B vector rotates into the disk's own
-      // tilted plane by hand: local X is world X, and local Z is the plane's second basis
-      // vector (0, -sin t, cos t).
+      // Aim the hot spot at Mira A. The stream arrives from that direction; the pure
+      // seam (lib/binaryLighting) projects the live A-ward vector — orbit and shared
+      // journey included — into the disk's tilted plane, so the landing region rides
+      // the pair at every phase (#91).
       const live = positionsRef?.current;
       if (live) {
-        const wx = live.primary[0] - live.companion[0];
-        const wy = live.primary[1] - live.companion[1];
-        const wz = live.primary[2] - live.companion[2];
-        const localZ = -wy * Math.sin(DISK_TILT) + wz * Math.cos(DISK_TILT);
-        diskMaterialRef.current.uniforms.uImpactAngle.value = Math.atan2(localZ, wx);
+        diskMaterialRef.current.uniforms.uImpactAngle.value = impactAngleFor(live.primary, live.companion);
       }
     }
 
@@ -241,7 +227,7 @@ export default function MiraB({ position, radius, segments = 64, positionsRef }:
 
       {/* Accretion disk: a unit sphere flattened into the disk's shape, so the shader can work
           in normalised radius and the mesh scale is the disk's outer radius and half-thickness. */}
-      <mesh rotation-x={DISK_TILT} scale={[diskRadius, diskRadius * DISK_THICKNESS, diskRadius]}>
+      <mesh rotation-x={DISK_GEOMETRY.tilt} scale={[diskRadius, diskRadius * DISK_GEOMETRY.thickness, diskRadius]}>
         <sphereGeometry args={[1, 96, 24]} />
         <shaderMaterial
           ref={diskMaterialRef}

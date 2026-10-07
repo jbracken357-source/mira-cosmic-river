@@ -77,7 +77,7 @@ export default function InfoCards({ selectedStar, onSelectStar }: InfoCardsProps
   }, [selectedStar, onSelectStar]);
 
   // The first line says the relationship; the science paragraph follows whole (#89).
-  // The tail's body is unchanged this ticket — it carries no first line.
+  // The tail's first line is the road sentence (#91): 「走过的路，留成一条光河。」
   const cardData: Record<StarName, { title: string; firstLine: string | null; desc: string; color: string; accent: string }> = {
     miraA: {
       title: t.miraA,
@@ -95,7 +95,7 @@ export default function InfoCards({ selectedStar, onSelectStar }: InfoCardsProps
     },
     tail: {
       title: t.tailLabel,
-      firstLine: null,
+      firstLine: t.tailFirstLine,
       desc: t.tailDesc,
       color: 'from-violet-500/20',
       accent: 'border-violet-400/40',

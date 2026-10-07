@@ -27,6 +27,16 @@ test.describe('info card first lines (#89)', () => {
     expect(TRANSLATIONS.en.tailDesc).toContain('13');
   });
 
+  // #91: the tail's card earns its first line — the road sentence — with the
+  // science paragraph still whole behind it.
+  test('the tail’s first line is the road sentence, verbatim in both languages (#91)', () => {
+    expect(TRANSLATIONS.ch.tailFirstLine).toBe('走过的路，留成一条光河。');
+    expect(TRANSLATIONS.en.tailFirstLine).toBe('The way we came, left as a river of light.');
+    // The first line carries the relationship, not the science numbers.
+    expect(TRANSLATIONS.ch.tailFirstLine).not.toContain('13');
+    expect(TRANSLATIONS.en.tailFirstLine).not.toContain('13');
+  });
+
   test('the first lines never count the 332-day period', () => {
     expect(TRANSLATIONS.ch.miraAFirstLine).not.toContain('332');
     expect(TRANSLATIONS.en.miraAFirstLine).not.toContain('332');
