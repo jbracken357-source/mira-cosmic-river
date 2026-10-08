@@ -96,7 +96,11 @@ export const PORTRAIT_CAMERA = {
   // inside the explore zoom limit, so the landing is a place the viewer can keep.
   EXPLORE: {
     position: [-8.6, 22.6, 25] as [number, number, number],
-    lookAt: [-5.6, -2.8, 11.4] as [number, number, number],
+    // The root fix (#91 review) moved 根 a unit sunward along the A→B axis; the
+    // aim dips a touch lower so the pair's discs keep their clearance above the
+    // 终幕标题 band on the shortest portrait (320×568) — the pin follows the root,
+    // the stored composition re-centers the pair by that last margin.
+    lookAt: [-5.6, -2.92, 11.4] as [number, number, number],
     fov: 36,
   },
   // The epilogue hold: farther along the same composition, the pair pushed right
@@ -120,6 +124,10 @@ export const TRANSITIONS = {
   // The budget belongs to the 终幕→下缘 transition only; 直达 finds the line already
   // present from the first frame (lib/lowerEdge's closingLineArrival).
   CLOSING_LINE_SETTLE: 0.5,
+  // The closing line's own way out — shorter than its settle, so a swap at the
+  // lower edge (milestone hint or epilogue) reads as a hand-over, not a fade-out
+  // of the line itself.
+  CLOSING_LINE_EXIT: 0.25,
   // 结语 (#88): the epilogue line enters in about 0.8s; when the viewer interrupts,
   // it leaves faster than it came.
   EPILOGUE_ENTER: 0.8,
@@ -132,6 +140,11 @@ export const TRANSITIONS = {
   TOP_BAR_EPILOGUE_RETURN: 1.2,
   // The milestone hint's own enter/exit fade while it borrows the lower edge.
   MILESTONE_HINT_FADE: 0.4,
+  // Opening captions (the cinematic's three lines) leave faster than they arrive,
+  // so one line never sits half-faded under the next.
+  CAPTION_EXIT: 0.25,
+  // The interaction hint's farewell once the viewer has learned the gesture.
+  INTERACTION_HINT_EXIT: 0.3,
 } as const;
 
 // 下缘 (#88): how long the milestone hint (本周期最亮/最暗) holds the lower edge once

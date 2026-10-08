@@ -2,11 +2,8 @@ import { useRef, useMemo, useEffect } from 'react';
 import { useReducedMotion } from 'framer-motion';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import {
-  MiraA_Shader,
-  MIRA_A_ATMOSPHERE,
-  MIRA_A_PULSE_AMPLITUDE,
-} from '../../shaders/miraA';
+import { MiraA_Shader, MIRA_A_ATMOSPHERE } from '../../shaders/miraA';
+import { MIRA_A_PULSE_AMPLITUDE } from '../../lib/binaryLighting';
 import { COLORS } from '../../constants';
 import { useBinaryStar, useEntryReadiness } from '../../hooks';
 import { advanceTime, parkedFade } from '../../lib/captureMode';

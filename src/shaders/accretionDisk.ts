@@ -39,6 +39,15 @@ export const DISK_GAIN = {
   innerGlow: 0.08,
 } as const;
 
+// The alpha channel's own gains — separate numbers from the colour gains above,
+// #91 softened them from 0.48/0.35 so the disk reads as translucent flowing gas
+// instead of a solid ring. Exported so the "one calibration source" claim covers
+// the alpha path too, not just the colour path.
+export const DISK_ALPHA_GAIN = {
+  ring: 0.38,
+  spot: 0.26,
+} as const;
+
 // Shader materials take their uniforms object by assignment rather than by cloning, so each
 // disk gets its own — otherwise the last material written to would drive both.
 export function makeDiskUniforms(): Record<string, { value: unknown }> {
@@ -131,7 +140,7 @@ export const AccretionDisk_Shader = {
       color += uColor * uInnerGlow * arc * exp(-max(r - uInner, 0.0) * 6.0) * smoothstep(0.12, uInner, r);
       color += uHotColor * spot * uHotGain;
 
-      float alpha = clamp(ring * beam * 0.38 + spot * 0.26, 0.0, 1.0) * uOpacity;
+      float alpha = clamp(ring * beam * ${DISK_ALPHA_GAIN.ring} + spot * ${DISK_ALPHA_GAIN.spot}, 0.0, 1.0) * uOpacity;
 
       gl_FragColor = vec4(color, alpha);
     }

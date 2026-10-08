@@ -150,8 +150,9 @@ function SceneContent({
   const miraBTargetRef = useRef<THREE.Mesh>(null);
   const tailTargetRef = useRef<THREE.Mesh>(null);
   const tailFarAnchorRef = useRef<THREE.Group>(null);
-  // 根 (#91) joins the probe table in #92: the pair's midpoint is the point the
-  // 竖屏长卷 pins to its calibrated screen position.
+  // 根 (#91) joins the probe table in #92: the root (on the home A→B axis, just
+  // past the giant's limb) is the point the 竖屏长卷 pins to its calibrated
+  // screen position.
   const tailRootAnchorRef = useRef<THREE.Group>(null);
   // The mid-road anchor (#92 review): the visible-reach probe.
   const tailMidAnchorRef = useRef<THREE.Group>(null);
@@ -203,6 +204,15 @@ function SceneContent({
     companion: [0, 0, 0] as [number, number, number],
   });
 
+  // Scratch tuples for the frame loop's camera reads (#90 review): the flight
+  // input and the main-view check used to allocate fresh triples every frame.
+  // stepFreeViewCamera copies whatever it keeps, so reuse is safe.
+  const flightCameraRef = useRef({
+    position: [0, 0, 0] as [number, number, number],
+    target: [0, 0, 0] as [number, number, number],
+  });
+  const awayTupleRef = useRef([0, 0, 0] as [number, number, number]);
+
   // Background click to deselect
 
   // Main loop. Stage order is the invariant: 门 (gate) → 控制 (control) → 飞行
@@ -237,6 +247,19 @@ function SceneContent({
     // capture their origins, and the verdicts come back as a pose to apply, the
     // controls enable state, and whether an armed flight holds the idle clock.
     const orbit = orbitControlsRef.current;
+    const flightCamera = flightCameraRef.current;
+    flightCamera.position[0] = camera.position.x;
+    flightCamera.position[1] = camera.position.y;
+    flightCamera.position[2] = camera.position.z;
+    if (orbit) {
+      flightCamera.target[0] = orbit.target.x;
+      flightCamera.target[1] = orbit.target.y;
+      flightCamera.target[2] = orbit.target.z;
+    } else {
+      flightCamera.target[0] = CAMERA.EXPLORE.lookAt[0];
+      flightCamera.target[1] = CAMERA.EXPLORE.lookAt[1];
+      flightCamera.target[2] = CAMERA.EXPLORE.lookAt[2];
+    }
     const flight = stepFreeViewCamera(flightRef.current, {
       delta,
       aspect: camera.aspect,
@@ -250,10 +273,8 @@ function SceneContent({
       reduceMotion,
       capturePose: capture.active && store.introComplete ? resolveCapturePose(capture.camera, CAMERA.EXPLORE) : null,
       camera: {
-        position: [camera.position.x, camera.position.y, camera.position.z],
-        target: orbit
-          ? [orbit.target.x, orbit.target.y, orbit.target.z]
-          : [...CAMERA.EXPLORE.lookAt],
+        position: flightCamera.position,
+        target: flightCamera.target,
         fov: camera.fov,
       },
     });
@@ -307,9 +328,12 @@ function SceneContent({
     // framing — after this frame's pose and idle advance are applied, so the
     // verdict measures what is actually on screen. The full cinematic owns the
     // camera then, and 主视角 is not a concept inside it.
+    const awayTuple = awayTupleRef.current;
+    awayTuple[0] = camera.position.x;
+    awayTuple[1] = camera.position.y;
+    awayTuple[2] = camera.position.z;
     store.setAwayFromMainView(
-      introComplete &&
-        cameraAwayFromMainView([camera.position.x, camera.position.y, camera.position.z], portrait),
+      introComplete && cameraAwayFromMainView(awayTuple, portrait),
     );
 
     if (introComplete) {

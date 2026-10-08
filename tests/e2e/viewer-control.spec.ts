@@ -114,15 +114,21 @@ test.describe('Viewer control', () => {
     await pause.click();
     await expect(pause).toHaveAttribute('aria-pressed', 'true', { timeout: 15000 });
 
-    // Past both scaled thresholds: nothing takes over while paused.
+    // Past both scaled thresholds: nothing takes over while paused. The pair's
+    // screen probe holds too — 暂停 stops the scene clocks (orbit and 共同前行
+    // both run through advanceTime), not just the camera verdict.
     await expect(wrapper(page)).toHaveAttribute('data-auto-camera', 'off', { timeout: 15000 });
-    await page.waitForTimeout(4500);
+    const canvas = page.locator('canvas');
+    const poseA = await canvas.getAttribute('data-mira-a-screen');
+    expect(poseA).toBeTruthy();
+    await page.waitForTimeout(2500);
     await expect(wrapper(page)).toHaveAttribute('data-auto-camera', 'off');
+    expect(await canvas.getAttribute('data-mira-a-screen')).toBe(poseA);
     await expect(wrapper(page)).toHaveAttribute('data-epilogue', 'false');
     await expect(page.getByTestId('epilogue-text')).toHaveCount(0);
 
     // Resume restarts the idle clock from zero: about one scaled resume + ramp later
-    // the camera drifts again.
+    // the camera advances again.
     await pause.click();
     await expect(pause).toHaveAttribute('aria-pressed', 'false', { timeout: 15000 });
     await expect(wrapper(page)).toHaveAttribute('data-auto-camera', 'on', { timeout: 15000 });
@@ -151,7 +157,7 @@ test.describe('Viewer control', () => {
     const poseBefore = await canvas.getAttribute('data-camera-pose');
     expect(poseBefore).toBeTruthy();
 
-    // No drift, ever…
+    // No advance, ever…
     await expect(wrapper(page)).toHaveAttribute('data-auto-camera', 'off');
     // …but the epilogue line still arrives on the same shared clock…
     await expect(page.getByTestId('epilogue-text')).toBeVisible({ timeout: 15000 });

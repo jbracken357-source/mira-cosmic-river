@@ -11,8 +11,9 @@
 //
 // The phase is the caller's scene clock (advanceTime), so a pause holds the
 // pose, a resume continues from the held phase, reduced motion parks the pair
-// in a readable companionship pose, and capture mode pins the ride at the same
-// settled phase as every other clock.
+// in a readable companionship pose, and capture mode pins the ride at its own
+// fixed phase (CAPTURE_TIME, mid ease-in — not the arrived pose; a capture
+// baseline shows the pair partway along the journey).
 import type { Vec3 } from './tailPath';
 
 export const JOURNEY = {

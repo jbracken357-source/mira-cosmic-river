@@ -101,7 +101,7 @@ export function resolveViewerControl(
   const idleMs = Math.max(0, now - lastIntentionalInputAt);
   const epilogueText = idleMs >= timing.epilogueMs;
 
-  // Reduced motion holds the camera only: no drift, no closing flight, but the
+  // Reduced motion holds the camera only: no advance, no closing flight, but the
   // epilogue text still arrives on the same idle count.
   if (holds.reduceMotion) {
     return { ...held('reduced-motion'), holdsIdle: false, epilogueText };
@@ -161,7 +161,7 @@ export interface ViewerControlSnapshot {
 }
 
 // A fresh return to the main view settles: for this long after the request the
-// camera stays exactly where the viewer asked to be — no drift, no closing
+// camera stays exactly where the viewer asked to be — no advance, no closing
 // takeover. The window is anchored to the request timestamp, so the per-frame
 // hold-restamps cannot renew it. Read through returnSettleWindowOpen below, never
 // by spelling the formula out again.

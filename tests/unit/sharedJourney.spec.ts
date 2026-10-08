@@ -103,15 +103,13 @@ test.describe('the shared ride', () => {
     expect(dot(sharedJourney(HORIZON, HEADING).base, HEADING)).toBeGreaterThan(JOURNEY.amplitude * 0.99);
   });
 
-  test('a held phase holds exactly the same pose (pause parks, resume continues)', () => {
-    // The phase is the caller's scene clock: freezing it must freeze the ride to
-    // the last value, bit for bit, so a resume picks up the held phase.
-    for (const phase of [0, 7.5, JOURNEY.timescale, HORIZON / 3, HORIZON]) {
-      expect(sharedJourney(phase, HEADING)).toEqual(sharedJourney(phase, HEADING));
-    }
-  });
-
   test('phase zero is a true home: the hand-off from the opening never snaps', () => {
+    // (The pause contract is not a property of this pure function: the ride
+    // freezes because its caller's clock freezes. advanceTime's hold behaviour —
+    // paused, reduced motion, hidden tab — is pinned in
+    // tests/unit/captureMode.spec.ts; the capture park is pinned by the
+    // daily-sky e2e (two ?capture=1 visits, pixel-identical); the scene wiring
+    // by the pause e2e.)
     // The full cinematic leaves the pair at the origin; free viewing must pick up
     // from exactly there — no offset on any of the three at phase zero.
     const { base, primary, companion } = sharedJourney(0, HEADING);
@@ -132,20 +130,21 @@ test.describe('the companion’s lag (滞后)', () => {
   });
 
   test('the lag reads at the free-viewing distance, without reading numbers', () => {
-    // The most the tow ever opens between the pair along the heading. At the
-    // explore distance (~29 units) a shift this size is a visible share of the
-    // frame — the follower reads as towed, not parked.
+    // The most the tow ever opens between the pair along the heading, as a share
+    // of the ride's own reach: the bound is the intent (a visible fraction —
+    // retuning JOURNEY must not trip a threshold pinned to today's numbers).
     const separations = PHASES.map((phase) => Math.abs(dwarfAlong(phase) - giantAlong(phase)));
-    expect(Math.max(...separations)).toBeGreaterThan(0.8);
+    expect(Math.max(...separations)).toBeGreaterThan(JOURNEY.amplitude * 0.25);
   });
 
   test('the tow never pulls the pair apart: the dwarf stays within reach of the giant', () => {
     // Reduced motion parks the phase wherever it is; any held pose must still read
-    // as companionship — the lag adds less than a unit against the ~4.5-unit orbit.
+    // as companionship — the lag stays within about half the ride's reach against
+    // the ~4.5-unit orbit, whatever the constants currently make it.
     for (const phase of PHASES) {
       const { primary, companion } = sharedJourney(phase, HEADING);
       const gap = length([companion[0] - primary[0], companion[1] - primary[1], companion[2] - primary[2]]);
-      expect(gap).toBeLessThan(1.2);
+      expect(gap).toBeLessThan(JOURNEY.amplitude * 0.55);
     }
   });
 });
@@ -160,8 +159,9 @@ test.describe('the red giant’s answer (回应)', () => {
   });
 
   test('the answer reads at the free-viewing distance, without reading numbers', () => {
+    // A visible share of the ride's reach, by intent — not today's constants.
     const gives = PHASES.map((phase) => Math.abs(dot(sharedJourney(phase, HEADING).primary, HEADING)));
-    expect(Math.max(...gives)).toBeGreaterThan(0.3);
+    expect(Math.max(...gives)).toBeGreaterThan(JOURNEY.amplitude * 0.1);
     // …but it stays an answer, not a second orbit: much smaller than the ride.
     expect(Math.max(...gives)).toBeLessThan(JOURNEY.amplitude / 4);
   });

@@ -130,9 +130,13 @@ let pinCache: { aspect: number; pose: FramingPose } | null = null;
 // steady visit; a resize simply re-solves once.
 export function portraitExplorePose(aspect: number): FramingPose {
   const stored = PORTRAIT_CAMERA.EXPLORE;
-  if (aspect === PORTRAIT_REFERENCE_ASPECT || aspect >= 1) {
+  // Degenerate aspects (zero, negative, NaN) never reach the solver: tanV would
+  // blow up or the Newton steps would produce NaN lookAts — and NaN !== NaN would
+  // defeat the memo below, re-solving every frame. The stored pose is the sane
+  // answer for a question the caller should not be asking.
+  if (!Number.isFinite(aspect) || aspect <= 0 || aspect === PORTRAIT_REFERENCE_ASPECT || aspect >= 1) {
     // Bit-exact identity at the reference aspect (and a sane constant if a
-    // landscape aspect ever arrives here by mistake).
+    // landscape or degenerate aspect ever arrives here by mistake).
     return {
       position: [...stored.position],
       lookAt: [...stored.lookAt],

@@ -16,11 +16,12 @@ import {
 } from '../../src/lib/riverLighting';
 import { TailVertexShader, TailFragmentShader, createTailMaterial } from '../../src/shaders/tail';
 import { MiraA_Shader, HIGHLIGHT_SHOULDER_GLSL, PULSE_RATE } from '../../src/shaders/miraA';
-import { AccretionDisk_Shader } from '../../src/shaders/accretionDisk';
+import { AccretionDisk_Shader, DISK_ALPHA_GAIN } from '../../src/shaders/accretionDisk';
 import { TAIL_FADE_IN, TAIL_FAR_FADE, PORTRAIT_FAR_FADE_SCALE } from '../../src/lib/tailPath';
 import {
   SURFACE_DETAIL_FLOOR,
   PULSE_LIGHT_SWING,
+  MIRA_A_PULSE_AMPLITUDE,
   surfacePulseLight,
   PULSE_CELL_LIFT_DIM,
   PULSE_CELL_LIFT_BRIGHT,
@@ -126,9 +127,27 @@ test.describe('Mira A shader stays in step with binaryLighting', () => {
     // Both curves run off the radius pulse's own sine, lifted to 0..1.
     expect(f).toContain(`float pulsePhase = sin(uTime * ${PULSE_RATE}) * .5 + .5;`);
     expect(f).toContain(`float cellLift = mix(${PULSE_CELL_LIFT_DIM}, ${PULSE_CELL_LIFT_BRIGHT}, pulsePhase);`);
-    expect(f).toContain(`color += vec3(1.2, .58, .16) * pow(heat, 5.) * cellLift * detailStrength;`);
+    expect(f).toContain('color += vec3(1.2, .58, .16) * pow(heat, 5.) * cellLift * detailStrength;');
     expect(f).toContain(`float surfaceLight = 1. + ${PULSE_LIGHT_SWING} * (pulsePhase * 2. - 1.);`);
     expect(f).toContain('color *= surfaceLight * (.68 + .55 * uBrightness);');
+  });
+
+  // #87 review: "shares the same sine as the radius pulse" is a claim about the
+  // VERTEX shader's silhouette, and only the fragment side was pinned. A phase
+  // offset or a cos on either half would put the light out of step with the
+  // breathing radius and no test would trip. Both spellings interpolate the same
+  // constants, so a retune moves them together.
+  test('the silhouette pulse and the light pulsePhase share one sine (#87)', () => {
+    const v = MiraA_Shader.vertexShader;
+    expect(v).toContain(`float radiusPulse = 1.0 + ${MIRA_A_PULSE_AMPLITUDE} * sin(uTime * ${PULSE_RATE});`);
+    expect(MiraA_Shader.fragmentShader).toContain(`float pulsePhase = sin(uTime * ${PULSE_RATE}) * .5 + .5;`);
+  });
+
+  // #87 review: the no-dead-white evaluator in binaryLighting.spec (amberEnd)
+  // mirrors this exact mix with independent literals. Pin the GLSL spelling so
+  // the two sides cannot drift apart while the hottest-texel assertion stays green.
+  test('the ember→amber mix is pinned where the hottest-texel evaluator reads it (#87)', () => {
+    expect(MiraA_Shader.fragmentShader).toContain('vec3 amber = mix(uColorSurface, vec3(1., .38, .065), .65);');
   });
 
   test('the GLSL curves are the pure functions at theta = uTime * PULSE_RATE + pi/2', () => {
@@ -205,5 +224,12 @@ test.describe('accretion disk shader stays in step with binaryLighting', () => {
     expect(f).toContain('(.5 + .5 * sin(angle * 3. + 1.7 + uTime * .22)) * (.5 + .5 * sin(angle * 7. - uTime * .9))');
     expect(f).toContain(`gaussFalloff(wrapAngle(angle - uImpactAngle), ${HOT_SPOT_ANGLE_WIDTH})`);
     expect(f).toContain(`gaussFalloff(r - ${HOT_SPOT_RADIUS}, ${HOT_SPOT_RADIAL_WIDTH})`);
+  });
+
+  // #91 review: the alpha channel's gains used to be hard literals beside the
+  // uniform-fed colour gains — the "one calibration source" covered only half the
+  // shader. They are named and interpolated now; this pin keeps them that way.
+  test('the alpha gains share the calibration source with the colour gains (#91)', () => {
+    expect(f).toContain(`clamp(ring * beam * ${DISK_ALPHA_GAIN.ring} + spot * ${DISK_ALPHA_GAIN.spot}, 0.0, 1.0)`);
   });
 });

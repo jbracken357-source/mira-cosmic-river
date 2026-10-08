@@ -83,6 +83,18 @@ test.describe('竖屏长卷: the root pins the pair to its calibrated screen poi
       expect(portraitExplorePose(aspect).position).toEqual([...PORTRAIT_CAMERA.EXPLORE.position]);
     }
   });
+
+  // #92 review: a degenerate aspect must never reach the solver — NaN steps
+  // would poison the pose, and NaN !== NaN would defeat the memo (a re-solve
+  // every frame). The stored pose is the fallback.
+  test('degenerate aspects fall back to the stored pose, never NaN', () => {
+    for (const aspect of [0, -0.5, Number.NaN, Number.POSITIVE_INFINITY]) {
+      const pose = portraitExplorePose(aspect);
+      expect(pose.position).toEqual([...PORTRAIT_CAMERA.EXPLORE.position]);
+      expect(pose.lookAt.every(Number.isFinite)).toBe(true);
+      expect(pose.fov).toBe(PORTRAIT_CAMERA.EXPLORE.fov);
+    }
+  });
 });
 
 test.describe('竖屏长卷: the road runs down the long axis at 390×844', () => {
@@ -132,7 +144,7 @@ test.describe('竖屏长卷: the road runs down the long axis at 390×844', () =
     const near = projectToScreenPercent(yawY(tailCenterline(0.2, TAIL_LENGTH)), pose, REF, PORTRAIT_TILT);
     expect(near.y).toBeLessThan(mid.y);
     expect(near.y).toBeGreaterThan(root.y);
-    const mist = screenDiscRadiusPercent(root, 1.2, pose, REF, PORTRAIT_TILT);
+    const mist = screenDiscRadiusPercent(root, 1.2, pose, REF);
     expect(mist).toBeGreaterThan(2);
   });
 

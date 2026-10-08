@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { MIRA_MAXIMUM_EPOCH_MS } from '../../src/lib/starClock';
+import { MILESTONE_HINT_MS } from '../../src/constants/animation';
 import { TRANSLATIONS } from '../../src/constants/translations';
 import { IDLE_FAST, manipulateScene, MID_DECLINE_EPOCH } from './helpers';
 
@@ -108,6 +109,13 @@ test.describe('the closing line at the lower edge', () => {
     await expect(hint).toHaveAttribute('data-milestone-kind', 'maximum');
     await expect(hint).toContainText('本周期最亮');
     // 下缘同时只有这一句: the hint never stacks beside the closing line.
+    await expect(page.getByTestId('lower-edge-closing-line')).toHaveCount(0);
+
+    // The window has a floor, not just a ceiling: the hint still holds the row
+    // well into its eight seconds, so a timer mis-wired to a fraction of
+    // MILESTONE_HINT_MS cannot pass the disappearance wait below.
+    await page.waitForTimeout(MILESTONE_HINT_MS * 0.3);
+    await expect(hint).toBeVisible();
     await expect(page.getByTestId('lower-edge-closing-line')).toHaveCount(0);
 
     // 然后这句回来.
