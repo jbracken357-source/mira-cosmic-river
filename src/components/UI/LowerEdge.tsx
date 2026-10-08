@@ -65,7 +65,7 @@ export default function LowerEdge() {
           // to the 终幕→下缘 transition alone.
           initial={closingLineArrival === 'present' ? false : { opacity: 0 }}
           animate={{ opacity: 1 }}
-          exit={{ opacity: 0, transition: { duration: reduceMotion ? 0 : 0.25 } }}
+          exit={{ opacity: 0, transition: { duration: reduceMotion ? 0 : TRANSITIONS.CLOSING_LINE_EXIT } }}
           transition={{ duration: reduceMotion ? 0 : TRANSITIONS.CLOSING_LINE_SETTLE }}
           // The closing line's own voice — never the controls' all-caps and
           // ultra-wide tracking. Italic stays en-only, as in the final beat.

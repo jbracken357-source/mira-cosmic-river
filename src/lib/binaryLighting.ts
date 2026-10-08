@@ -59,6 +59,12 @@ export function surfaceDetailStrength(region: number, limb: number): number {
 // whole disc into dead white at the bright end.
 export const PULSE_LIGHT_SWING = 0.2;
 
+// The radius's own swing in the same decorative cycle: the photosphere swells and
+// shrinks by this fraction of its base radius (the vertex shader's radiusPulse).
+// Lives with the other pulse constants so the tail's root (lib/tailPath) can
+// clear the breathing limb without reaching into the shader module.
+export const MIRA_A_PULSE_AMPLITUDE = 0.09; // 9% of the radius come and gone each cycle
+
 // The photosphere's light at one pulsation phase angle: 0 is the dimmest, pi the
 // brightest, and the two half-turns have to read differently. The shader runs the
 // same curve at theta = uTime * PULSE_RATE + pi/2, where it is one multiply against

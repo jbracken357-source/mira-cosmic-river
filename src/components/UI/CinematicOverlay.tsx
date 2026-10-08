@@ -82,7 +82,7 @@ export default function CinematicOverlay({
             key={caption}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            exit={{ opacity: 0, transition: { duration: reduceMotion ? 0 : .25 } }}
+            exit={{ opacity: 0, transition: { duration: reduceMotion ? 0 : TRANSITIONS.CAPTION_EXIT } }}
             transition={{ duration: Math.min(fade, .75) }}
             className="absolute bottom-32 md:bottom-24 left-6 md:left-12 right-6 md:right-12 pointer-events-none select-none"
           >
@@ -258,9 +258,13 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
       </header>
 
       {/* Bottom hint — the lower edge (#88) holds the closing line of the full
-          cinematic; the interaction pill sits above it so the line keeps the row. */}
+          cinematic; the interaction pill sits above it so the line keeps the row.
+          The row's fade shares the top bar's slower return budget (TRANSITIONS.
+          TOP_BAR_EPILOGUE_RETURN): the interface leaves with the epilogue and
+          comes back with it, one duration for both directions. */}
       <footer
-        className={`absolute bottom-0 left-0 right-0 px-8 pb-[max(1rem,env(safe-area-inset-bottom))] md:pb-8 pt-2 flex flex-col items-center gap-3 transition-opacity duration-[1200ms] ${
+        style={{ transitionDuration: `${TRANSITIONS.TOP_BAR_EPILOGUE_RETURN * 1000}ms` }}
+        className={`absolute bottom-0 left-0 right-0 px-8 pb-[max(1rem,env(safe-area-inset-bottom))] md:pb-8 pt-2 flex flex-col items-center gap-3 transition-opacity ${
           epilogueHush || hintsQuiet ? 'opacity-0 pointer-events-none' : 'opacity-100'
         }`}
       >
@@ -297,7 +301,7 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
               data-testid="interaction-hint"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              exit={{ opacity: 0, transition: { duration: reduceMotion ? 0 : 0.3 } }}
+              exit={{ opacity: 0, transition: { duration: reduceMotion ? 0 : TRANSITIONS.INTERACTION_HINT_EXIT } }}
               className="backdrop-blur-sm bg-white/5 border border-white/10 px-4 py-2 rounded-full"
             >
               <div className="flex items-center gap-2">

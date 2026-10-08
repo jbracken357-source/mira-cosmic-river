@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import * as THREE from 'three';
 import { CAMERA, PHYSICS, calculateOrbitalPosition } from '../../src/constants';
+import { MIRA_A_PULSE_AMPLITUDE } from '../../src/lib/binaryLighting';
 import {
   boxContains,
   boxFromCenterSize,
@@ -8,6 +9,7 @@ import {
   TAIL_ROOT,
   TAIL_ROOT_FADE,
   TAIL_ROOT_SPREAD,
+  TAIL_FADE_IN,
   tailCenterline,
   tailClickVolume,
   tailFarEnd,
@@ -26,8 +28,8 @@ const LENGTH = PHYSICS.TAIL.length;
 test.describe('tail path', () => {
   test('the centerline springs from the root (根) between the pair, then streams behind them (#91)', () => {
     const origin = tailCenterline(0, LENGTH);
-    // The root is the pair's home midpoint — between the two home positions on the
-    // A→B axis, not the giant's centre.
+    // The root sits on the home A→B axis — between the two home positions, not at
+    // the giant's centre and not parked on the companion.
     const home = calculateOrbitalPosition(0, PHYSICS.ORBIT);
     const axis = [
       home.companion[0] - home.primary[0],
@@ -37,11 +39,12 @@ test.describe('tail path', () => {
     const fromA = [origin[0] - home.primary[0], origin[1] - home.primary[1], origin[2] - home.primary[2]];
     const axisLen2 = axis[0] ** 2 + axis[1] ** 2 + axis[2] ** 2;
     const along = (fromA[0] * axis[0] + fromA[1] * axis[1] + fromA[2] * axis[2]) / axisLen2;
-    expect(along).toBeGreaterThan(0.25);
-    expect(along).toBeLessThan(0.75);
-    // Off the giant's centre, but well inside the gap — not parked on the companion.
+    expect(along).toBeGreaterThan(0.5);
+    expect(along).toBeLessThan(0.9);
+    // Off the giant's breathing limb (the belly fix): the root must clear the
+    // photosphere even at the pulse's peak swell, with room for the wobble.
     const distFromA = Math.hypot(fromA[0], fromA[1], fromA[2]);
-    expect(distFromA).toBeGreaterThan(PHYSICS.MIRA_A.radius * 0.5);
+    expect(distFromA).toBeGreaterThan(PHYSICS.MIRA_A.radius * (1 + MIRA_A_PULSE_AMPLITUDE));
     expect(distFromA).toBeLessThan(PHYSICS.ORBIT.semiMajorAxis);
     // The far wake keeps its legacy bearing.
     const far = tailCenterline(1, LENGTH);
@@ -117,11 +120,65 @@ test.describe('the heading (去向)', () => {
 });
 
 test.describe('the root bend (#91)', () => {
-  test('the root is the pair\'s home midpoint, derived from the orbit', () => {
-    const home = calculateOrbitalPosition(0, PHYSICS.ORBIT);
-    for (let i = 0; i < 3; i += 1) {
-      expect(TAIL_ROOT[i]).toBeCloseTo((home.primary[i] + home.companion[i]) / 2, 9);
+  test('the root never sits inside the giant\'s breathing photosphere, at any orbit phase', () => {
+    // The belly fix (#91 review): the giant's centre wobbles on a 0.1-radius
+    // circle while the photosphere swells 9% past its base radius. The root must
+    // stay outside that moving sphere at EVERY phase, or its gas renders behind
+    // the star's front face and the road still springs from the limb.
+    const limb = PHYSICS.MIRA_A.radius * (1 + MIRA_A_PULSE_AMPLITUDE);
+    const ORBIT_ROUND = (2 * Math.PI) / PHYSICS.ORBIT.period;
+    for (let i = 0; i <= 128; i += 1) {
+      const { primary } = calculateOrbitalPosition((i / 128) * ORBIT_ROUND, PHYSICS.ORBIT);
+      const dist = Math.hypot(
+        TAIL_ROOT[0] - primary[0],
+        TAIL_ROOT[1] - primary[1],
+        TAIL_ROOT[2] - primary[2],
+      );
+      expect(dist).toBeGreaterThan(limb);
     }
+    // And the root still reads as between the pair: it has not crossed the
+    // companion's own surface.
+    const home = calculateOrbitalPosition(0, PHYSICS.ORBIT);
+    const distToB = Math.hypot(
+      TAIL_ROOT[0] - home.companion[0],
+      TAIL_ROOT[1] - home.companion[1],
+      TAIL_ROOT[2] - home.companion[2],
+    );
+    expect(distToB).toBeGreaterThan(PHYSICS.MIRA_B.radius + 0.3);
+  });
+
+  test('the root\'s gas is visible while it is in the open gap: the fade-in shoulders at the limb', () => {
+    // The centerline enters the base photosphere once around t≈0.024 on its way
+    // to the wake (it re-emerges past the giant further down — that stretch is
+    // the road wrapping behind the star, not the root). The particle fade-in
+    // must be essentially complete by that FIRST entry, or the only gas in the
+    // open gap is near-zero alpha and the root reads as the limb's old spring
+    // point. The smoothstep below mirrors the shader's depthFade near factor
+    // (shaders/tail.ts interpolates the same constant). Pinning the first entry
+    // — not the last open station — is what makes this fail for an over-long
+    // fade (0.07 leaves only ~0.2 alpha at the crossing).
+    const smoothstep = (edge0: number, edge1: number, x: number) => {
+      const t = Math.min(1, Math.max(0, (x - edge0) / (edge1 - edge0)));
+      return t * t * (3 - 2 * t);
+    };
+    const home = calculateOrbitalPosition(0, PHYSICS.ORBIT);
+    const distAt = (t: number) => {
+      const [x, y, z] = tailCenterline(t, LENGTH);
+      return Math.hypot(x - home.primary[0], y - home.primary[1], z - home.primary[2]);
+    };
+    let firstEntry: number | null = null;
+    let tPrev = 0;
+    for (let i = 1; i <= 2000; i += 1) {
+      const t = (i / 2000) * TAIL_ROOT_FADE;
+      if (distAt(tPrev) > PHYSICS.MIRA_A.radius && distAt(t) <= PHYSICS.MIRA_A.radius) {
+        firstEntry = t;
+        break;
+      }
+      tPrev = t;
+    }
+    expect(firstEntry).not.toBeNull();
+    expect(firstEntry as number).toBeGreaterThan(0.015);
+    expect(smoothstep(0, TAIL_FADE_IN, firstEntry as number)).toBeGreaterThan(0.6);
   });
 
   test('the bend starts at the root and is gone by the fade, leaving the far wake untouched', () => {

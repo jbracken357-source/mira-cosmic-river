@@ -7,14 +7,16 @@
 // but the numbers live here. The yaw that presents the tail to the explore
 // camera is a fact of the occupancy, not a Scene spelling.
 //
-// #91: the tail no longer springs from inside the giant. Its root (根) sits
-// between the pair's home positions — the road the two stars share starts in the
-// space between them — and a soft bend returns the centerline to the legacy wake
-// within the first quarter of the path, so the far composition, the heading, the
-// click volume and the haze are untouched. The near cone widens over the same
-// window (近处有气): mist surrounds the pair at the road's start without plugging
-// the gap (空隙) between the two stars.
+// #91: the tail springs from between the two stars — its root (根) sits on the
+// home A→B axis just outside the giant's breathing photosphere, in the gap (空隙)
+// the pair keep between them. A soft bend returns the centerline to the legacy
+// wake within the first quarter of the path (the mid-stretch passes behind the
+// giant on the way; the road reads as wrapping it), so the far composition, the
+// heading, the click volume and the haze are untouched. The near cone widens over
+// the same window (近处有气): mist surrounds the pair at the road's start without
+// plugging the gap.
 import { calculateOrbitalPosition, PHYSICS } from '../constants/physics';
+import { MIRA_A_PULSE_AMPLITUDE } from './binaryLighting';
 
 export type Vec3 = [number, number, number];
 
@@ -30,16 +32,40 @@ export interface CenterSize {
 
 export const TAIL_YAW = Math.PI * 0.12;
 
-// 根 (the root, #91): where the road springs from — the midpoint of the pair's home
-// configuration, derived from the orbit so a retuned orbit moves the root with it.
-// The root is fixed in the journey frame: the companion's visible orbit rides on
-// top, so the root sits exactly between the two stars at the home phase and stays
-// the pair's shared anchor at every other phase.
+// 根 (the root, #91): where the road springs from — on the home A→B axis, just
+// past the giant's breathing photosphere, in the space between the two stars. The
+// first calibration took the pair's home midpoint, which sits 1.86–2.06 units
+// from the giant's centre at every orbit phase — inside the opaque sphere of
+// radius 2.5 (±9% pulse), so the root's gas rendered nowhere and the visible road
+// still sprang from the giant's limb. Placing the root at the pulse-peak radius
+// plus a clearance keeps it outside the sphere at every phase (the giant wobbles
+// on a 0.1-radius circle; the clearance covers that too), while staying in the
+// gap before the companion. The root is fixed in the journey frame and rides the
+// shared journey (共同前行); the companion's visible orbit moves around it.
 const PAIR_HOME = calculateOrbitalPosition(0, PHYSICS.ORBIT);
+// The breathing limb at maximum swell: the photosphere's radius plus its pulse
+// amplitude (shaders/miraA's radiusPulse), so the root never dips inside the
+// sphere even at the bright end of the cycle.
+const GIANT_LIMB =
+  PHYSICS.MIRA_A.radius * (1 + MIRA_A_PULSE_AMPLITUDE);
+// Room for the giant's own wobble (a 0.1-radius circle) and the root cone's mist
+// to read as springing AT the limb rather than from inside it.
+const ROOT_CLEARANCE = 0.2;
+const HOME_AXIS_LENGTH = Math.hypot(
+  PAIR_HOME.companion[0] - PAIR_HOME.primary[0],
+  PAIR_HOME.companion[1] - PAIR_HOME.primary[1],
+  PAIR_HOME.companion[2] - PAIR_HOME.primary[2],
+);
 export const TAIL_ROOT: Vec3 = [
-  (PAIR_HOME.primary[0] + PAIR_HOME.companion[0]) / 2,
-  (PAIR_HOME.primary[1] + PAIR_HOME.companion[1]) / 2,
-  (PAIR_HOME.primary[2] + PAIR_HOME.companion[2]) / 2,
+  PAIR_HOME.primary[0] +
+    ((PAIR_HOME.companion[0] - PAIR_HOME.primary[0]) / HOME_AXIS_LENGTH) *
+      (GIANT_LIMB + ROOT_CLEARANCE),
+  PAIR_HOME.primary[1] +
+    ((PAIR_HOME.companion[1] - PAIR_HOME.primary[1]) / HOME_AXIS_LENGTH) *
+      (GIANT_LIMB + ROOT_CLEARANCE),
+  PAIR_HOME.primary[2] +
+    ((PAIR_HOME.companion[2] - PAIR_HOME.primary[2]) / HOME_AXIS_LENGTH) *
+      (GIANT_LIMB + ROOT_CLEARANCE),
 ];
 
 // How far down the path the root's bend reaches (a fraction of the tail): within
@@ -51,10 +77,12 @@ export const TAIL_ROOT_FADE = 0.22;
 // soft enough that the gap between the two stars stays visible.
 export const TAIL_ROOT_SPREAD = 0.9;
 
-// How far along the tail the particles fade in (aLength fraction). The old fade
-// (0.15) hid the whole near reach, so the road only appeared well downstream of
-// the pair; 0.07 lets the root's gas actually show.
-export const TAIL_FADE_IN = 0.07;
+// How far along the tail the particles fade in (aLength fraction). The fade must
+// complete while the path is still in the open gap (the centerline ducks behind
+// the giant from roughly t=0.03): at 0.07 the root's gas was still near-zero
+// alpha where it was actually visible. 0.03 puts the fade's shoulder at the limb,
+// so the mist between the two stars reads from the first beat.
+export const TAIL_FADE_IN = 0.03;
 
 // Where the far fade's window starts (aLength fraction): alpha eases out across
 // the last stretch so the road dissolves into the starfield instead of ending in

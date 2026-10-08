@@ -10,6 +10,7 @@ import {
   PULSE_CELL_LIFT_BRIGHT,
   HIGHLIGHT_KNEE,
   HIGHLIGHT_CEILING,
+  MIRA_A_PULSE_AMPLITUDE,
 } from '../lib/binaryLighting';
 
 // One decorative pulsation rate for the whole star: the surface radius, the surface colour and
@@ -18,8 +19,6 @@ import {
 // Exported so the parity guard can evaluate the mirrored light curve in
 // src/lib/binaryLighting.ts against the GLSL expression below.
 export const PULSE_RATE = 0.785; // ~8s cycle
-/** Radius pulse of Mira A's decorative cycle. Exported so MiraA.tsx's shells breathe with it. */
-export const MIRA_A_PULSE_AMPLITUDE = 0.09; // 9% of the radius come and gone each cycle
 
 // Mirrors highlightShoulder in src/lib/binaryLighting.ts: linear up to the knee, then
 // an exponential approach to the ceiling, so hot patches keep their hue instead of
