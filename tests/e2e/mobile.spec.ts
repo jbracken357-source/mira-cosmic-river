@@ -212,20 +212,30 @@ test.describe('竖屏长卷 (#92): the portrait long scroll', () => {
       };
     };
 
-    // The live probes land within reading distance of the frozen pose's math…
-    for (const [name, star] of [
+    // The pair, as the frozen frame reads it: probe name → parked home key.
+    const PAIR = [
       ['data-mira-a-screen', 'primary'],
       ['data-mira-b-screen', 'companion'],
-    ] as const) {
+    ] as const;
+
+    // The pair's discs clear a title box's top edge: 字不压星. One helper serves
+    // both languages — the anchor never moves, only the box's height does.
+    const expectPairClearsTitle = async (titleY: number) => {
+      for (const [name, star] of PAIR) {
+        const live = await probe(page, name);
+        const { margin } = disc(star);
+        expect((live[1] / 100) * PORTRAIT_FRAME.height + margin).toBeLessThan(titleY);
+      }
+    };
+
+    // The live probes land within reading distance of the frozen pose's math…
+    for (const [name, star] of PAIR) {
       const live = await probe(page, name);
-      const { projected, margin } = disc(star);
+      const { projected } = disc(star);
       expect(Math.abs(live[0] - projected.x)).toBeLessThan(2);
       expect(Math.abs(live[1] - projected.y)).toBeLessThan(2);
-      // …and the star's disc (photosphere + dense atmosphere, with margin) stays
-      // above the title's box: 字不压星.
-      const starPy = (live[1] / 100) * PORTRAIT_FRAME.height;
-      expect(starPy + margin).toBeLessThan(titleBox!.y);
     }
+    await expectPairClearsTitle(titleBox!.y);
 
     // #103: PR #100 claimed the 终幕标题 gap held at both language anchors, but the
     // English title box was never measured. The block is anchored at top-1/3, so the
@@ -237,14 +247,7 @@ test.describe('竖屏长卷 (#92): the portrait long scroll', () => {
     const enBox = await page.getByTestId('final-title').boundingBox();
     expect(enBox!.y).toBeCloseTo(titleBox!.y, 0);
     expect(enBox!.height).toBeGreaterThanOrEqual(titleBox!.height);
-    for (const [name, star] of [
-      ['data-mira-a-screen', 'primary'],
-      ['data-mira-b-screen', 'companion'],
-    ] as const) {
-      const live = await probe(page, name);
-      const { margin } = disc(star);
-      expect((live[1] / 100) * PORTRAIT_FRAME.height + margin).toBeLessThan(enBox!.y);
-    }
+    await expectPairClearsTitle(enBox!.y);
   });
 
   test('the 顶栏 never covers the pair (390×844)', async ({ page }) => {

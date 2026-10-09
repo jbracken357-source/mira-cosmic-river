@@ -11,7 +11,7 @@ import {
   screenDiscRadiusPercent,
 } from '../../src/lib/portraitFraming';
 import { TAIL_ROOT, tailCenterline, tailFarEnd, tailMidProbe, yawY } from '../../src/lib/tailPath';
-import { MIRA_A_ATMOSPHERE } from '../../src/shaders/miraA';
+import { MIRA_A_ATMOSPHERE } from '../../src/lib/binaryLighting';
 
 // 竖屏长卷 (#92): the portrait free-viewing framing as geometry, not pixels. The
 // pair's home configuration and the road's anchors are projected through the poses

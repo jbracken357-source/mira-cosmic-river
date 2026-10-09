@@ -4,7 +4,9 @@
 // atmosphere shader itself, which computes it from uBrightness directly.
 //
 // First version is a verbatim lift of the existing numbers. Changing them would
-// fail the daily-sky pixel check. A later pass may unify the envelopes.
+// fail the daily-sky pixel check. The envelopes stay deliberately separate
+// calibrations (#105): each curve was tuned for its own surface, and a shared
+// derivation would couple retunes that have nothing to do with each other.
 
 import type { SkyState } from './starClock';
 
