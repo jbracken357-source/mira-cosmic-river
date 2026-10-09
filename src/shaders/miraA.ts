@@ -141,11 +141,13 @@ export const MiraA_Shader = {
 
       // Pulsation: 332-day period scaled to ~8 second visual rhythm
       float pulsePhase = sin(uTime * ${PULSE_RATE}) * 0.5 + 0.5; // ~8s period
-      float timeSpeed = uTime * (0.1 + uTurbulence * 1.5);
+      // The noise's own clock, sped up by turbulence — not a viewer-facing time
+      // speed (that control is gone, #89); the name keeps them apart.
+      float noiseTime = uTime * (0.1 + uTurbulence * 1.5);
       float noiseAmp = uNoiseAmp * (0.8 + pulsePhase * 0.4);
 
-      float lowFreq = snoise(position * (0.5 + uTurbulence * 1.0) + timeSpeed);
-      float highFreq = snoise(position * (2.0 + uTurbulence * 2.0) - timeSpeed * 2.0);
+      float lowFreq = snoise(position * (0.5 + uTurbulence * 1.0) + noiseTime);
+      float highFreq = snoise(position * (2.0 + uTurbulence * 2.0) - noiseTime * 2.0);
 
       vNoise = lowFreq * 0.7 + highFreq * 0.3;
 

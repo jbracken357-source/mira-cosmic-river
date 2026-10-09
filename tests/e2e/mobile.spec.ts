@@ -2,7 +2,9 @@ import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { openTailCardViaKeyboard } from './helpers';
 import { calculateOrbitalPosition, PHYSICS } from '../../src/constants/physics';
+import { TRANSLATIONS } from '../../src/constants/translations';
 import { resolveOpeningPose } from '../../src/lib/openingTimeline';
+import { TAIL_ROOT } from '../../src/lib/tailPath';
 import {
   PORTRAIT_REFERENCE_ASPECT,
   PORTRAIT_TILT,
@@ -224,6 +226,25 @@ test.describe('竖屏长卷 (#92): the portrait long scroll', () => {
       const starPy = (live[1] / 100) * PORTRAIT_FRAME.height;
       expect(starPy + margin).toBeLessThan(titleBox!.y);
     }
+
+    // #103: PR #100 claimed the 终幕标题 gap held at both language anchors, but the
+    // English title box was never measured. The block is anchored at top-1/3, so the
+    // English subtitle can only wrap downward — the measured box never grows up
+    // toward the pair (at 390×844 it stays one line, same height as the Chinese).
+    // Measured here so the claim is true the honest way.
+    await page.getByTestId('language-toggle').click();
+    await expect(page.getByTestId('opening-subtitle')).toHaveText(TRANSLATIONS.en.subtitle);
+    const enBox = await page.getByTestId('final-title').boundingBox();
+    expect(enBox!.y).toBeCloseTo(titleBox!.y, 0);
+    expect(enBox!.height).toBeGreaterThanOrEqual(titleBox!.height);
+    for (const [name, star] of [
+      ['data-mira-a-screen', 'primary'],
+      ['data-mira-b-screen', 'companion'],
+    ] as const) {
+      const live = await probe(page, name);
+      const { margin } = disc(star);
+      expect((live[1] / 100) * PORTRAIT_FRAME.height + margin).toBeLessThan(enBox!.y);
+    }
   });
 
   test('the 顶栏 never covers the pair (390×844)', async ({ page }) => {
@@ -288,6 +309,39 @@ test.describe('竖屏长卷 (#92): the portrait long scroll', () => {
     const b = await probe(page, 'data-mira-b-screen');
     expect((a[1] / 100) * SE_HEIGHT - marginA).toBeGreaterThan(barBottom);
     expect((b[1] / 100) * SE_HEIGHT - marginB).toBeGreaterThan(barBottom);
+  });
+
+  test('the capture baseline is the live pin-solved framing, whatever the aspect (320×568, #102)', async ({ page }) => {
+    // #102: the capture pose used to bind the stored EXPLORE constant — calibrated
+    // at 390×844 — at whatever aspect the frame had. Bound raw at 320×568 it parked
+    // the pair about 8 screen points higher than the framing a viewer actually
+    // holds, and the max-light halo then read as padding into the 顶栏 in evidence
+    // frames while the live view stayed clear. Evidence frames must show the live
+    // composition: the capture baseline goes through the same per-aspect pin solve.
+    // The worst case is expressed with ?epoch= (the halo swells with brightness,
+    // never with uTime).
+    await page.setViewportSize({ width: 320, height: 568 });
+    await page.goto('/?quality=low&capture=1&cam=default&epoch=2027-03-09T00%3A00%3A00Z');
+    await page.waitForLoadState('networkidle');
+    await expect(page.getByTestId('explore-ui')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('canvas')).toHaveAttribute('data-camera-pose', /.+/, { timeout: 30000 });
+    await page.waitForTimeout(1500);
+
+    // Capture parks the orbit at CAPTURE_TIME (8), so the pair's home for this
+    // frame is the orbital position at t=8 — the seam computes the same numbers.
+    const parked = calculateOrbitalPosition(8, PHYSICS.ORBIT);
+    const SE_ASPECT = 320 / 568;
+    const pose = portraitExplorePose(SE_ASPECT);
+    for (const [name, point] of [
+      ['data-mira-a-screen', parked.primary],
+      ['data-mira-b-screen', parked.companion],
+      ['data-tail-root-screen', TAIL_ROOT],
+    ] as const) {
+      const live = await probe(page, name);
+      const expected = projectToScreenPercent(point, pose, SE_ASPECT, PORTRAIT_TILT);
+      expect(Math.abs(live[0] - expected.x)).toBeLessThan(1.5);
+      expect(Math.abs(live[1] - expected.y)).toBeLessThan(1.5);
+    }
   });
 
   test('landscape keeps its own wide vista — not the portrait frame cropped (844×390)', async ({

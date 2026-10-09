@@ -11,6 +11,7 @@ import {
   screenDiscRadiusPercent,
 } from '../../src/lib/portraitFraming';
 import { TAIL_ROOT, tailCenterline, tailFarEnd, tailMidProbe, yawY } from '../../src/lib/tailPath';
+import { MIRA_A_ATMOSPHERE } from '../../src/shaders/miraA';
 
 // 竖屏长卷 (#92): the portrait free-viewing framing as geometry, not pixels. The
 // pair's home configuration and the road's anchors are projected through the poses
@@ -187,6 +188,31 @@ test.describe('竖屏长卷: the road runs down the long axis at 390×844', () =
       const star = projectToScreenPercent(home, poseSe, SE, PORTRAIT_TILT);
       const disc = screenDiscRadiusPercent(star, radius * DISC_MARGIN, poseSe, SE, PORTRAIT_TILT);
       expect(star.y - disc).toBeGreaterThan(TOP_BAR_BOTTOM_PERCENT_SE + 0.5);
+    }
+  });
+
+  test('#102: the outer haze edge stays below the control row at both named widths', () => {
+    // The wide outer haze (1.8× the photosphere, additively blended) is the halo's
+    // full geometric reach, and its shell radius never breathes — only the core
+    // inside it does — so this one edge holds at every phase of the cycle,
+    // including maximum light where the haze is brightest (the brightness swells
+    // the glow's intensity, never its geometry). The control row's bottom edge is
+    // 60px in the DOM at both named widths (measured in e2e); the bar's own padding
+    // below the row may carry the haze's faint tail — that brush is the documented
+    // standard in the disc tests above — but the row the controls sit on stays
+    // clear with margin.
+    const CONTROL_ROW_BOTTOM: Record<number, number> = { [REF]: (60 / 844) * 100, [SE]: (60 / 568) * 100 };
+    for (const aspect of [REF, SE]) {
+      const poseHaze = portraitExplorePose(aspect);
+      const star = projectToScreenPercent(HOME_A, poseHaze, aspect, PORTRAIT_TILT);
+      const haze = screenDiscRadiusPercent(
+        star,
+        PHYSICS.MIRA_A.radius * MIRA_A_ATMOSPHERE.outer.scale,
+        poseHaze,
+        aspect,
+        PORTRAIT_TILT,
+      );
+      expect(star.y - haze).toBeGreaterThan(CONTROL_ROW_BOTTOM[aspect] + 1);
     }
   });
 

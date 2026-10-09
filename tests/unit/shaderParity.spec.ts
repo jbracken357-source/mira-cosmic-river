@@ -17,7 +17,7 @@ import {
 import { TailVertexShader, TailFragmentShader, createTailMaterial } from '../../src/shaders/tail';
 import { MiraA_Shader, HIGHLIGHT_SHOULDER_GLSL, PULSE_RATE } from '../../src/shaders/miraA';
 import { AccretionDisk_Shader, DISK_ALPHA_GAIN } from '../../src/shaders/accretionDisk';
-import { TAIL_FADE_IN, TAIL_FAR_FADE, PORTRAIT_FAR_FADE_SCALE } from '../../src/lib/tailPath';
+import { TAIL_FADE_IN, TAIL_FAR_FADE, PORTRAIT_FAR_FADE_SCALE, VEIL_FAR_SPAN, PORTRAIT_VEIL_FAR_SPAN } from '../../src/lib/tailPath';
 import {
   SURFACE_DETAIL_FLOOR,
   PULSE_LIGHT_SWING,
@@ -105,6 +105,19 @@ test.describe('veil shader stays in step with riverLighting', () => {
 
   test('the GLSL mirrors the falloff formula', () => {
     expect(veilSource).toContain('return 1.0 / (1.0 + x * x);');
+  });
+
+  // #103: the ribbon's far fade follows the points' portrait softening in its own
+  // vocabulary — the window narrows by uniform, landscape binds the shared span
+  // constant, and the fade still reaches zero at vUv.x 0 so the ribbon's geometric
+  // cut stays hidden in either orientation (the points, having no cut, soften
+  // further — see PORTRAIT_FAR_FADE_SCALE above).
+  test('the veil far fade narrows by the portrait span uniform (#103)', () => {
+    expect(veilSource).toContain('float edge = smoothstep(0., uFarSpan, vUv.x) * (1. - smoothstep(.94, 1., vUv.x));');
+    expect(veilSource).toContain('uFarSpan: { value: VEIL_FAR_SPAN }');
+    expect(veilSource).toContain('portrait ? PORTRAIT_VEIL_FAR_SPAN : VEIL_FAR_SPAN');
+    expect(PORTRAIT_VEIL_FAR_SPAN).toBeGreaterThan(0);
+    expect(PORTRAIT_VEIL_FAR_SPAN).toBeLessThan(VEIL_FAR_SPAN);
   });
 });
 

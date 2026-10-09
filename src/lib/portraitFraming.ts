@@ -5,8 +5,10 @@
 // aspect) and then PINNED: whatever the phone's exact proportions, the 根 holds
 // the same screen point, so the 顶栏 never covers the pair on a short screen and
 // the road always reaches the lower half on a tall one. Only the aim moves with
-// aspect — the camera position is aspect-independent, so 主视角's home check and
-// the capture fallback read the constant unchanged.
+// aspect — the camera position is aspect-independent, so 主视角's home check reads
+// the constant unchanged, and the capture baseline goes through this same solve
+// (#102: evidence frames show the live composition at every aspect, not the
+// reference-calibrated aim bound raw).
 //
 // Landscape is untouched by all of this: it keeps its own wide vista (the road
 // from between the pair toward the left), never this composition cropped narrow.

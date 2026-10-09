@@ -6,7 +6,7 @@ import type { QualityTier } from '../../constants';
 import { useEntryReadiness } from '../../hooks';
 import { materialFade } from '../../lib/entryReadiness';
 import { qualityBudget } from '../../lib/qualityBudget';
-import { veilRibbon, veilSide } from '../../lib/tailPath';
+import { veilRibbon, veilSide, VEIL_FAR_SPAN, PORTRAIT_VEIL_FAR_SPAN } from '../../lib/tailPath';
 import { advanceTime, parkedFade } from '../../lib/captureMode';
 import {
   MIRA_A_REACH,
@@ -43,6 +43,7 @@ const fragmentShader = `
   uniform float uReady;
   uniform float uLayer;
   uniform float uAccent;
+  uniform float uFarSpan;
   uniform vec2 uUvScale;
   uniform vec2 uUvOffset;
   uniform vec3 uColor;
@@ -75,7 +76,11 @@ const fragmentShader = `
     float lane = exp(-pow((vUv.y - laneCenter) / .19, 2.));
     float volume = smoothstep(.08, .78, density);
     float filament = smoothstep(.42, .88, density) * lane;
-    float edge = smoothstep(0., .08, vUv.x) * (1. - smoothstep(.94, 1., vUv.x));
+    // The far fade's width comes in as a uniform (#103): landscape binds
+    // VEIL_FAR_SPAN — the same number that used to be the literal here, bit-exact —
+    // and portrait binds PORTRAIT_VEIL_FAR_SPAN so the ribbon's body eases out
+    // later, mirroring the points' own portrait far fade (tailPath owns both).
+    float edge = smoothstep(0., uFarSpan, vUv.x) * (1. - smoothstep(.94, 1., vUv.x));
     edge *= smoothstep(0., .12, vUv.y) * (1. - smoothstep(.88, 1., vUv.y));
 
     // Lit near the stars, easing into cool (not black) shadow down the tail.
@@ -119,6 +124,7 @@ function createLayer(length: number, index: number, count: number, accent: boole
       uMap: { value: null }, uReady: { value: 0 }, uTime: { value: 0 },
       uOpacity: { value: 0 }, uLayer: { value: index },
       uAccent: { value: accent ? 1 : 0 },
+      uFarSpan: { value: VEIL_FAR_SPAN },
       uUvScale: { value: new THREE.Vector2(1.03 + index * .17, .92 + (index % 3) * .21) },
       uUvOffset: { value: new THREE.Vector2(index * .193, index * .117) },
       uColor: { value: new THREE.Color(accent
@@ -137,7 +143,7 @@ function createLayer(length: number, index: number, count: number, accent: boole
   return { geometry, material };
 }
 
-export default function RiverVeil({ opacityRef, readyRef, length, reduceMotion, miraBRef, sky, tier }: {
+export default function RiverVeil({ opacityRef, readyRef, length, reduceMotion, miraBRef, sky, tier, portrait }: {
   opacityRef: MutableRefObject<number>;
   readyRef: MutableRefObject<boolean>;
   length: number;
@@ -148,6 +154,9 @@ export default function RiverVeil({ opacityRef, readyRef, length, reduceMotion, 
   sky: DailySkyCoupling;
   // The governed tier — same source Scene spends the rest of the budget from.
   tier: QualityTier;
+  // 竖屏长卷 (#103): the ribbon's far fade eases later in the tall frame, the veil's
+  // own half of the points' portrait far fade (PORTRAIT_VEIL_FAR_SPAN).
+  portrait: boolean;
 }) {
   const groupRef = useRef<THREE.Group>(null);
   const bWorldPos = useRef(new THREE.Vector3());
@@ -224,6 +233,8 @@ export default function RiverVeil({ opacityRef, readyRef, length, reduceMotion, 
       material.uniforms.uReady.value = ready;
       material.uniforms.uTime.value = advanceTime(material.uniforms.uTime.value, delta, { reduceMotion });
       const isAccent = material.uniforms.uAccent.value === 1;
+      // Written every frame like the tail's own uFarFade, so a rotation flips it.
+      material.uniforms.uFarSpan.value = portrait ? PORTRAIT_VEIL_FAR_SPAN : VEIL_FAR_SPAN;
       material.uniforms.uOpacity.value = opacityRef.current * veilLayerWeight(i, count, isAccent) / count * sky.density;
       material.uniforms.uMiraBPos.value.copy(bWorldPos.current);
       material.uniforms.uSkyGain.value = sky.gain;

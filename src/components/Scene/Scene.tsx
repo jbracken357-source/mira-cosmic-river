@@ -21,7 +21,7 @@ import { cameraAwayFromMainView } from '../../lib/topBarVisibility';
 import { cancelReturnFlight, fittedFov, initialFreeViewState, stepFreeViewCamera } from '../../lib/freeViewCamera';
 import type { FlightPose } from '../../lib/freeViewCamera';
 import { sharedJourney } from '../../lib/sharedJourney';
-import { PORTRAIT_TILT } from '../../lib/portraitFraming';
+import { PORTRAIT_TILT, portraitExplorePose } from '../../lib/portraitFraming';
 import { TAIL_OCCUPANCY, TAIL_ROOT, tailFarEnd, tailHeading, tailMidProbe } from '../../lib/tailPath';
 import {
   driveQualityGovernor,
@@ -271,7 +271,14 @@ function SceneContent({
       inputSeq: store.inputSeq,
       epilogueCamera: control.epilogueCamera,
       reduceMotion,
-      capturePose: capture.active && store.introComplete ? resolveCapturePose(capture.camera, CAMERA.EXPLORE) : null,
+      // #102: evidence frames must show the composition a viewer holds. The live
+      // explore aim in portrait is the per-aspect pin solve; binding the stored
+      // constant here parked the pair ~8 screen points high at 320×568 and made the
+      // max-light halo read as padding into the 顶栏 in capture frames only. At the
+      // reference aspect the solve IS the stored constant, bit for bit.
+      capturePose: capture.active && store.introComplete
+        ? resolveCapturePose(capture.camera, portrait ? portraitExplorePose(camera.aspect) : CAMERA.EXPLORE)
+        : null,
       camera: {
         position: flightCamera.position,
         target: flightCamera.target,
