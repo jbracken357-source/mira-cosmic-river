@@ -13,7 +13,10 @@ jobs:
   checks:
     name: lint + build + e2e
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # The suite alone runs ~14.5m under CI's software GL and every PR adds a little
+    # more; at 15 the wall cancelled #104's run AFTER all 494 tests had passed,
+    # mid-report-upload. 20 leaves room for the suite plus setup and the report.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
 
