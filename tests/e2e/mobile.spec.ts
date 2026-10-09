@@ -318,6 +318,8 @@ test.describe('竖屏长卷 (#92): the portrait long scroll', () => {
     // holds, and the max-light halo then read as padding into the 顶栏 in evidence
     // frames while the live view stayed clear. Evidence frames must show the live
     // composition: the capture baseline goes through the same per-aspect pin solve.
+    // The equality with the live framing is transitive — the reduced-motion test
+    // above pins the live probes to this same seam — so both reads target it here.
     // The worst case is expressed with ?epoch= (the halo swells with brightness,
     // never with uTime).
     await page.setViewportSize({ width: 320, height: 568 });
