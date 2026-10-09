@@ -2,7 +2,6 @@
 // Ported from mira-demo2/Mira-Demo2/components/MiraSystem.tsx
 
 import * as THREE from 'three';
-import { COLORS } from '../constants/colors';
 import {
   SURFACE_DETAIL_FLOOR,
   PULSE_LIGHT_SWING,
@@ -261,26 +260,6 @@ export function makeAtmosphereUniforms(overrides: {
     uPulseAmp: { value: overrides.pulseAmp ?? 0 },
   };
 }
-
-// Mira A's atmosphere, as two shells a viewer reads as one volume: a dense layer hugging the
-// photosphere and a wide thin haze that gives the star its reach on screen. `falloff` is the
-// exponential rate at which each shell's glow dies away between the limb and the shell edge —
-// a low rate for the wide haze, a high one for the dense layer.
-export const MIRA_A_ATMOSPHERE = {
-  mid: { scale: 1.22, opacity: 0.3, falloff: 3.4, color: '#f58b3c' },
-  outer: { scale: 1.8, opacity: 0.12, falloff: 2.5, color: '#df6531' },
-} as const;
-
-// Mira B's corona: same shader, white dwarf colours, a much tighter shell. Kept small on
-// purpose — a broad halo around the companion buries the accretion disk behind it and
-// fattens the star into a white bead.
-export const MIRA_B_CORONA = {
-  scale: 1.75,
-  opacity: 0.19,
-  falloff: 2.1,
-  color: COLORS.MIRA_B_CORONA,
-  pulseAmp: 0.015,
-} as const;
 
 // Glow shell shader, shared by Mira A's atmosphere, Mira B's corona and the tail's haze. The
 // uniforms come from makeAtmosphereUniforms — there are no defaults here to drift out of step

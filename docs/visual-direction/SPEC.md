@@ -60,4 +60,4 @@
 
 探索期间主 checkout 从早先星空时钟提交更新到 `b7b93cc`，并出现其他工作的合并冲突。观看者随后确认已合并；接入前 fetch 验证 `ff8261f` 与 origin/master 完全一致，在 `codex/hybrid-river` 分支实施。直达/重播等已合并功能保留；重新确认尾巴材质 ref 确实未绑定后修复。原 #4 已关闭，本次属于后续视觉升级。
 
-任务草案见 [TICKETS.md](TICKETS.md)。
+任务草案（2026-09-12，TICKETS.md）已随 V1–V4 并入后续实现；其中真机 30fps 门槛被 [../design-audit-2026-09-17/SPEC.md](../design-audit-2026-09-17/SPEC.md) 的总 Spec 明文取代。草案原文见 git 历史，本 Spec 为现行方向。
