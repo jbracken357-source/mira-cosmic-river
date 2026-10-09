@@ -96,6 +96,17 @@ export const TAIL_FAR_FADE = 0.85;
 // binds the identity 1, bit-exact.
 export const PORTRAIT_FAR_FADE_SCALE = 0.93;
 
+// The river veil ribbons' own far fade, in vUv.x (their uv runs tail-ward: the
+// far end is vUv.x 0). The ribbon's far tip is a geometric cut, so unlike the
+// points — whose portrait fade never quite reaches zero — the veil must still
+// fade TO zero at the tip or the cut shows as a hard edge. The same portrait
+// intent as PORTRAIT_FAR_FADE_SCALE, in the veil's own vocabulary: the window
+// halves, so the ribbon's body accompanies the points deeper into the tall
+// frame (fade start t 0.92 → 0.96) and still dissolves before the cut.
+// Landscape binds VEIL_FAR_SPAN, bit-exact.
+export const VEIL_FAR_SPAN = 0.08;
+export const PORTRAIT_VEIL_FAR_SPAN = 0.04;
+
 // The mid-road probe anchor (#92 review): the point the portrait assertions read
 // for the river's VISIBLE reach — deep inside the strong-alpha body (the far
 // fade only starts past t=0.85 even unscaled), never the far end, whose own

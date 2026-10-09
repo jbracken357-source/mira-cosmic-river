@@ -133,7 +133,7 @@ export default function MiraTail({
   return (
     <group>
       <points ref={pointsRef} geometry={geometry} material={material} raycast={() => {}} />
-      <RiverVeil opacityRef={opacityRef} readyRef={textureReadyRef} length={tailLength} reduceMotion={reduceMotion} miraBRef={miraBRef} sky={coupling} tier={tier} />
+      <RiverVeil opacityRef={opacityRef} readyRef={textureReadyRef} length={tailLength} reduceMotion={reduceMotion} miraBRef={miraBRef} sky={coupling} tier={tier} portrait={portrait} />
     </group>
   );
 }
