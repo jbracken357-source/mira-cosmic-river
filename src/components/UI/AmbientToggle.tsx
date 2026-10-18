@@ -4,8 +4,9 @@ import { TRANSLATIONS } from '../../constants/translations';
 // 环境音 toggle (#22): a quiet header button, present in the explore header and
 // during the full cinematic. The label is the honest state — off, playing
 // (pressed), waiting for a gesture (点按开启), or failed with retry — never a
-// playing claim that is not real.
-export default function AmbientToggle() {
+// playing claim that is not real. `compact` (#111) is the phone-portrait bar's
+// one-row voice: a step down in size so the row never wraps.
+export default function AmbientToggle({ compact = false }: { compact?: boolean }) {
   const language = useBinaryStar((state) => state.language);
   const phase = useAmbientSound((state) => state.phase);
   const toggle = useAmbientSound((state) => state.toggle);
@@ -24,7 +25,9 @@ export default function AmbientToggle() {
       data-ambient-phase={phase}
       aria-pressed={phase !== 'off' && phase !== 'failed'}
       onClick={toggle}
-      className={`pointer-events-auto min-h-11 min-w-11 inline-flex items-center justify-center gap-2 text-[11px] md:text-xs font-extralight tracking-widest transition-colors ${
+      className={`pointer-events-auto min-h-11 min-w-11 inline-flex items-center justify-center gap-2 font-extralight transition-colors ${
+        compact ? 'text-[10px] tracking-wider' : 'text-[11px] md:text-xs tracking-widest'
+      } ${
         phase === 'playing' ? 'text-white/70 hover:text-white/90' : 'whisper-btn'
       }`}
     >

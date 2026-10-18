@@ -11,18 +11,25 @@ import {
 // verdict's business); the first drag or zoom of the visit graduates 暂停 and
 // 今晚的 Mira; 主视角 exists only while the camera sits off the main view, and is
 // gone again once the viewer is back on it.
+//
+// 「更多」 (#111): on the compact (phone-portrait) bar the row never wraps — of
+// the controls that would crowd it, 暂停 (once it exists), 完整开场 and 语言
+// tuck into the 「更多」 panel instead. The tuck is a breakpoint verdict, not a
+// per-control mood: 主视角, 今晚的 Mira and 环境音 stay direct on the row in
+// every state, and the wide bar (landscape phone, desktop) never tucks at all.
 
 test.describe('the quiet first look and the graduation', () => {
   test('the first look shows neither 暂停 nor 今晚的 Mira nor 主视角', () => {
-    expect(topBarVisibility({ manipulated: false, awayFromMainView: false })).toEqual({
+    expect(topBarVisibility({ manipulated: false, awayFromMainView: false, compact: false })).toEqual({
       pause: false,
       tonightSave: false,
       returnToView: false,
+      tucked: null,
     });
   });
 
   test('the first drag or zoom of the visit brings 暂停 and 今晚的 Mira', () => {
-    const bar = topBarVisibility({ manipulated: true, awayFromMainView: false });
+    const bar = topBarVisibility({ manipulated: true, awayFromMainView: false, compact: false });
     expect(bar.pause).toBe(true);
     expect(bar.tonightSave).toBe(true);
     // Manipulation alone never conjures 主视角: the pair can fill the frame and the
@@ -31,14 +38,38 @@ test.describe('the quiet first look and the graduation', () => {
   });
 
   test('主视角 follows the camera alone: away shows it, back home hides it', () => {
-    expect(topBarVisibility({ manipulated: false, awayFromMainView: true }).returnToView).toBe(true);
-    expect(topBarVisibility({ manipulated: true, awayFromMainView: true })).toEqual({
+    expect(topBarVisibility({ manipulated: false, awayFromMainView: true, compact: false }).returnToView).toBe(true);
+    expect(topBarVisibility({ manipulated: true, awayFromMainView: true, compact: false })).toEqual({
       pause: true,
       tonightSave: true,
       returnToView: true,
+      tucked: null,
     });
     // 回到之后没有.
-    expect(topBarVisibility({ manipulated: true, awayFromMainView: false }).returnToView).toBe(false);
+    expect(topBarVisibility({ manipulated: true, awayFromMainView: false, compact: false }).returnToView).toBe(false);
+  });
+});
+
+test.describe('「更多」收纳 (#111): what the compact bar tucks', () => {
+  test('毕业前: the quiet compact row tucks 完整开场 and 语言 — 暂停 does not exist yet', () => {
+    expect(topBarVisibility({ manipulated: false, awayFromMainView: false, compact: true })).toEqual({
+      pause: false,
+      tonightSave: false,
+      returnToView: false,
+      tucked: { pause: false, replay: true, language: true },
+    });
+  });
+
+  test('毕业后: 暂停 exists and joins the tuck; 今晚的 Mira stays direct', () => {
+    const bar = topBarVisibility({ manipulated: true, awayFromMainView: false, compact: true });
+    expect(bar.tonightSave).toBe(true);
+    expect(bar.tucked).toEqual({ pause: true, replay: true, language: true });
+  });
+
+  test('主视角存在: the tuck never reaches it — it stays direct on the row', () => {
+    const bar = topBarVisibility({ manipulated: true, awayFromMainView: true, compact: true });
+    expect(bar.returnToView).toBe(true);
+    expect(bar.tucked).toEqual({ pause: true, replay: true, language: true });
   });
 });
 

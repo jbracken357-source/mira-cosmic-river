@@ -46,6 +46,9 @@ export const TRANSLATIONS = {
     pause: 'Pause',
     resume: 'Resume',
     returnToView: 'Main view',
+    // 「更多」 (#111): the compact bar's overflow — 暂停 (after graduation), the full
+    // cinematic and the language switch tuck behind it in one quiet word.
+    moreMenu: 'More',
     loading: 'Loading Mira...',
 
     // Ambient sound (#22): opt-in, honest states — pending never claims to be playing
@@ -125,6 +128,8 @@ export const TRANSLATIONS = {
     pause: '暂停',
     resume: '恢复',
     returnToView: '主视角',
+    // 「更多」（#111）：手机顶栏的收纳——暂停（毕业后）、完整开场与语言收在这一个安静的词后面。
+    moreMenu: '更多',
     loading: '正在点亮 Mira...',
 
     // 环境音（#22）：主动开启，状态如实——等待手势时绝不冒充正在播放

@@ -2,22 +2,27 @@ import { test, expect } from '@playwright/test';
 import type { Locator, Page } from '@playwright/test';
 import { MID_DECLINE_EPOCH } from './helpers';
 
-// #109: 触屏误触保护与「只给能悬停的设备」的悬停样式. On a phone 「我自己看」 and
-// 完整开场 trade places at the same corner spot the moment the viewer leaves the
-// full opening, so the second press of a double-tap (or a laggy first press)
-// restarts the ritual the viewer just declined — for ~500ms after the leave the
-// replay button holds that echo (spec #107). And a touch tap leaves :hover
+// #109: 触屏误触保护与「只给能悬停的设备」的悬停样式. On a touch device 「我自己看」
+// and 完整开场 trade places at the same corner spot the moment the viewer leaves
+// the full opening, so the second press of a double-tap (or a laggy first press)
+// restarts the ritual the viewer just declined — for ~500ms after the leave
+// (spec #107) the replay button holds that echo. And a touch tap leaves :hover
 // sticking to the pressed control, so the whisper controls' lift and underline
 // must exist only where the device can actually hover: `(hover: hover)`.
+//
+// The review round measured the trade at 320×568 portrait; since #111 tucks
+// 完整开场 into 「更多」 on the portrait bar, the corner spot there is held by the
+// 「更多」 button itself and the mistap lands on a harmless panel — the premise now
+// lives where the replay button still sits on the row: the landscape touch phone.
 //
 // `?quality=low` keeps the scene light enough for software rendering (headless CI
 // has no GPU). The epoch pins tonight off every milestone window, same as the
 // interface specs.
 const APP = `/?quality=low&epoch=${MID_DECLINE_EPOCH}`;
 const SEEN_KEY = 'mira:seen-opening';
-// The review viewport: 320×568, where 完整开场 was measured landing on the spot
-// 「我自己看」 had just left.
-const TOUCH_VIEWPORT = { width: 320, height: 568 };
+// The landscape touch phone: the bar keeps its wide row (#111), so 完整开场
+// still lands on the spot 「我自己看」 just left.
+const TOUCH_VIEWPORT = { width: 844, height: 390 };
 
 async function gotoOpening(page: Page) {
   await page.addInitScript((key) => localStorage.removeItem(key), SEEN_KEY);
@@ -60,8 +65,9 @@ test.describe('touch mistap (#109)', () => {
     await page.touchscreen.tap(lookBox!.x + lookBox!.width / 2, lookBox!.y + lookBox!.height / 2);
     await expect(page.getByTestId('explore-ui')).toBeVisible({ timeout: 15000 });
 
-    // The premise the review measured at 320×568: 完整开场 arrives on the corner
-    // spot 「我自己看」 just left, so a finger falling again lands on it.
+    // The premise (#109's review, re-expressed where the row still holds 完整开场
+    // after #111): 完整开场 arrives on the corner spot 「我自己看」 just left, so a
+    // finger falling again lands on it.
     const replay = page.getByTestId('replay-opening');
     const replayBox = await replay.boundingBox();
     expect(replayBox, 'replay has a box').toBeTruthy();

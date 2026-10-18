@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { useBinaryStar, useMobile, useEntryReadiness, useTonightSave } from '../../hooks';
 import { TRANSLATIONS } from '../../constants/translations';
@@ -170,8 +170,48 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
 
   // 顶栏 (#90): the quiet first look holds 环境音, 语言 and 完整开场 only; the
   // visit's first drag or zoom graduates 暂停 and 今晚的 Mira, and 主视角 exists
-  // only while the camera is off the main view.
-  const bar = topBarVisibility({ manipulated, awayFromMainView });
+  // only while the camera is off the main view. On the phone-portrait bar (#111)
+  // the row never wraps: 暂停 (once it exists), 完整开场 and 语言 tuck into 「更多」.
+  const bar = topBarVisibility({ manipulated, awayFromMainView, compact: isMobile });
+  const tucked = bar.tucked;
+
+  // 「更多」 (#111): the panel below the bar. It opens on the button, closes on an
+  // outside press or Esc, and hands focus back to the button on the way out (#114's
+  // pattern — the panel never traps the keyboard). A language switch inside only
+  // swaps the labels; the panel itself stays open and keeps its focus.
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!moreOpen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMoreOpen(false);
+    };
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      if (panelRef.current?.contains(target) || moreRef.current?.contains(target)) return;
+      setMoreOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    window.addEventListener('pointerdown', onPointerDown);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('pointerdown', onPointerDown);
+    };
+  }, [moreOpen]);
+
+  useEffect(() => {
+    if (!moreOpen) return;
+    const moreButton = moreRef.current;
+    panelRef.current?.focus();
+    return () => moreButton?.focus();
+  }, [moreOpen]);
+
+  // The compact row's voice (#111): at the phone width the row still holds
+  // 主视角, 今晚的 Mira, 环境音 and 「更多」 side by side, so the labels step down
+  // a size and the wordmark with them — one row, both languages, 320px included.
+  const rowText = tucked ? 'text-[10px] tracking-wider' : 'text-[11px] md:text-xs tracking-widest';
 
   // The interaction hint leaves once the viewer has actually manipulated the scene
   // (drag/zoom land on the canvas; presses on UI buttons do not count). 学会 is
@@ -213,7 +253,7 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
             ? `${TRANSITIONS.TOP_BAR_EPILOGUE_EXIT * 1000}ms`
             : `${TRANSITIONS.TOP_BAR_EPILOGUE_RETURN * 1000}ms`,
         }}
-        className={`absolute top-0 left-0 right-0 px-4 md:px-14 pt-[max(1rem,env(safe-area-inset-top))] pb-4 md:pb-8 flex items-center justify-between transition-opacity ${
+        className={`absolute top-0 left-0 right-0 ${tucked ? 'px-3' : 'px-4 md:px-14'} pt-[max(1rem,env(safe-area-inset-top))] pb-4 md:pb-8 flex items-center justify-between transition-opacity ${
           epilogueHush ? 'opacity-0 pointer-events-none' : 'opacity-100'
         }`}
       >
@@ -222,56 +262,129 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: reduceMotion ? 0 : TRANSITIONS.EXPLORE_TRANSITION }}
-            className="font-display text-2xl md:text-3xl text-white/90 font-light tracking-widest"
+            className={`font-display ${tucked ? 'text-xl' : 'text-2xl md:text-3xl'} text-white/90 font-light tracking-widest`}
           >
             Mira
           </motion.span>
         </div>
 
-        <div className="flex items-center justify-end flex-wrap gap-3 md:gap-7">
+        <div className={`flex items-center justify-end flex-wrap ${tucked ? 'gap-2' : 'gap-3 md:gap-7'}`}>
           {bar.returnToView && (
             <button
               data-testid="return-to-view"
               onClick={() => useBinaryStar.getState().requestReturnToExplore()}
-              className="pointer-events-auto whisper-btn min-h-11 min-w-11 inline-flex items-center justify-center text-[11px] md:text-xs font-extralight tracking-widest"
+              className={`pointer-events-auto whisper-btn min-h-11 min-w-11 inline-flex items-center justify-center font-extralight ${rowText}`}
             >
               {t.returnToView}
             </button>
           )}
-          {bar.tonightSave && <TonightSave />}
-          <AmbientToggle />
-          {bar.pause && (
+          {bar.tonightSave && <TonightSave compact={Boolean(tucked)} />}
+          <AmbientToggle compact={Boolean(tucked)} />
+          {bar.pause && !tucked && (
             <button
               data-testid="pause-toggle"
               aria-pressed={!isPlaying}
               aria-label={isPlaying ? t.pause : t.resume}
               onClick={() => useBinaryStar.getState().setPlaying(!isPlaying)}
-              className="pointer-events-auto whisper-btn min-h-11 min-w-11 inline-flex items-center justify-center text-[11px] md:text-xs font-extralight tracking-widest"
+              className={`pointer-events-auto whisper-btn min-h-11 min-w-11 inline-flex items-center justify-center font-extralight ${rowText}`}
             >
               {isPlaying ? t.pause : t.resume}
             </button>
           )}
-          <button
-            data-testid="replay-opening"
-            aria-label={t.replayOpening}
-            onClick={() => {
-              // The echo guard (#109): inside the window the press is the mistap's
-              // second landing, not a wish to watch the opening again.
-              if (Date.now() - leftOpeningAt < REPLAY_MISTAP_GUARD_MS) return;
-              useBinaryStar.getState().setIntroComplete(false);
-            }}
-            className="pointer-events-auto whisper-btn min-h-11 min-w-11 inline-flex items-center justify-center text-[11px] md:text-xs font-extralight tracking-widest"
-          >
-            {t.replayOpening}
-          </button>
-          <button
-            data-testid="language-toggle"
-            onClick={() => setLanguage(language === 'en' ? 'ch' : 'en')}
-            className="pointer-events-auto whisper-btn min-h-11 min-w-11 inline-flex items-center justify-center text-xs font-extralight tracking-widest"
-          >
-            {language === 'en' ? '中文' : 'EN'}
-          </button>
+          {!tucked && (
+            <button
+              data-testid="replay-opening"
+              aria-label={t.replayOpening}
+              onClick={() => {
+                // The echo guard (#109): inside the window the press is the mistap's
+                // second landing, not a wish to watch the opening again.
+                if (Date.now() - leftOpeningAt < REPLAY_MISTAP_GUARD_MS) return;
+                useBinaryStar.getState().setIntroComplete(false);
+              }}
+              className={`pointer-events-auto whisper-btn min-h-11 min-w-11 inline-flex items-center justify-center font-extralight ${rowText}`}
+            >
+              {t.replayOpening}
+            </button>
+          )}
+          {!tucked && (
+            <button
+              data-testid="language-toggle"
+              onClick={() => setLanguage(language === 'en' ? 'ch' : 'en')}
+              className={`pointer-events-auto whisper-btn min-h-11 min-w-11 inline-flex items-center justify-center font-extralight ${rowText}`}
+            >
+              {language === 'en' ? '中文' : 'EN'}
+            </button>
+          )}
+          {tucked && (
+            <button
+              ref={moreRef}
+              data-testid="more-toggle"
+              aria-expanded={moreOpen}
+              aria-haspopup="true"
+              onClick={() => setMoreOpen((open) => !open)}
+              className={`pointer-events-auto whisper-btn min-h-11 min-w-11 inline-flex items-center justify-center font-extralight ${rowText}`}
+            >
+              {t.moreMenu}
+            </button>
+          )}
         </div>
+
+        {/* 「更多」 (#111): the compact row's second shelf. It anchors to the bar's
+            left, below the wordmark — the 竖屏长卷 pins the pair into the upper
+            right, so a right-dropped panel would sit on the 双星; the left drop
+            clears both discs at every phone frame. The fade is opacity only, and
+            during the epilogue's hush the panel lets go of the screen with the
+            whole bar (no pointer events, invisible with the header). */}
+        <AnimatePresence>
+          {tucked && moreOpen && (
+            <motion.div
+              ref={panelRef}
+              data-testid="more-panel"
+              role="group"
+              aria-label={t.moreMenu}
+              tabIndex={-1}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0, transition: { duration: reduceMotion ? 0 : TRANSITIONS.MORE_PANEL_FADE } }}
+              transition={{ duration: reduceMotion ? 0 : TRANSITIONS.MORE_PANEL_FADE }}
+              className={`absolute top-full left-3 mt-2 z-50 backdrop-blur-md bg-black/65 border border-white/10 rounded-xl px-2 py-1.5 flex flex-col gap-0.5 focus:outline-none ${
+                epilogueHush ? '' : 'pointer-events-auto'
+              }`}
+            >
+              {tucked.pause && (
+                <button
+                  data-testid="pause-toggle"
+                  aria-pressed={!isPlaying}
+                  aria-label={isPlaying ? t.pause : t.resume}
+                  onClick={() => useBinaryStar.getState().setPlaying(!isPlaying)}
+                  className="whisper-btn min-h-11 inline-flex items-center justify-start px-3 text-[11px] font-extralight tracking-widest"
+                >
+                  {isPlaying ? t.pause : t.resume}
+                </button>
+              )}
+              <button
+                data-testid="replay-opening"
+                aria-label={t.replayOpening}
+                onClick={() => {
+                  // The echo guard (#109) rides along into the panel — reaching it
+                  // already takes a deliberate open, but the guard costs nothing.
+                  if (Date.now() - leftOpeningAt < REPLAY_MISTAP_GUARD_MS) return;
+                  useBinaryStar.getState().setIntroComplete(false);
+                }}
+                className="whisper-btn min-h-11 inline-flex items-center justify-start px-3 text-[11px] font-extralight tracking-widest"
+              >
+                {t.replayOpening}
+              </button>
+              <button
+                data-testid="language-toggle"
+                onClick={() => setLanguage(language === 'en' ? 'ch' : 'en')}
+                className="whisper-btn min-h-11 inline-flex items-center justify-start px-3 text-[11px] font-extralight tracking-widest"
+              >
+                {language === 'en' ? '中文' : 'EN'}
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </header>
 
       {/* Bottom hint — the lower edge (#88) holds the closing line of the full
