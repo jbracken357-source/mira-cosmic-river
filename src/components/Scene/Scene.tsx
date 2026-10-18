@@ -170,16 +170,18 @@ function SceneContent({
   const tailFarScreenRef = useRef(new THREE.Vector3());
   const tailRootScreenRef = useRef(new THREE.Vector3());
   const tailMidScreenRef = useRef(new THREE.Vector3());
-  // The dev-only probe seams: one row per projected anchor, consumed by the frame
-  // loop's write-on-change loop. The refs are stable, so the table is built once.
+  // The probe seams: one row per projected anchor, consumed by the frame loop's
+  // write-on-change loop. The refs are stable, so the table is built once. `live`
+  // marks the rows published in every build (the pair's two, read by 今晚的 Mira's
+  // 出画判定 #114); the rest write only outside production builds.
   const probeSeams = useMemo(
     () => [
-      { anchor: miraAAnchorRef, key: 'miraAScreen', vec: miraAScreenRef },
-      { anchor: miraBTargetRef, key: 'miraBScreen', vec: miraBScreenRef },
-      { anchor: tailTargetRef, key: 'tailScreen', vec: tailScreenRef },
-      { anchor: tailFarAnchorRef, key: 'tailFarScreen', vec: tailFarScreenRef },
-      { anchor: tailRootAnchorRef, key: 'tailRootScreen', vec: tailRootScreenRef },
-      { anchor: tailMidAnchorRef, key: 'tailMidScreen', vec: tailMidScreenRef },
+      { anchor: miraAAnchorRef, key: 'miraAScreen', vec: miraAScreenRef, live: true },
+      { anchor: miraBTargetRef, key: 'miraBScreen', vec: miraBScreenRef, live: true },
+      { anchor: tailTargetRef, key: 'tailScreen', vec: tailScreenRef, live: false },
+      { anchor: tailFarAnchorRef, key: 'tailFarScreen', vec: tailFarScreenRef, live: false },
+      { anchor: tailRootAnchorRef, key: 'tailRootScreen', vec: tailRootScreenRef, live: false },
+      { anchor: tailMidAnchorRef, key: 'tailMidScreen', vec: tailMidScreenRef, live: false },
     ],
     [],
   );
@@ -523,28 +525,32 @@ function SceneContent({
 
     // Dev-only e2e observability (same gate as ?epoch=): the camera pose as a coarse
     // attribute, written imperatively so it never re-renders React. Rounded to a
-    // tenth of a unit — enough to tell a drag apart from the main view. Mira A's
-    // projected screen position lets specs click the star where it actually is
-    // instead of a hardcoded canvas fraction. data-frame-count is the frame-loop
-    // heartbeat: a hidden tab must stop it, a visible one must keep it moving.
+    // tenth of a unit — enough to tell a drag apart from the main view.
+    // data-frame-count is the frame-loop heartbeat: a hidden tab must stop it, a
+    // visible one must keep it moving.
     if (!import.meta.env.PROD) {
       const el = state.gl.domElement;
       const pose = `${camera.position.x.toFixed(1)},${camera.position.y.toFixed(1)},${camera.position.z.toFixed(1)}`;
       if (el.dataset.cameraPose !== pose) el.dataset.cameraPose = pose;
       frameCountRef.current += 1;
       el.dataset.frameCount = String(frameCountRef.current);
-      // The screen-percentage probes, one seam per anchor: Mira A and the companion
-      // (the gap is an acceptance the specs read off the two projections, #91), the
-      // tail's click target (the scene itself is the tail's entry, #88), the road's
-      // far end (the parallax probe — under a drag or a zoom it sweeps measurably
-      // more than the pair, #91), and the mid-road anchor (the 竖屏长卷's
-      // visible-reach probe — full alpha there, #92 review). Write-on-change guards
-      // stay per key.
-      for (const { anchor, key, vec } of probeSeams) {
-        if (anchor.current) {
-          const projected = screenPercent(anchor.current, camera, vec.current);
-          if (el.dataset[key] !== projected) el.dataset[key] = projected;
-        }
+    }
+
+    // The screen-percentage probes, one seam per anchor: Mira A and the companion
+    // (the gap is an acceptance the specs read off the two projections, #91), the
+    // tail's click target (the scene itself is the tail's entry, #88), the road's
+    // far end (the parallax probe — under a drag or a zoom it sweeps measurably
+    // more than the pair, #91), and the mid-road anchor (the 竖屏长卷's
+    // visible-reach probe — full alpha there, #92 review). The pair's two publish
+    // in every build — 今晚的 Mira reads them for the 双星出画 verdict (#114), a
+    // production feature, not a test seam — while the tail's four stay dev-only.
+    // Write-on-change guards stay per key.
+    const probeEl = state.gl.domElement;
+    for (const { anchor, key, vec, live } of probeSeams) {
+      if (!live && import.meta.env.PROD) continue;
+      if (anchor.current) {
+        const projected = screenPercent(anchor.current, camera, vec.current);
+        if (probeEl.dataset[key] !== projected) probeEl.dataset[key] = projected;
       }
     }
 

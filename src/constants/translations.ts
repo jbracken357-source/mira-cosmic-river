@@ -66,6 +66,9 @@ export const TRANSLATIONS = {
     tonightRetry: 'Retry saving',
     tonightFailed: 'Saving failed — tonight\'s frame is still here',
     tonightSceneLost: 'The scene is restoring — save again once it returns',
+    // 双星出画 (#114): the notice the offscreen preview carries, and the way back.
+    tonightOffscreen: 'The pair is out of frame',
+    tonightRecapture: 'Return to the main view and retake',
     tonightClose: 'Close',
 
     // Static fallback (#24): WebGL unavailable or the context lost. Honest copy —
@@ -141,6 +144,9 @@ export const TRANSLATIONS = {
     tonightRetry: '重试保存',
     tonightFailed: '这次没能存下，今晚的画面还在',
     tonightSceneLost: '画面正在恢复，等它回来后再保存',
+    // 双星出画（#114）：出画预览所附的说明，与回去的路。
+    tonightOffscreen: '双星不在画面里',
+    tonightRecapture: '回到主视角再存',
     tonightClose: '关闭',
 
     // 静态后备（#24）：WebGL 不可用或 context 中断。如实文案——记录的静帧绝不冒充可探索的实时画面。
