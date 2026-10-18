@@ -38,7 +38,7 @@ export default function TonightSave() {
   // The overlay option chips: a quiet state dot says on/off at a glance, the way
   // the words alone never quite did.
   const optionChip = (active: boolean) =>
-    `min-h-11 inline-flex items-center gap-2 text-[10px] font-extralight tracking-widest uppercase transition-colors ${
+    `min-h-11 inline-flex items-center gap-2 text-[10px] font-extralight tracking-widest transition-colors ${
       active ? 'text-white/75' : 'text-white/45 hover:text-white/70'
     }`;
   const optionDot = (active: boolean) =>
@@ -50,7 +50,8 @@ export default function TonightSave() {
         data-testid="tonight-save"
         aria-label={t.tonightSave}
         onClick={open}
-        // 今晚的 Mira (#90): the name keeps its own casing — never all-caps MIRA.
+        // 顶栏的句首大写 (#110): #90's "never all-caps MIRA" holds for the whole
+        // row now — every control keeps the casing it is written with.
         className="pointer-events-auto whisper-btn min-h-11 min-w-11 inline-flex items-center justify-center text-[11px] md:text-xs font-extralight tracking-widest"
       >
         {t.tonightSave}
@@ -75,7 +76,7 @@ export default function TonightSave() {
             <button
               data-testid="tonight-close"
               onClick={close}
-              className="whisper-btn min-h-11 min-w-11 -mr-2 inline-flex items-center justify-center text-xs font-extralight tracking-widest uppercase"
+              className="whisper-btn min-h-11 min-w-11 -mr-2 inline-flex items-center justify-center text-xs font-extralight tracking-widest"
             >
               {t.tonightClose}
             </button>
@@ -122,7 +123,7 @@ export default function TonightSave() {
               <button
                 data-testid="tonight-export"
                 onClick={retry}
-                className="min-h-11 px-5 rounded-full border border-orange-200/30 text-orange-200/80 text-xs font-extralight tracking-widest uppercase hover:bg-orange-200/10 transition-colors"
+                className="min-h-11 px-5 rounded-full border border-orange-200/30 text-orange-200/80 text-xs font-extralight tracking-widest hover:bg-orange-200/10 transition-colors"
               >
                 {t.tonightRetry}
               </button>
@@ -131,7 +132,7 @@ export default function TonightSave() {
                 data-testid="tonight-export"
                 disabled={primaryAction(phase) === 'disabled'}
                 onClick={save}
-                className="min-h-11 px-5 rounded-full border border-[#fef3c7]/35 bg-[#fef3c7]/15 text-[#fef3c7] text-xs font-extralight tracking-widest uppercase hover:bg-[#fef3c7]/25 transition-colors disabled:opacity-40 disabled:hover:bg-[#fef3c7]/15"
+                className="min-h-11 px-5 rounded-full border border-[#fef3c7]/35 bg-[#fef3c7]/15 text-[#fef3c7] text-xs font-extralight tracking-widest hover:bg-[#fef3c7]/25 transition-colors disabled:opacity-40 disabled:hover:bg-[#fef3c7]/15"
               >
                 {phase === 'exporting' ? t.tonightSaving : phase === 'success' ? t.tonightSaved : t.tonightDownload}
               </button>

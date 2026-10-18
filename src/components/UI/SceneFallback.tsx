@@ -31,7 +31,7 @@ export default function SceneFallback({ reason }: { reason: 'webgl-unavailable' 
         <button
           data-testid="scene-fallback-retry"
           onClick={() => window.location.reload()}
-          className="pointer-events-auto mt-2 min-h-11 px-6 inline-flex items-center justify-center text-white/60 text-xs font-extralight tracking-widest uppercase border border-white/15 rounded-full hover:text-white/85 hover:border-white/30 transition-colors"
+          className="pointer-events-auto mt-2 min-h-11 px-6 inline-flex items-center justify-center text-white/60 text-xs font-extralight tracking-widest border border-white/15 rounded-full hover:text-white/85 hover:border-white/30 transition-colors"
         >
           {t.sceneRetry}
         </button>

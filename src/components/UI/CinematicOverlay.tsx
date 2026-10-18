@@ -221,7 +221,7 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
             <button
               data-testid="return-to-view"
               onClick={() => useBinaryStar.getState().requestReturnToExplore()}
-              className="pointer-events-auto whisper-btn min-h-11 min-w-11 inline-flex items-center justify-center text-[11px] md:text-xs font-extralight tracking-widest uppercase"
+              className="pointer-events-auto whisper-btn min-h-11 min-w-11 inline-flex items-center justify-center text-[11px] md:text-xs font-extralight tracking-widest"
             >
               {t.returnToView}
             </button>
@@ -234,7 +234,7 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
               aria-pressed={!isPlaying}
               aria-label={isPlaying ? t.pause : t.resume}
               onClick={() => useBinaryStar.getState().setPlaying(!isPlaying)}
-              className="pointer-events-auto whisper-btn min-h-11 min-w-11 inline-flex items-center justify-center text-[11px] md:text-xs font-extralight tracking-widest uppercase"
+              className="pointer-events-auto whisper-btn min-h-11 min-w-11 inline-flex items-center justify-center text-[11px] md:text-xs font-extralight tracking-widest"
             >
               {isPlaying ? t.pause : t.resume}
             </button>
@@ -243,7 +243,7 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
             data-testid="replay-opening"
             aria-label={t.replayOpening}
             onClick={() => useBinaryStar.getState().setIntroComplete(false)}
-            className="pointer-events-auto whisper-btn min-h-11 min-w-11 inline-flex items-center justify-center text-[11px] md:text-xs font-extralight tracking-widest uppercase"
+            className="pointer-events-auto whisper-btn min-h-11 min-w-11 inline-flex items-center justify-center text-[11px] md:text-xs font-extralight tracking-widest"
           >
             {t.replayOpening}
           </button>
@@ -275,21 +275,21 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
           <button
             data-testid="star-trigger-miraA"
             onClick={() => onSelectStar('miraA')}
-            className="min-h-11 min-w-11 inline-flex items-center justify-center backdrop-blur-sm bg-white/5 border border-white/10 px-4 rounded-full text-[10px] tracking-[0.2em] uppercase text-white/55 font-extralight hover:text-white/85 transition-colors"
+            className="min-h-11 min-w-11 inline-flex items-center justify-center backdrop-blur-sm bg-white/5 border border-white/10 px-4 rounded-full text-[10px] tracking-[0.2em] text-white/55 font-extralight hover:text-white/85 transition-colors"
           >
             {t.miraA}
           </button>
           <button
             data-testid="star-trigger-miraB"
             onClick={() => onSelectStar('miraB')}
-            className="min-h-11 min-w-11 inline-flex items-center justify-center backdrop-blur-sm bg-white/5 border border-white/10 px-4 rounded-full text-[10px] tracking-[0.2em] uppercase text-white/55 font-extralight hover:text-white/85 transition-colors"
+            className="min-h-11 min-w-11 inline-flex items-center justify-center backdrop-blur-sm bg-white/5 border border-white/10 px-4 rounded-full text-[10px] tracking-[0.2em] text-white/55 font-extralight hover:text-white/85 transition-colors"
           >
             {t.miraB}
           </button>
           <button
             data-testid="star-trigger-tail"
             onClick={() => onSelectStar('tail')}
-            className="min-h-11 min-w-11 inline-flex items-center justify-center backdrop-blur-sm bg-white/5 border border-white/10 px-4 rounded-full text-[10px] tracking-[0.2em] uppercase text-white/55 font-extralight hover:text-white/85 transition-colors"
+            className="min-h-11 min-w-11 inline-flex items-center justify-center backdrop-blur-sm bg-white/5 border border-white/10 px-4 rounded-full text-[10px] tracking-[0.2em] text-white/55 font-extralight hover:text-white/85 transition-colors"
           >
             {t.tailLabel}
           </button>
