@@ -351,10 +351,17 @@ test.describe('今晚的 Mira 双星出画 (#114)', () => {
     const before = await page.getByTestId('tonight-preview').getAttribute('src');
     expect(before).toBeTruthy();
 
+    // The way home is genuinely ahead of the press: 主视角 shows only while the
+    // camera is away, so its visibility pins the flight precondition on a
+    // viewer-visible fact before the button is pressed.
+    await expect(page.getByTestId('return-to-view')).toBeVisible();
+
     await page.getByTestId('tonight-recapture').click();
     // The press drops the locked still and the flight home follows; the panel
     // stays open through it (the phase rides the flight, never back to idle).
-    await expect(panel).toHaveAttribute('data-tonight-phase', 'capturing');
+    // The transient 'capturing' phase is not asserted: it lasts exactly the
+    // flight, and a loaded CI runner can reach the first read after the landing
+    // (#123's run). The lasting facts below are the acceptance.
     await expect(page.getByTestId('tonight-preview')).toBeVisible({ timeout: 15000 });
     await expect(panel).toHaveAttribute('data-tonight-phase', 'preview');
     const after = await page.getByTestId('tonight-preview').getAttribute('src');
