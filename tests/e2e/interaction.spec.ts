@@ -1,4 +1,6 @@
 import { test, expect } from '@playwright/test';
+import type { Page } from '@playwright/test';
+import { openStarCardViaKeyboard } from './helpers';
 
 // Interaction pack (#88): the treasure-hunt copy is gone from the lower edge —
 // clicking the tail itself still opens its info card, and no 「你找到了」 line ever
@@ -144,5 +146,160 @@ test.describe('Interaction pack', () => {
     // backdrop pasted at the pair's depth could not do that.
     expect(sep(await probe('data-mira-a-screen'), await probe('data-tail-far-screen'))).toBeLessThan(sepPairFar1 * 0.85);
     expect(sep(await probe('data-mira-a-screen'), await probe('data-tail-screen'))).toBeLessThan(sepPairTail1 * 0.85);
+  });
+});
+
+// 拖拽不算点击 (#108): a drag is camera movement, never card intent — releasing one
+// on the red giant opens nothing, and a drag across empty sky closes nothing. A
+// real click after every drag proves the click path is alive, so a no-card
+// assertion can never pass because the event was lost to a stalled frame.
+test.describe('拖拽不算点击 (#108)', () => {
+  // Reduced motion parks the orbit, the shared journey and the idle camera (same
+  // pin as the specs above), so the projected click points stand still while
+  // software rendering stretches the steps between reads.
+  async function gotoPinnedExplore(page: Page) {
+    await page.addInitScript((key) => localStorage.setItem(key, '1'), SEEN_KEY);
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.goto(APP);
+    await page.waitForLoadState('networkidle');
+    await expect(page.getByTestId('explore-ui')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByTestId('loading')).toHaveCount(0);
+    await expect(page.locator('canvas')).toHaveAttribute('data-camera-pose', /.+/, { timeout: 30000 });
+  }
+
+  const probe = async (page: Page, name: string) => {
+    const raw = await page.locator('canvas').getAttribute(name);
+    expect(raw, name).toBeTruthy();
+    return raw!.split(',').map(Number);
+  };
+
+  // Candidates kept clear of what owns pointer events: the 顶栏 (top edge), the
+  // open card's left column (the A card runs tall enough to reach the lower
+  // left), and the 下缘 (bottom edge). Whichever candidate sits farthest from
+  // every projected click target is the empty sky the specs use — the pair sits
+  // right of centre and the tail's click volume cuts across mid-frame, so the
+  // pick lands in a genuinely empty stretch wherever the camera has carried them.
+  const EMPTY_SKY_CANDIDATES: Array<[number, number]> = [
+    [90, 16],
+    [62, 14],
+    [48, 16],
+    [90, 42],
+  ];
+
+  async function emptySkyPoint(page: Page) {
+    const box = await page.locator('canvas').boundingBox();
+    expect(box).toBeTruthy();
+    const targets = await Promise.all([
+      probe(page, 'data-mira-a-screen'),
+      probe(page, 'data-mira-b-screen'),
+      probe(page, 'data-tail-screen'),
+    ]);
+    let best = EMPTY_SKY_CANDIDATES[0];
+    let bestClearance = -1;
+    for (const candidate of EMPTY_SKY_CANDIDATES) {
+      const clearance = Math.min(
+        ...targets.map((p) => Math.hypot(p[0] - candidate[0], p[1] - candidate[1])),
+      );
+      if (clearance > bestClearance) {
+        bestClearance = clearance;
+        best = candidate;
+      }
+    }
+    return { x: (box!.width * best[0]) / 100, y: (box!.height * best[1]) / 100 };
+  }
+
+  test('a drag off the red giant opens nothing; the click after it still opens the card', async ({ page }) => {
+    test.setTimeout(120000);
+    await gotoPinnedExplore(page);
+
+    const canvas = page.locator('canvas');
+    const box = await canvas.boundingBox();
+    expect(box).toBeTruthy();
+    const card = page.getByTestId('info-card');
+
+    // 从红巨星中心拖动约 40px 后松手 — the release still sits on the giant's
+    // click sphere, so without the drag verdict this lands as a click (the
+    // review's exact 40px repro).
+    const [ax, ay] = await probe(page, 'data-mira-a-screen');
+    const sx = box!.x + (box!.width * ax) / 100;
+    const sy = box!.y + (box!.height * ay) / 100;
+    await page.mouse.move(sx, sy);
+    await page.mouse.down();
+    await page.mouse.move(sx + 38, sy + 12, { steps: 4 });
+    await page.mouse.up();
+    await expect(card).toHaveCount(0);
+
+    // The same place answers a real click: the no-card above was the drag
+    // verdict, not a lost event. Retried because software rendering can stall
+    // past a click.
+    await expect(async () => {
+      const [xp, yp] = await probe(page, 'data-mira-a-screen');
+      await canvas.click({
+        position: { x: (box!.width * xp) / 100, y: (box!.height * yp) / 100 },
+      });
+      await expect(card).toBeVisible({ timeout: 5000 });
+    }).toPass({ timeout: 60000 });
+    await expect(card).toContainText('蒭藁增二 A');
+  });
+
+  test('reading a card, a drag across empty sky closes nothing; a click after it still closes', async ({ page }) => {
+    test.setTimeout(120000);
+    await gotoPinnedExplore(page);
+
+    const canvas = page.locator('canvas');
+    const box = await canvas.boundingBox();
+    expect(box).toBeTruthy();
+    const card = page.getByTestId('info-card');
+
+    await openStarCardViaKeyboard(page, 'miraA');
+    await expect(card).toBeVisible();
+
+    // 在空白天空拖动视角: starts and ends on empty sky, so under the old verdict
+    // its release closed the card through the background's click.
+    const start = await emptySkyPoint(page);
+    await page.mouse.move(box!.x + start.x, box!.y + start.y);
+    await page.mouse.down();
+    await page.mouse.move(box!.x + start.x - 140, box!.y + start.y + 40, { steps: 8 });
+    await page.mouse.up();
+    await expect(card).toBeVisible();
+
+    // 单击空白天空仍关闭信息卡 — the same verdict, other direction.
+    await canvas.click({ position: await emptySkyPoint(page) });
+    await expect(card).toHaveCount(0);
+  });
+
+  test('the companion and the tail still open their cards on a click; empty sky closes them', async ({ page }) => {
+    test.setTimeout(150000);
+    await gotoPinnedExplore(page);
+
+    const canvas = page.locator('canvas');
+    const box = await canvas.boundingBox();
+    expect(box).toBeTruthy();
+    const card = page.getByTestId('info-card');
+
+    // 伴星 opens on its click (the red giant's own click-open is the drag spec
+    // above), retried because software rendering can stall past a click.
+    await expect(async () => {
+      const [xp, yp] = await probe(page, 'data-mira-b-screen');
+      await canvas.click({
+        position: { x: (box!.width * xp) / 100, y: (box!.height * yp) / 100 },
+      });
+      await expect(card).toBeVisible({ timeout: 5000 });
+    }).toPass({ timeout: 60000 });
+    await expect(card).toContainText('蒭藁增二 B');
+    await canvas.click({ position: await emptySkyPoint(page) });
+    await expect(card).toHaveCount(0);
+
+    // The tail opens the same way, and empty sky closes it too.
+    await expect(async () => {
+      const [xp, yp] = await probe(page, 'data-tail-screen');
+      await canvas.click({
+        position: { x: (box!.width * xp) / 100, y: (box!.height * yp) / 100 },
+      });
+      await expect(card).toBeVisible({ timeout: 5000 });
+    }).toPass({ timeout: 60000 });
+    await expect(card).toContainText(/尾巴|The Tail/);
+    await canvas.click({ position: await emptySkyPoint(page) });
+    await expect(card).toHaveCount(0);
   });
 });
