@@ -152,6 +152,13 @@ export const TRANSITIONS = {
 // timer, not a motion duration, so it lives beside TRANSITIONS rather than in it.
 export const MILESTONE_HINT_MS = 8000;
 
+// 拖拽不算点击 (#108): how many screen pixels a press may travel between
+// pointerdown and pointerup and still count as a click. Past this the press was a
+// camera drag — it neither opens nor closes an info card, in either direction.
+// 4px tolerates a hand settling on a tap; the review's repro dragged 40px from
+// the red giant's centre and still opened the card.
+export const DRAG_NOT_CLICK_PX = 4;
+
 // Info card (#20): snappy enough that the card reads as an answer to the tap, not a
 // scene change. Enter 180–240ms, exit 120–180ms; the windows are pinned by
 // tests/unit/animationTiming.spec.ts. Under reduced motion the card only fades.

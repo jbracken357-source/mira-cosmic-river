@@ -4,7 +4,7 @@ import { OrbitControls as DreiOrbitControls } from '@react-three/drei';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import { useReducedMotion } from 'framer-motion';
 import { useBinaryStar, ambientSpace, tonightFrame, useEntryReadiness } from '../../hooks';
-import { COLORS, PHYSICS, calculateOrbitalPosition, CINEMATIC, CAMERA as LANDSCAPE_CAMERA, TRANSLATIONS, resolveQualityTier, ENTRY_STILL, ENTRY_STILL_BACKDROP } from '../../constants';
+import { COLORS, PHYSICS, calculateOrbitalPosition, CINEMATIC, CAMERA as LANDSCAPE_CAMERA, TRANSLATIONS, resolveQualityTier, ENTRY_STILL, ENTRY_STILL_BACKDROP, DRAG_NOT_CLICK_PX } from '../../constants';
 import type { QualityTier } from '../../constants';
 import { PORTRAIT_CAMERA } from '../../constants/animation';
 import {
@@ -212,8 +212,6 @@ function SceneContent({
     target: [0, 0, 0] as [number, number, number],
   });
   const awayTupleRef = useRef([0, 0, 0] as [number, number, number]);
-
-  // Background click to deselect
 
   // Main loop. Stage order is the invariant: 门 (gate) → 控制 (control) → 飞行
   // (flight) → 开场 (opening) → 治理 (governor) → 标记 (marking), with one camera
@@ -544,10 +542,16 @@ function SceneContent({
           segments={lod.sphereSegments}
         />
         {/* Invisible click target — inner atmosphere, so a click on the halo selects the star. */}
+        {/* 拖拽不算点击 (#108): e.delta is the pointerdown-to-pointerup travel r3f
+            already measures. Past DRAG_NOT_CLICK_PX the press was a camera drag, so
+            it changes no card state — here and on every click target below, in both
+            the open and the close direction. stopPropagation stays unconditional: a
+            drag ending on a star must not fall through to the background's deselect. */}
         <mesh
           userData={{ starName: 'miraA' }}
           onClick={(e) => {
             e.stopPropagation();
+            if (e.delta > DRAG_NOT_CLICK_PX) return;
             if (cinematicPhase === 'explore') onSelectStar('miraA');
           }}
         >
@@ -572,6 +576,7 @@ function SceneContent({
         userData={{ starName: 'miraB' }}
         onClick={(e) => {
           e.stopPropagation();
+          if (e.delta > DRAG_NOT_CLICK_PX) return;
           if (cinematicPhase === 'explore') onSelectStar('miraB');
         }}
       >
@@ -604,6 +609,7 @@ function SceneContent({
         userData={{ starName: 'tail' }}
         onClick={(e) => {
           e.stopPropagation();
+          if (e.delta > DRAG_NOT_CLICK_PX) return;
           if (cinematicPhase === 'explore') onSelectStar('tail');
         }}
       >
@@ -637,10 +643,12 @@ function SceneContent({
 
       </group>
 
-      {/* Background click to deselect */}
+      {/* Background click to deselect — a drag across empty sky is not that click
+          (the guard runs before the verdict, same as the targets above). */}
       <mesh
         renderOrder={-1}
-        onClick={() => {
+        onClick={(e) => {
+          if (e.delta > DRAG_NOT_CLICK_PX) return;
           if (cinematicPhase === 'explore') onSelectStar(null);
         }}
       >
