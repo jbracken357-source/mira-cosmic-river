@@ -10,6 +10,11 @@
 //
 // No stacking, by construction: one module-level machine, one snapshot slot, and
 // the machine only honours 'open' from idle and 'export' from preview/success.
+//
+// 双星出画 (#114): each capture reads the pair's screen percents (the scene's
+// canvas probes) and the verdict travels with the snapshot. The 回到主视角再存
+// press discards the locked still, asks the camera home by the 主视角 mechanism,
+// and captures again in the same panel once the view settles.
 
 import { create } from 'zustand';
 import {
@@ -17,8 +22,10 @@ import {
   fitTonightFontSize,
   formatTonightDate,
   initialTonightSaveState,
+  parseScreenPercent,
   tonightFilename,
   tonightPhrase,
+  tonightStarsOffscreen,
   tonightTextLayout,
   transition,
 } from '../lib/tonightSave';
@@ -59,12 +66,14 @@ interface TonightSaveStore {
   overlays: TonightOverlays;
   previewUrl: string | null;
   capturedAt: Date | null;
+  starsOffscreen: boolean;
   open: () => void;
   close: () => void;
   toggleDate: () => void;
   togglePhrase: () => void;
   save: () => void;
   retry: () => void;
+  recapture: () => void;
 }
 
 let machine: TonightSaveState = initialTonightSaveState();
@@ -75,6 +84,9 @@ let nextSnapshotSerial = 1;
 // Dev-only e2e seam (same gate as ?epoch=): forces the next compose to fail so the
 // failure/retry path is reachable on demand.
 let failNextExport = false;
+// 回到主视角再存 (#114): the pending recapture's arming mark. Set when the camera
+// is asked home, cleared when the fresh capture runs or the flow closes.
+let recaptureArm: { inputSeq: number } | null = null;
 
 export const useTonightSave = create<TonightSaveStore>(() => ({
   phase: machine.phase,
@@ -82,12 +94,14 @@ export const useTonightSave = create<TonightSaveStore>(() => ({
   overlays: machine.overlays,
   previewUrl: null,
   capturedAt: null,
+  starsOffscreen: machine.starsOffscreen,
   open: () => dispatch('open'),
   close: () => dispatch('close'),
   toggleDate: () => dispatch('toggle-date'),
   togglePhrase: () => dispatch('toggle-phrase'),
   save: () => dispatch('export'),
   retry: () => dispatch('retry'),
+  recapture: () => dispatch('recapture'),
 }));
 
 function publish(previewUrl: string | null) {
@@ -97,7 +111,10 @@ function publish(previewUrl: string | null) {
     overlays: machine.overlays,
     previewUrl,
     capturedAt: snapshot?.takenAt ?? null,
+    starsOffscreen: machine.starsOffscreen,
   });
+  // A flow that ended takes no delayed capture with it (#114).
+  if (machine.phase === 'idle') recaptureArm = null;
   // The saving hold (#21's documented extension point): while the flow is open the
   // idle takeover stays off, so the locked frame is never reframed behind the panel.
   useBinaryStar.getState().setTonightSaveOpen(machine.phase !== 'idle');
@@ -122,7 +139,24 @@ function applyEffect(effect: TonightSaveEffect) {
       snapshot = null;
       useTonightSave.setState({ previewUrl: null, capturedAt: null });
       break;
+    case 'return-recapture':
+      flyHomeAndRecapture();
+      break;
   }
+}
+
+// 双星出画 (#114): read the pair's screen percents off the scene's canvas probes.
+// The frame loop publishes the pair's two in every build (Scene marks them live),
+// so the verdict holds for production viewers exactly as it does in dev. Before
+// the first frame there is no reading yet — and no reading makes no claim, the
+// panel never invents an absence.
+function starsOffscreenNow(): boolean {
+  const canvas = document.querySelector('canvas');
+  if (!canvas) return false;
+  return tonightStarsOffscreen(
+    parseScreenPercent(canvas.getAttribute('data-mira-a-screen')),
+    parseScreenPercent(canvas.getAttribute('data-mira-b-screen')),
+  );
 }
 
 // Runs synchronously inside the press: force one real render (post-processing
@@ -142,8 +176,35 @@ function captureNow() {
     takenAt: new Date(),
     language: useBinaryStar.getState().language,
   };
-  dispatch({ type: 'captured', serial: nextSnapshotSerial++ });
+  // The verdict is read after the forced frame, so it describes the pixels the
+  // snapshot holds (#114).
+  dispatch({ type: 'captured', serial: nextSnapshotSerial++, starsOffscreen: starsOffscreenNow() });
   void refreshPreview();
+}
+
+// 回到主视角再存 (#114): the press means "take me back, then take the picture
+// again". The flight home is the 主视角 mechanism (requestReturnToExplore); the
+// arrival is read off the store the frame loop already publishes — the camera is
+// home when 「主视角」 is gone. A viewer who grabs the camera mid-flight has taken
+// the picture's framing into their own hands: the recapture runs there and then,
+// and the fresh capture's own verdict says whether the pair made it back in.
+function flyHomeAndRecapture() {
+  useBinaryStar.getState().requestReturnToExplore();
+  recaptureArm = { inputSeq: useBinaryStar.getState().inputSeq };
+  considerRecapture(useBinaryStar.getState());
+}
+
+function considerRecapture(state: ReturnType<typeof useBinaryStar.getState>) {
+  if (!recaptureArm) return;
+  if (machine.phase !== 'capturing') {
+    recaptureArm = null;
+    return;
+  }
+  const arrived = !state.awayFromMainView || state.inputSeq !== recaptureArm.inputSeq;
+  if (arrived) {
+    recaptureArm = null;
+    captureNow();
+  }
 }
 
 // Compose the snapshot plus the enabled overlays on an offscreen 2D canvas. Pure
@@ -285,6 +346,10 @@ useTonightSave.subscribe((state, previous) => {
     void refreshPreview();
   }
 });
+
+// The frame loop publishes the camera facts continuously; an armed recapture (#114)
+// only listens for its arrival among them.
+useBinaryStar.subscribe(considerRecapture);
 
 // Dev-only e2e seam (same gate as ?epoch= and __miraAmbient): proves the retry
 // reuses the same snapshot bytes and lets a spec force an export failure.

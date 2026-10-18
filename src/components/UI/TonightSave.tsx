@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { useBinaryStar, useTonightSave } from '../../hooks';
 import { TRANSLATIONS } from '../../constants/translations';
@@ -16,12 +16,17 @@ export default function TonightSave() {
   const failure = useTonightSave((state) => state.failure);
   const overlays = useTonightSave((state) => state.overlays);
   const previewUrl = useTonightSave((state) => state.previewUrl);
+  const starsOffscreen = useTonightSave((state) => state.starsOffscreen);
   const open = useTonightSave((state) => state.open);
   const close = useTonightSave((state) => state.close);
   const toggleDate = useTonightSave((state) => state.toggleDate);
   const togglePhrase = useTonightSave((state) => state.togglePhrase);
   const save = useTonightSave((state) => state.save);
   const retry = useTonightSave((state) => state.retry);
+  const recapture = useTonightSave((state) => state.recapture);
+
+  const entryRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   const flowOpen = phase !== 'idle';
   const reduceMotion = Boolean(useReducedMotion());
@@ -35,6 +40,16 @@ export default function TonightSave() {
     return () => window.removeEventListener('keydown', onKey);
   }, [flowOpen, close]);
 
+  // 焦点 (#114): the open panel receives focus so keyboard viewers land inside it,
+  // and closing hands focus back to the entry — the panel never traps it, Esc and
+  // Tab keep working as anywhere else.
+  useEffect(() => {
+    if (!flowOpen) return;
+    const entry = entryRef.current;
+    panelRef.current?.focus();
+    return () => entry?.focus();
+  }, [flowOpen]);
+
   // The overlay option chips: a quiet state dot says on/off at a glance, the way
   // the words alone never quite did.
   const optionChip = (active: boolean) =>
@@ -44,9 +59,14 @@ export default function TonightSave() {
   const optionDot = (active: boolean) =>
     `w-1.5 h-1.5 rounded-full transition-colors ${active ? 'bg-[#fef3c7]/85' : 'bg-white/20'}`;
 
+  // The offscreen row rides the snapshot it describes (#114): shown while a locked
+  // frame is on screen, gone with the discard-and-retake flight.
+  const offscreenRow = starsOffscreen && (phase === 'preview' || phase === 'success' || phase === 'failed');
+
   return (
     <>
       <button
+        ref={entryRef}
         data-testid="tonight-save"
         aria-label={t.tonightSave}
         onClick={open}
@@ -59,14 +79,16 @@ export default function TonightSave() {
 
       {flowOpen && (
         <motion.div
+          ref={panelRef}
           data-testid="tonight-panel"
           data-tonight-phase={phase}
           role="dialog"
           aria-label={t.tonightSave}
+          tabIndex={-1}
           initial={{ opacity: 0, y: reduceMotion ? 0 : 14 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: reduceMotion ? 0 : 0.24, ease: [0.16, 1, 0.3, 1] }}
-          className="pointer-events-auto fixed left-3 right-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] md:left-1/2 md:right-auto md:-translate-x-1/2 md:bottom-24 z-50 md:w-[min(92vw,26rem)] backdrop-blur-md bg-black/65 border border-white/10 rounded-xl p-4 md:p-5 flex flex-col gap-3 shadow-[0_24px_60px_rgba(0,0,0,0.55)] max-h-[calc(100dvh-1.5rem)] overflow-y-auto"
+          className="pointer-events-auto fixed left-3 right-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] md:left-1/2 md:right-auto md:-translate-x-1/2 md:bottom-24 z-50 md:w-[min(92vw,26rem)] backdrop-blur-md bg-black/65 border border-white/10 rounded-xl p-4 md:p-5 flex flex-col gap-3 shadow-[0_24px_60px_rgba(0,0,0,0.55)] max-h-[calc(100dvh-1.5rem)] overflow-y-auto focus:outline-none"
         >
           <div className="flex items-center justify-between">
             {/* The panel's own title is the same name — mixed case here too (#90). */}
@@ -89,6 +111,21 @@ export default function TonightSave() {
               alt={t.tonightSave}
               className="max-h-[38dvh] w-auto mx-auto rounded-lg border border-white/10"
             />
+          )}
+
+          {offscreenRow && (
+            <div className="flex items-center justify-between flex-wrap gap-x-4 gap-y-1">
+              <p data-testid="tonight-offscreen" className="text-[10px] tracking-[0.2em] text-white/45 font-extralight">
+                {t.tonightOffscreen}
+              </p>
+              <button
+                data-testid="tonight-recapture"
+                onClick={recapture}
+                className="min-h-11 px-5 rounded-full border border-white/25 text-white/70 text-xs font-extralight tracking-widest hover:bg-white/10 transition-colors"
+              >
+                {t.tonightRecapture}
+              </button>
+            </div>
           )}
 
           {phase === 'failed' && (

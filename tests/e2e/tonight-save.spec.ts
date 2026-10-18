@@ -95,6 +95,46 @@ async function exportAndDecode(page: Page): Promise<{ decoded: DecodedPng; downl
   return { decoded, download };
 }
 
+// 双星出画 (#114): the scene's dev probes ("x,y" screen percents) for the pair's
+// centers — the same seams mobile.spec reads. Null before the first frame writes
+// them; a null never counts as out (no probe, no claim).
+async function starCenters(page: Page): Promise<([number, number] | null)[]> {
+  return page.locator('canvas').evaluate((el) => {
+    const read = (name: string): [number, number] | null => {
+      const raw = el.getAttribute(name);
+      if (!raw) return null;
+      const [x, y] = raw.split(',').map(Number);
+      return [x, y];
+    };
+    return [read('data-mira-a-screen'), read('data-mira-b-screen')];
+  });
+}
+
+const centerOutOfFrame = (point: [number, number] | null) =>
+  point !== null && (point[0] < 0 || point[0] > 100 || point[1] < 0 || point[1] > 100);
+
+// Carry the camera by drag until at least one star's CENTER is out of the frame —
+// the probes say when it is true, so the spec never trusts a guessed distance.
+async function dragStarsOffscreen(page: Page) {
+  const box = await page.locator('canvas').boundingBox();
+  if (!box) throw new Error('canvas has no box');
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const cx = box.x + box.width * 0.7;
+    const cy = box.y + box.height * 0.3;
+    await page.mouse.move(cx, cy);
+    await page.mouse.down();
+    await page.mouse.move(cx + 220 + attempt * 140, cy + 40, { steps: 8 });
+    await page.mouse.up();
+    const deadline = Date.now() + 4000;
+    while (Date.now() < deadline) {
+      const [a, b] = await starCenters(page);
+      if (centerOutOfFrame(a) || centerOutOfFrame(b)) return;
+      await page.waitForTimeout(200);
+    }
+  }
+  throw new Error('the drag never carried a star center out of the frame');
+}
+
 test.describe('Tonight\'s Mira save flow', () => {
   test.setTimeout(120000);
 
@@ -257,5 +297,89 @@ test.describe('Tonight\'s Mira save flow', () => {
     });
     await expect(fallback).toHaveCount(0);
     await openSaveFlow(page);
+  });
+
+  test('the panel carries no offscreen row while both stars stay in frame (#114)', async ({ page }) => {
+    // The wide desktop framing keeps the pair in frame under the visit's first
+    // zoom — the panel stays exactly the panel it was.
+    await directEntry(page);
+    await openSaveFlow(page);
+    await expect(page.getByTestId('tonight-offscreen')).toHaveCount(0);
+    await expect(page.getByTestId('tonight-recapture')).toHaveCount(0);
+  });
+
+  test('opening the panel moves focus into it; closing returns focus to the entry (#114)', async ({ page }) => {
+    await directEntry(page);
+    await page.getByTestId('tonight-save').click();
+    const panel = page.getByTestId('tonight-panel');
+    await expect(panel).toBeVisible();
+    await expect(panel).toHaveAttribute('data-tonight-phase', 'preview');
+    await expect(panel).toBeFocused();
+
+    // The panel stays non-modal and Esc closes it; the entry takes focus back.
+    await page.keyboard.press('Escape');
+    await expect(panel).toHaveCount(0);
+    await expect(page.getByTestId('tonight-save')).toBeFocused();
+  });
+});
+
+test.describe('今晚的 Mira 双星出画 (#114)', () => {
+  // The offscreen journey runs at the 竖屏长卷's frame: there the pair sits high
+  // on the right and a plain drag swings it out (the ticket's review case — the
+  // preview holds the road with the pair gone). On the wide desktop framing the
+  // same gestures keep both stars in, which is the no-notice case above.
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+
+  test('opening the panel with the pair out of frame shows the notice and the return button', async ({ page }) => {
+    await directEntry(page);
+    await dragStarsOffscreen(page);
+    const panel = await openSaveFlow(page);
+
+    // The panel says what the preview shows: the pair is not in the picture, and
+    // the way back is offered next to the save that still works.
+    await expect(page.getByTestId('tonight-offscreen')).toBeVisible();
+    await expect(page.getByTestId('tonight-recapture')).toBeVisible();
+    await expect(page.getByTestId('tonight-preview')).toBeVisible();
+    await expect(page.getByTestId('tonight-export')).toBeEnabled();
+    await expect(panel).toHaveAttribute('data-tonight-phase', 'preview');
+  });
+
+  test('回到主视角再存 flies home and retakes in the same panel, and the notice is gone', async ({ page }) => {
+    await directEntry(page);
+    await dragStarsOffscreen(page);
+    const panel = await openSaveFlow(page);
+    const before = await page.getByTestId('tonight-preview').getAttribute('src');
+    expect(before).toBeTruthy();
+
+    await page.getByTestId('tonight-recapture').click();
+    // The press drops the locked still and the flight home follows; the panel
+    // stays open through it (the phase rides the flight, never back to idle).
+    await expect(panel).toHaveAttribute('data-tonight-phase', 'capturing');
+    await expect(page.getByTestId('tonight-preview')).toBeVisible({ timeout: 15000 });
+    await expect(panel).toHaveAttribute('data-tonight-phase', 'preview');
+    const after = await page.getByTestId('tonight-preview').getAttribute('src');
+    expect(after).toBeTruthy();
+    expect(after).not.toBe(before);
+
+    // The camera is genuinely home: both centers back in frame, 「主视角」 gone,
+    // and the offscreen row with it.
+    await expect
+      .poll(async () => (await starCenters(page)).every((p) => p !== null && !centerOutOfFrame(p)))
+      .toBe(true);
+    await expect(page.getByTestId('return-to-view')).toHaveCount(0);
+    await expect(page.getByTestId('tonight-offscreen')).toHaveCount(0);
+  });
+
+  test('saving directly with the pair out of frame still exports a decodable PNG', async ({ page }) => {
+    await directEntry(page);
+    await dragStarsOffscreen(page);
+    await openSaveFlow(page);
+
+    // The viewer may keep what they are actually looking at: same export contract
+    // as the in-frame case — decodable, under the cap, not a black frame.
+    const { decoded, download } = await exportAndDecode(page);
+    expect(download.suggestedFilename()).toMatch(/^mira-tonight-\d{4}-\d{2}-\d{2}\.png$/);
+    expect(Math.max(decoded.width, decoded.height)).toBeLessThanOrEqual(2560);
+    expect(decoded.mean).toBeGreaterThan(0);
   });
 });

@@ -6,9 +6,11 @@ import {
   fitTonightFontSize,
   formatTonightDate,
   initialTonightSaveState,
+  parseScreenPercent,
   primaryAction,
   tonightFilename,
   tonightPhrase,
+  tonightStarsOffscreen,
   tonightTextLayout,
   transition,
 } from '../../src/lib/tonightSave';
@@ -25,9 +27,9 @@ function effectTypes(state: TonightSaveState, event: Parameters<typeof transitio
 
 // Walk the happy path: idle -> capturing -> preview. Serials are explicit (the
 // shell owns the counter), so tests stay order-independent.
-function inPreview(serial = 1): TonightSaveState {
+function inPreview(serial = 1, starsOffscreen = false): TonightSaveState {
   const capturing = transition(initialTonightSaveState(), 'open').state;
-  return transition(capturing, { type: 'captured', serial }).state;
+  return transition(capturing, { type: 'captured', serial, starsOffscreen }).state;
 }
 
 test.describe('export sizing', () => {
@@ -90,6 +92,37 @@ test.describe('filename and date', () => {
     const at = new Date(2026, 8, 17);
     expect(formatTonightDate(at, 'ch')).toBe('2026年9月17日');
     expect(formatTonightDate(at, 'en')).toBe('September 17, 2026');
+  });
+});
+
+test.describe('双星出画判定 (#114)', () => {
+  test('both centers inside the frame make no offscreen claim', () => {
+    // The 竖屏长卷's calibrated read (mobile.spec reads these same probes in frame).
+    expect(tonightStarsOffscreen({ x: 64.57, y: 23 }, { x: 75.15, y: 16.25 })).toBe(false);
+    // Edge-of-frame centers still count as in — half the star is visible.
+    expect(tonightStarsOffscreen({ x: 0, y: 50 }, { x: 100, y: 100 })).toBe(false);
+  });
+
+  test('either center outside the frame claims offscreen — A, B, or both', () => {
+    expect(tonightStarsOffscreen({ x: -12.22, y: 35.39 }, { x: 75.15, y: 16.25 })).toBe(true);
+    expect(tonightStarsOffscreen({ x: 64.57, y: 23 }, { x: 123.77, y: 70.22 })).toBe(true);
+    expect(tonightStarsOffscreen({ x: -25.95, y: 58.68 }, { x: -37.78, y: 50.01 })).toBe(true);
+    // Just off any one edge is enough — left, right, top, or bottom.
+    expect(tonightStarsOffscreen({ x: -0.01, y: 50 }, { x: 50, y: 50 })).toBe(true);
+    expect(tonightStarsOffscreen({ x: 50, y: 100.01 }, { x: 50, y: 50 })).toBe(true);
+  });
+
+  test('absent or malformed probes make no claim', () => {
+    expect(tonightStarsOffscreen(null, null)).toBe(false);
+    expect(tonightStarsOffscreen(parseScreenPercent(null), parseScreenPercent(''))).toBe(false);
+    expect(tonightStarsOffscreen(parseScreenPercent('64.57,23'), null)).toBe(false);
+  });
+
+  test('the probe string parses to percents, the one spelling the scene writes', () => {
+    expect(parseScreenPercent('64.57,23.00')).toEqual({ x: 64.57, y: 23 });
+    expect(parseScreenPercent('-12.22,35.39')).toEqual({ x: -12.22, y: 35.39 });
+    expect(parseScreenPercent('not a probe')).toBeNull();
+    expect(parseScreenPercent('1,2,3')).toBeNull();
   });
 });
 
@@ -172,15 +205,29 @@ test.describe('save flow state machine', () => {
     expect(state.failure).toBeNull();
     // #88: the phrase is attached from the first open; the date stays opt-in.
     expect(state.overlays).toEqual({ date: false, phrase: true });
+    // No capture has landed yet, so no offscreen claim either (#114).
+    expect(state.starsOffscreen).toBe(false);
     expect(effects).toEqual([{ type: 'capture' }]);
   });
 
   test('a successful capture lands in preview with the supplied serial locked', () => {
     const capturing = transition(initialTonightSaveState(), 'open').state;
-    const { state, effects } = transition(capturing, { type: 'captured', serial: 7 });
+    const { state, effects } = transition(capturing, { type: 'captured', serial: 7, starsOffscreen: false });
     expect(state.phase).toBe('preview');
     expect(state.snapshot).toBe(7);
     expect(effects).toEqual([]);
+  });
+
+  test('the capture carries the 双星出画 verdict of the frame it locked (#114)', () => {
+    const capturing = transition(initialTonightSaveState(), 'open').state;
+    const off = transition(capturing, { type: 'captured', serial: 1, starsOffscreen: true });
+    expect(off.state.phase).toBe('preview');
+    expect(off.state.starsOffscreen).toBe(true);
+    const inFrame = transition(capturing, { type: 'captured', serial: 2, starsOffscreen: false });
+    expect(inFrame.state.starsOffscreen).toBe(false);
+    // A capture that never lands claims nothing.
+    const failed = transition(capturing, 'capture-failed');
+    expect(failed.state.starsOffscreen).toBe(false);
   });
 
   test('reopening while the flow is live never stacks a second capture', () => {
@@ -262,7 +309,7 @@ test.describe('save flow state machine', () => {
 
     const reopened = transition(closed.state, 'open');
     expect(reopened.effects).toEqual([{ type: 'capture' }]);
-    const second = transition(reopened.state, { type: 'captured', serial: 99 });
+    const second = transition(reopened.state, { type: 'captured', serial: 99, starsOffscreen: false });
     // A new save action, a new snapshot.
     expect(second.state.snapshot).not.toBe(first);
     expect(second.state.snapshot).toBe(99);
@@ -280,7 +327,14 @@ test.describe('save flow state machine', () => {
 
   test('events that make no sense in a phase are silent no-ops', () => {
     const idle = initialTonightSaveState();
-    for (const event of ['captured', 'exported', 'export-failed', 'retry', 'export'] as const) {
+    for (const event of [
+      { type: 'captured', serial: 1, starsOffscreen: false },
+      'exported',
+      'export-failed',
+      'retry',
+      'export',
+      'recapture',
+    ] as const) {
       const { state, effects } = transition(idle, event);
       expect(state).toEqual(idle);
       expect(effects).toEqual([]);
@@ -289,5 +343,37 @@ test.describe('save flow state machine', () => {
     expect(transition(idle, 'close').effects).toEqual([]);
     // Toggles do nothing before a snapshot exists.
     expect(effectTypes(idle, 'toggle-date')).toEqual([]);
+  });
+
+  test('回到主视角再存 (#114): recapture discards the locked frame and re-captures after the flight', () => {
+    const offscreen = inPreview(1, true);
+    const { state, effects } = transition(offscreen, 'recapture');
+    expect(state.phase).toBe('capturing');
+    // The stale offscreen claim does not outlive its frame.
+    expect(state.starsOffscreen).toBe(false);
+    expect(state.snapshot).toBeNull();
+    // The locked still is dropped now; the fresh one comes when the camera lands.
+    expect(effects).toEqual([{ type: 'discard' }, { type: 'return-recapture' }]);
+
+    // The same press works from success and after an export failure (the frame is
+    // still on screen), never mid-capture or mid-export.
+    expect(effectTypes(transition(inPreview(1), 'export').state, 'recapture')).toEqual([]);
+    const success = transition(transition(inPreview(1, true), 'export').state, 'exported').state;
+    expect(effectTypes(success, 'recapture')).toEqual(['discard', 'return-recapture']);
+    const exported = transition(inPreview(1, true), 'export').state;
+    const failed = transition(exported, 'export-failed').state;
+    expect(effectTypes(failed, 'recapture')).toEqual(['discard', 'return-recapture']);
+
+    // When the camera lands, the fresh capture lands with its own verdict.
+    const flight = transition(offscreen, 'recapture').state;
+    const landed = transition(flight, { type: 'captured', serial: 2, starsOffscreen: false });
+    expect(landed.state.phase).toBe('preview');
+    expect(landed.state.snapshot).toBe(2);
+    expect(landed.state.starsOffscreen).toBe(false);
+
+    // Closing mid-flight aborts cleanly: nothing left to discard.
+    const closedMidFlight = transition(flight, 'close');
+    expect(closedMidFlight.state.phase).toBe('idle');
+    expect(closedMidFlight.effects).toEqual([]);
   });
 });

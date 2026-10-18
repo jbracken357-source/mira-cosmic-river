@@ -10,7 +10,7 @@
 // State machine (events on the left; [effects] the shell applies):
 //
 //   idle       --open----------> capturing        [capture] — anything else is a no-op
-//   capturing  --captured------> preview          (snapshot locked)
+//   capturing  --captured------> preview          (snapshot locked, offscreen verdict with it)
 //   capturing  --capture-failed> failed (capture) — no snapshot exists to reuse
 //   capturing  --context-lost--> failed (context-lost) — the honest WebGL-lost landing
 //   preview    --toggle-*------> preview          (overlay flags only, no effects)
@@ -19,6 +19,9 @@
 //   exporting  --export-failed-> failed (export)  — snapshot kept
 //   failed     --retry---------> exporting [export]   (export failure: same snapshot)
 //   failed     --retry---------> capturing [capture]  (capture failure: nothing to reuse)
+//   preview    --recapture-----> capturing        [discard, return-recapture] (#114: the
+//                                             same panel drops the locked still and takes a
+//                                             fresh one once the camera is home again)
 //   any live   --close---------> idle             [discard when a snapshot exists]
 //
 // No stacking by construction: 'open' is only honoured from idle and 'export' only
@@ -33,6 +36,35 @@ export const TONIGHT_EXPORT_LONG_EDGE = 2560;
 export interface ExportSize {
   width: number;
   height: number;
+}
+
+// 双星出画 (#114): one star's projected place on screen, in the percents Scene's
+// probes spell ("x,y" — 0 left, 100 right, 0 top, 100 bottom).
+export interface ScreenPercent {
+  x: number;
+  y: number;
+}
+
+// Parse one probe string. Anything that is not exactly two finite numbers is not a
+// reading — null, never a guess.
+export function parseScreenPercent(raw: string | null): ScreenPercent | null {
+  if (raw === null) return null;
+  const parts = raw.split(',');
+  if (parts.length !== 2) return null;
+  const x = Number(parts[0]);
+  const y = Number(parts[1]);
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+  return { x, y };
+}
+
+const centerOutOfFrame = (point: ScreenPercent): boolean =>
+  point.x < 0 || point.x > 100 || point.y < 0 || point.y > 100;
+
+// The verdict the panel shows: either star's CENTER outside the frame means the
+// keepsake would hold a sky without the pair. A missing reading (no probe written)
+// makes no claim — the panel stays the panel it was, it never invents an absence.
+export function tonightStarsOffscreen(a: ScreenPercent | null, b: ScreenPercent | null): boolean {
+  return (a !== null && centerOutOfFrame(a)) || (b !== null && centerOutOfFrame(b));
 }
 
 // Fit the source into the cap: keep the aspect, clamp the long edge, and never
@@ -145,13 +177,19 @@ export interface TonightSaveState {
   snapshot: number | null;
   overlays: TonightOverlays;
   failure: TonightSaveFailure | null;
+  // 双星出画 (#114): the verdict of the frame the snapshot actually locked — set
+  // with each capture, cleared when no frame backs the claim. The shell reads the
+  // scene's screen projections at capture time and hands the verdict in.
+  starsOffscreen: boolean;
 }
 
 export type TonightSaveEvent =
   | 'open'
   // The serial is supplied by the shell (it owns the counter): the machine stays
-  // pure and identity only ever moves forward, even across close/reopen.
-  | { type: 'captured'; serial: number }
+  // pure and identity only ever moves forward, even across close/reopen. The
+  // offscreen verdict arrives the same way — it is a fact about the pixels just
+  // read, not about the machine (#114).
+  | { type: 'captured'; serial: number; starsOffscreen: boolean }
   | 'capture-failed'
   | 'context-lost'
   | 'toggle-date'
@@ -160,12 +198,18 @@ export type TonightSaveEvent =
   | 'exported'
   | 'export-failed'
   | 'retry'
+  // 回到主视角再存 (#114): drop the locked still and take a fresh one once the
+  // camera is back on the main view — in this panel, not a new save action.
+  | 'recapture'
   | 'close';
 
 export type TonightSaveEffect =
   | { type: 'capture' } // take a fresh snapshot NOW, synchronously inside the press
   | { type: 'export' } // compose and hand the viewer the file
-  | { type: 'discard' }; // release the snapshot and any preview resources
+  | { type: 'discard' } // release the snapshot and any preview resources
+  // Fly the camera home (the 主视角 mechanism), then capture in the same panel
+  // once the view settles (#114).
+  | { type: 'return-recapture' };
 
 export interface TonightSaveTransition {
   state: TonightSaveState;
@@ -180,6 +224,7 @@ export function initialTonightSaveState(): TonightSaveState {
     // open, while the date stays opt-in.
     overlays: { date: false, phrase: true },
     failure: null,
+    starsOffscreen: false,
   };
 }
 
@@ -201,7 +246,7 @@ export function transition(state: TonightSaveState, event: TonightSaveEvent): To
 
     case 'captured':
       if (state.phase !== 'capturing' || typeof event === 'string') return silent(state);
-      return silent(state, { phase: 'preview', snapshot: event.serial, failure: null });
+      return silent(state, { phase: 'preview', snapshot: event.serial, failure: null, starsOffscreen: event.starsOffscreen });
 
     case 'capture-failed':
     case 'context-lost':
@@ -210,6 +255,8 @@ export function transition(state: TonightSaveState, event: TonightSaveEvent): To
         phase: 'failed',
         failure: event === 'context-lost' ? 'context-lost' : 'capture',
         snapshot: null,
+        // No frame was locked, so no offscreen claim goes with the failure.
+        starsOffscreen: false,
       });
 
     case 'toggle-date':
@@ -248,6 +295,19 @@ export function transition(state: TonightSaveState, event: TonightSaveEvent): To
         state: { ...state, phase: 'capturing', failure: null },
         effects: [{ type: 'capture' }],
       };
+
+    case 'recapture': {
+      // 回到主视角再存 (#114): offered wherever a locked frame is on screen (the
+      // notice travels with the snapshot). Mid-capture and mid-export presses land
+      // nowhere, like every other stacked press.
+      const hasFrame = state.phase === 'preview' || state.phase === 'success' ||
+        (state.phase === 'failed' && state.snapshot !== null);
+      if (!hasFrame) return silent(state);
+      return {
+        state: { ...state, phase: 'capturing', snapshot: null, failure: null, starsOffscreen: false },
+        effects: [{ type: 'discard' }, { type: 'return-recapture' }],
+      };
+    }
 
     case 'close': {
       if (state.phase === 'idle') return silent(state);
