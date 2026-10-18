@@ -11,6 +11,17 @@ import AmbientToggle from './AmbientToggle';
 import LowerEdge from './LowerEdge';
 import TonightSave from './TonightSave';
 
+// 误触保护 (#109): 「我自己看」 and 完整开场 trade places at the same corner
+// spot the moment the viewer leaves the full opening, so on a touch screen the
+// second press of a double-tap (or a laggy first press) lands on 完整开场 and
+// restarts the ritual the viewer just declined. For ~500ms after the leave
+// (spec #107) the replay button holds that echo — a deliberate press never meets
+// the window. The stamp lives here rather than in the store because only this
+// exit path is a mistap source: direct entry and the natural ending arrive
+// without a finger already down.
+const REPLAY_MISTAP_GUARD_MS = 500;
+let leftOpeningAt = 0;
+
 // Cinematic overlay: 15-second opening text sequence
 export default function CinematicOverlay({
   onSelectStar,
@@ -33,6 +44,7 @@ export default function CinematicOverlay({
   const caption = segment.caption ? t[segment.caption] : null;
 
   const handleLookMyself = () => {
+    leftOpeningAt = Date.now();
     useBinaryStar.getState().setIntroComplete(true);
   };
 
@@ -242,7 +254,12 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
           <button
             data-testid="replay-opening"
             aria-label={t.replayOpening}
-            onClick={() => useBinaryStar.getState().setIntroComplete(false)}
+            onClick={() => {
+              // The echo guard (#109): inside the window the press is the mistap's
+              // second landing, not a wish to watch the opening again.
+              if (Date.now() - leftOpeningAt < REPLAY_MISTAP_GUARD_MS) return;
+              useBinaryStar.getState().setIntroComplete(false);
+            }}
             className="pointer-events-auto whisper-btn min-h-11 min-w-11 inline-flex items-center justify-center text-[11px] md:text-xs font-extralight tracking-widest"
           >
             {t.replayOpening}

@@ -107,9 +107,16 @@ body {
   transition: color 260ms ease-out, text-decoration-color 260ms ease-out;
 }
 
-.whisper-btn:hover {
-  color: rgba(255, 255, 255, 0.85);
-  text-decoration-color: rgba(255, 255, 255, 0.35);
+/* Hover answers only devices that can hover (#109): a touch tap leaves :hover
+   stuck to the pressed control, so the lift and underline would outlive the
+   press on phones. Tailwind's own hover: utilities are already gated the same
+   way (v4 wraps them in this query); the focus ring is not a hover effect and
+   stays for everyone. */
+@media (hover: hover) {
+  .whisper-btn:hover {
+    color: rgba(255, 255, 255, 0.85);
+    text-decoration-color: rgba(255, 255, 255, 0.35);
+  }
 }
 
 .whisper-btn:disabled {
