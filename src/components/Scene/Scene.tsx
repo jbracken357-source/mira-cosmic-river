@@ -897,7 +897,7 @@ export default function Scene({ onSelectStar }: SceneProps) {
           }}
         >
           <div className="absolute inset-0 bg-black/60" />
-          <p className="relative text-white/45 text-sm font-extralight tracking-[0.25em]">
+          <p className="relative text-white/55 text-sm font-extralight tracking-[0.25em]">
             {TRANSLATIONS[language].loading}
           </p>
         </div>

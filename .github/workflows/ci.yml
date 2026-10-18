@@ -20,10 +20,12 @@ jobs:
     runs-on: ubuntu-latest
     # The suite alone runs ~14.5m under CI's software GL and every PR adds a little
     # more; at 15 the wall cancelled #104's run AFTER all 494 tests had passed,
-    # mid-report-upload. 20 held until the suite reached ~557 tests (#108–#115),
+    # mid-report-upload. 20 held until the suite reached ~557 tests (#108–#115);
     # then the wall cancelled two master runs mid-suite at 20m21s and 21m46s.
-    # 25 leaves room for the suite plus setup and the report.
-    timeout-minutes: 25
+    # 25 fell to #111's additions (25m18s). 35 leaves room for the suite, #113's
+    # text-floor walk, setup and the report — the wall exists to catch hangs, and
+    # a hung run is loud long before 35.
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v5
 

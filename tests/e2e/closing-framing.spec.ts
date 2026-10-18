@@ -122,8 +122,18 @@ async function gotoIdleEpilogue(
 
   // The language settles before the idle count starts: the toggle is a control
   // press and restamps the shared clock, which is free now and a full 60s later.
+  // On the compact bar (#111) the toggle lives inside 「更多」— open the panel
+  // first when the row tucks it, and either way leave the bar as it was.
   if (language === 'en') {
-    await page.getByTestId('language-toggle').click();
+    const toggle = page.getByTestId('language-toggle');
+    if (!(await toggle.isVisible())) {
+      await page.getByTestId('more-toggle').click();
+      await expect(toggle).toBeVisible();
+      await toggle.click();
+      await page.keyboard.press('Escape');
+    } else {
+      await toggle.click();
+    }
   }
   // The idle count starts from a ready scene (same reason as viewer-control.spec:
   // under software rendering, load time is not scaled and could eat the window).

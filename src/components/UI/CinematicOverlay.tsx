@@ -74,7 +74,7 @@ export default function CinematicOverlay({
         <button
           data-testid="look-myself"
           onClick={handleLookMyself}
-          className="whisper-btn min-h-11 px-4 inline-flex items-center justify-center text-[11px] md:text-xs font-extralight tracking-widest border border-white/15 rounded-full hover:border-white/35"
+          className="whisper-btn min-h-11 px-4 inline-flex items-center justify-center text-xs font-extralight tracking-widest border border-white/15 rounded-full hover:border-white/35"
         >
           {t.lookMyself}
         </button>
@@ -208,10 +208,11 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
     return () => moreButton?.focus();
   }, [moreOpen]);
 
-  // The compact row's voice (#111): at the phone width the row still holds
-  // 主视角, 今晚的 Mira, 环境音 and 「更多」 side by side, so the labels step down
-  // a size and the wordmark with them — one row, both languages, 320px included.
-  const rowText = tucked ? 'text-[10px] tracking-wider' : 'text-[11px] md:text-xs tracking-widest';
+  // The compact row's voice (#111, at the 文字底线 #113): the phone row holds
+  // 主视角, 今晚的 Mira, 环境音 and 「更多」 side by side. compact-label carries
+  // the language split — zh 12px, en keeps #111's 10px — with the measured
+  // margins living in index.css beside the rule.
+  const rowText = tucked ? 'compact-label' : 'text-xs tracking-widest';
 
   // The interaction hint leaves once the viewer has actually manipulated the scene
   // (drag/zoom land on the canvas; presses on UI buttons do not count). 学会 is
@@ -357,7 +358,7 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
                   aria-pressed={!isPlaying}
                   aria-label={isPlaying ? t.pause : t.resume}
                   onClick={() => useBinaryStar.getState().setPlaying(!isPlaying)}
-                  className="whisper-btn min-h-11 inline-flex items-center justify-start px-3 text-[11px] font-extralight tracking-widest"
+                  className="whisper-btn min-h-11 inline-flex items-center justify-start px-3 text-xs font-extralight tracking-widest"
                 >
                   {isPlaying ? t.pause : t.resume}
                 </button>
@@ -371,14 +372,14 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
                   if (Date.now() - leftOpeningAt < REPLAY_MISTAP_GUARD_MS) return;
                   useBinaryStar.getState().setIntroComplete(false);
                 }}
-                className="whisper-btn min-h-11 inline-flex items-center justify-start px-3 text-[11px] font-extralight tracking-widest"
+                className="whisper-btn min-h-11 inline-flex items-center justify-start px-3 text-xs font-extralight tracking-widest"
               >
                 {t.replayOpening}
               </button>
               <button
                 data-testid="language-toggle"
                 onClick={() => setLanguage(language === 'en' ? 'ch' : 'en')}
-                className="whisper-btn min-h-11 inline-flex items-center justify-start px-3 text-[11px] font-extralight tracking-widest"
+                className="whisper-btn min-h-11 inline-flex items-center justify-start px-3 text-xs font-extralight tracking-widest"
               >
                 {language === 'en' ? '中文' : 'EN'}
               </button>
@@ -405,21 +406,21 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
           <button
             data-testid="star-trigger-miraA"
             onClick={() => onSelectStar('miraA')}
-            className="min-h-11 min-w-11 inline-flex items-center justify-center backdrop-blur-sm bg-white/5 border border-white/10 px-4 rounded-full text-[10px] tracking-[0.2em] text-white/55 font-extralight hover:text-white/85 transition-colors"
+            className="min-h-11 min-w-11 inline-flex items-center justify-center backdrop-blur-sm bg-white/5 border border-white/10 px-4 rounded-full text-xs tracking-[0.2em] text-white/55 font-extralight hover:text-white/85 transition-colors"
           >
             {t.miraA}
           </button>
           <button
             data-testid="star-trigger-miraB"
             onClick={() => onSelectStar('miraB')}
-            className="min-h-11 min-w-11 inline-flex items-center justify-center backdrop-blur-sm bg-white/5 border border-white/10 px-4 rounded-full text-[10px] tracking-[0.2em] text-white/55 font-extralight hover:text-white/85 transition-colors"
+            className="min-h-11 min-w-11 inline-flex items-center justify-center backdrop-blur-sm bg-white/5 border border-white/10 px-4 rounded-full text-xs tracking-[0.2em] text-white/55 font-extralight hover:text-white/85 transition-colors"
           >
             {t.miraB}
           </button>
           <button
             data-testid="star-trigger-tail"
             onClick={() => onSelectStar('tail')}
-            className="min-h-11 min-w-11 inline-flex items-center justify-center backdrop-blur-sm bg-white/5 border border-white/10 px-4 rounded-full text-[10px] tracking-[0.2em] text-white/55 font-extralight hover:text-white/85 transition-colors"
+            className="min-h-11 min-w-11 inline-flex items-center justify-center backdrop-blur-sm bg-white/5 border border-white/10 px-4 rounded-full text-xs tracking-[0.2em] text-white/55 font-extralight hover:text-white/85 transition-colors"
           >
             {t.tailLabel}
           </button>
@@ -436,7 +437,7 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
             >
               <div className="flex items-center gap-2">
                 <div className="w-1.5 h-1.5 rounded-full bg-white/50 animate-pulse" />
-                <span className="text-[10px] tracking-[0.2em] uppercase text-white/55 font-extralight">
+                <span className="text-xs tracking-[0.2em] uppercase text-white/55 font-extralight">
                   {isMobile ? t.interactionHintMobile : t.interactionHint}
                 </span>
               </div>

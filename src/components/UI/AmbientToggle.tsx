@@ -5,7 +5,8 @@ import { TRANSLATIONS } from '../../constants/translations';
 // during the full cinematic. The label is the honest state — off, playing
 // (pressed), waiting for a gesture (点按开启), or failed with retry — never a
 // playing claim that is not real. `compact` (#111) is the phone-portrait bar's
-// one-row voice: a step down in size so the row never wraps.
+// one-row voice: compact-label, the row's shared language-split size (#113 —
+// zh 12px, en keeps the 10px the 320px margin was tuned to).
 export default function AmbientToggle({ compact = false }: { compact?: boolean }) {
   const language = useBinaryStar((state) => state.language);
   const phase = useAmbientSound((state) => state.phase);
@@ -26,7 +27,7 @@ export default function AmbientToggle({ compact = false }: { compact?: boolean }
       aria-pressed={phase !== 'off' && phase !== 'failed'}
       onClick={toggle}
       className={`pointer-events-auto min-h-11 min-w-11 inline-flex items-center justify-center gap-2 font-extralight transition-colors ${
-        compact ? 'text-[10px] tracking-wider' : 'text-[11px] md:text-xs tracking-widest'
+        compact ? 'compact-label' : 'text-xs tracking-widest'
       } ${
         phase === 'playing' ? 'text-white/70 hover:text-white/90' : 'whisper-btn'
       }`}

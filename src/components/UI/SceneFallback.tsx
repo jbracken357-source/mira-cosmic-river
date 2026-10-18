@@ -22,10 +22,10 @@ export default function SceneFallback({ reason }: { reason: 'webgl-unavailable' 
         <p className="text-white/85 text-lg font-extralight tracking-wide">
           {reason === 'webgl-unavailable' ? t.sceneUnavailableTitle : t.sceneLostTitle}
         </p>
-        <p className="text-white/45 text-sm font-extralight leading-relaxed text-pretty">
+        <p className="text-white/55 text-sm font-extralight leading-relaxed text-pretty">
           {reason === 'webgl-unavailable' ? t.sceneUnavailableBody : t.sceneLostBody}
         </p>
-        <p className="text-white/25 text-[10px] font-extralight tracking-[0.2em] uppercase">
+        <p className="text-white/55 text-xs font-extralight tracking-[0.2em] uppercase">
           {t.stillCaption.replace('{version}', ENTRY_STILL.version)}
         </p>
         <button

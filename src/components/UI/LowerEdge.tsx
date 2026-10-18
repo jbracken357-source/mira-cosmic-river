@@ -50,7 +50,7 @@ export default function LowerEdge() {
           className="flex justify-center"
         >
           <div className="backdrop-blur-sm bg-white/5 border border-white/10 px-4 py-2 rounded-full">
-            <span className="text-[10px] tracking-[0.18em] uppercase text-white/55 font-extralight">
+            <span className="text-xs tracking-[0.18em] uppercase text-white/55 font-extralight">
               {milestoneText}
             </span>
           </div>

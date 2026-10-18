@@ -115,9 +115,15 @@ export default function InfoCards({ selectedStar, onSelectStar }: InfoCardsProps
       exit={{ opacity: 0, y: riseExit, transition: { duration: exitDur, ease: EASE.OUT } }}
       transition={{ duration: enterDur, ease: EASE.OUT }}
       className={
-        isMobile
+        // 程序焦点 (#113): opening the card focuses this container, and the
+        // browser default outline would double the card's own border — the
+        // border already says where it is. The close button inside keeps the
+        // shared focus ring (buttons are interactive, the card is a reading
+        // surface).
+        (isMobile
           ? 'relative z-20 pointer-events-auto w-full'
-          : 'absolute top-24 left-4 md:left-14 z-20 pointer-events-auto max-w-xs md:max-w-sm'
+          : 'absolute top-24 left-4 md:left-14 z-20 pointer-events-auto max-w-xs md:max-w-sm') +
+        ' focus:outline-none'
       }
     >
       <div
@@ -168,7 +174,9 @@ export default function InfoCards({ selectedStar, onSelectStar }: InfoCardsProps
               {phaseLine}
             </p>
             {readout.milestone === 'none' && (
-              <p className="text-[10px] tracking-[0.15em] uppercase text-white/35 font-extralight mt-1">
+              // 相位方向 rides the phase line at the 文字底线 (#113): 12px and
+              // /55 — the direction reads as copy, not as decoration.
+              <p className="text-xs tracking-[0.15em] uppercase text-white/55 font-extralight mt-1">
                 {readout.direction === 'brightening' ? t.phaseBrightening : t.phaseFading}
               </p>
             )}

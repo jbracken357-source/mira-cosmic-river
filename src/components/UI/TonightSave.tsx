@@ -9,8 +9,9 @@ import { primaryAction } from '../../lib/tonightSave';
 // reads it back at once — preserveDrawingBuffer stays off). The panel is part of the
 // save action, not a settings panel: overlay options re-compose the locked
 // snapshot, closing discards it, and reopening captures a fresh one. `compact`
-// (#111) is the phone-portrait bar's one-row voice: a step down in size so the
-// row never wraps.
+// (#111) is the phone-portrait bar's one-row voice: compact-label, the row's
+// shared language-split size (#113 — zh 12px, en keeps the 10px the 320px
+// margin was tuned to).
 export default function TonightSave({ compact = false }: { compact?: boolean }) {
   const language = useBinaryStar((state) => state.language);
   const t = TRANSLATIONS[language];
@@ -55,8 +56,8 @@ export default function TonightSave({ compact = false }: { compact?: boolean }) 
   // The overlay option chips: a quiet state dot says on/off at a glance, the way
   // the words alone never quite did.
   const optionChip = (active: boolean) =>
-    `min-h-11 inline-flex items-center gap-2 text-[10px] font-extralight tracking-widest transition-colors ${
-      active ? 'text-white/75' : 'text-white/45 hover:text-white/70'
+    `min-h-11 inline-flex items-center gap-2 text-xs font-extralight tracking-widest transition-colors ${
+      active ? 'text-white/75' : 'text-white/55 hover:text-white/70'
     }`;
   const optionDot = (active: boolean) =>
     `w-1.5 h-1.5 rounded-full transition-colors ${active ? 'bg-[#fef3c7]/85' : 'bg-white/20'}`;
@@ -75,7 +76,7 @@ export default function TonightSave({ compact = false }: { compact?: boolean }) 
         // 顶栏的句首大写 (#110): #90's "never all-caps MIRA" holds for the whole
         // row now — every control keeps the casing it is written with.
         className={`pointer-events-auto whisper-btn min-h-11 min-w-11 inline-flex items-center justify-center font-extralight ${
-          compact ? 'text-[10px] tracking-wider' : 'text-[11px] md:text-xs tracking-widest'
+          compact ? 'compact-label' : 'text-xs tracking-widest'
         }`}
       >
         {t.tonightSave}
@@ -96,7 +97,7 @@ export default function TonightSave({ compact = false }: { compact?: boolean }) 
         >
           <div className="flex items-center justify-between">
             {/* The panel's own title is the same name — mixed case here too (#90). */}
-            <p className="text-[10px] tracking-[0.25em] text-white/45 font-extralight">
+            <p className="text-xs tracking-[0.25em] text-white/55 font-extralight">
               {t.tonightSave}
             </p>
             <button
@@ -119,7 +120,7 @@ export default function TonightSave({ compact = false }: { compact?: boolean }) 
 
           {offscreenRow && (
             <div className="flex items-center justify-between flex-wrap gap-x-4 gap-y-1">
-              <p data-testid="tonight-offscreen" className="text-[10px] tracking-[0.2em] text-white/45 font-extralight">
+              <p data-testid="tonight-offscreen" className="text-xs tracking-[0.2em] text-white/55 font-extralight">
                 {t.tonightOffscreen}
               </p>
               <button

@@ -95,11 +95,12 @@ body {
 }
 
 /* Whisper controls: the interface's default button voice. At rest they sit near
-   the scene (white/45 reads on the deep-space ground where /30 vanished), and
-   hover is two things at once — a colour lift plus a slow underline reveal —
-   because on near-black a bare brightness step is not perceptible feedback. */
+   the scene (white/55 is the 文字底线 #113 — the quietest a reading label may
+   sit on the deep-space ground), and hover is two things at once — a colour
+   lift plus a slow underline reveal — because on near-black a bare brightness
+   step is not perceptible feedback. */
 .whisper-btn {
-  color: rgba(255, 255, 255, 0.45);
+  color: rgba(255, 255, 255, 0.55);
   text-decoration-line: underline;
   text-decoration-color: transparent;
   text-decoration-thickness: 1px;
@@ -122,6 +123,22 @@ body {
 .whisper-btn:disabled {
   color: rgba(255, 255, 255, 0.22);
   text-decoration-color: transparent;
+}
+
+/* The phone-portrait row's label size (#111 × #113). The 文字底线 raises Chinese
+   to 12px — CJK strokes go muddy below it — and Chinese holds the one-row
+   contract at both phone frames even at 12px. English keeps #111's 10px, the
+   size that margin was tuned to: at 12px 「Ambient sound」 alone measures 103px
+   and the 320px row cannot hold the labels (measured; en with 主视角 at 320 was
+   already two-line at 10px). The document's lang attribute carries the split,
+   so the row re-flows with the labels on a language switch. */
+.compact-label {
+  font-size: 10px;
+  letter-spacing: 0.05em;
+}
+
+html[lang='zh-CN'] .compact-label {
+  font-size: 12px;
 }
 
 /* One focus ring for every interactive control (#20): the ring lives at the
