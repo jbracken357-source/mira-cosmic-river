@@ -138,6 +138,9 @@ export const TRANSITIONS = {
   // tests/unit/animationTiming.spec.ts.
   TOP_BAR_EPILOGUE_EXIT: 0.4,
   TOP_BAR_EPILOGUE_RETURN: 1.2,
+  // 「更多」面板 (#111): the compact bar's second shelf fades in and out — opacity
+  // only, no displacement, and 0 under reduced motion.
+  MORE_PANEL_FADE: 0.16,
   // The milestone hint's own enter/exit fade while it borrows the lower edge.
   MILESTONE_HINT_FADE: 0.4,
   // Opening captions (the cinematic's three lines) leave faster than they arrive,

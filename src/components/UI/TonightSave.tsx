@@ -6,10 +6,12 @@ import { primaryAction } from '../../lib/tonightSave';
 
 // 今晚的 Mira (#23): a quiet header entry plus the save panel. Pressing the entry
 // captures the current frame in that same task (the shell forces one render and
-// reads it back at once — preserveDrawingBuffer stays off). The panel is part of
-// the save action, not a settings panel: overlay options re-compose the locked
-// snapshot, closing discards it, and reopening captures a fresh one.
-export default function TonightSave() {
+// reads it back at once — preserveDrawingBuffer stays off). The panel is part of the
+// save action, not a settings panel: overlay options re-compose the locked
+// snapshot, closing discards it, and reopening captures a fresh one. `compact`
+// (#111) is the phone-portrait bar's one-row voice: a step down in size so the
+// row never wraps.
+export default function TonightSave({ compact = false }: { compact?: boolean }) {
   const language = useBinaryStar((state) => state.language);
   const t = TRANSLATIONS[language];
   const phase = useTonightSave((state) => state.phase);
@@ -72,7 +74,9 @@ export default function TonightSave() {
         onClick={open}
         // 顶栏的句首大写 (#110): #90's "never all-caps MIRA" holds for the whole
         // row now — every control keeps the casing it is written with.
-        className="pointer-events-auto whisper-btn min-h-11 min-w-11 inline-flex items-center justify-center text-[11px] md:text-xs font-extralight tracking-widest"
+        className={`pointer-events-auto whisper-btn min-h-11 min-w-11 inline-flex items-center justify-center font-extralight ${
+          compact ? 'text-[10px] tracking-wider' : 'text-[11px] md:text-xs tracking-widest'
+        }`}
       >
         {t.tonightSave}
       </button>

@@ -16,6 +16,13 @@
 //                        drag, a zoom, the idle creep, the epilogue's interrupted
 //                        flight — and is gone again once the viewer is back on it.
 //
+// 「更多」 (#111): on the compact bar — the phone-portrait width the project
+// already treats as mobile (useMobile's breakpoint) — the row never wraps. Of the
+// controls that would crowd it, 暂停 (once it exists), 完整开场 and 语言 tuck
+// into the 「更多」 panel below the bar; 主视角, 今晚的 Mira (after graduation)
+// and 环境音 stay direct on the row in every state. The wide bar — landscape
+// phone, desktop — never tucks anything.
+//
 // The epilogue's hush of the whole bar (and its ~0.4s exit, TRANSITIONS.
 // TOP_BAR_EPILOGUE_EXIT) is a rendering concern of the header, not of this verdict.
 import { CAMERA, PORTRAIT_CAMERA } from '../constants/animation';
@@ -23,14 +30,19 @@ import { CAMERA, PORTRAIT_CAMERA } from '../constants/animation';
 export interface TopBarInput {
   manipulated: boolean;      // the viewer dragged or zoomed the scene this visit
   awayFromMainView: boolean; // the camera sits off the explore framing
+  compact: boolean;          // the phone-portrait bar (#111): the row that tucks into 「更多」
 }
 
-// Only the conditional controls are answered here; 环境音 / 语言 / 完整开场 never
-// leave the free-viewing bar.
+// Only the conditional controls are answered here; 环境音 never leaves the
+// free-viewing bar.
 export interface TopBarVisibility {
   pause: boolean;
   tonightSave: boolean;
   returnToView: boolean;
+  // Which of the bar's controls live inside 「更多」 instead of on the row — null
+  // when the bar is wide and nothing tucks. 暂停 tucks only once it exists;
+  // 完整开场 and 语言 always tuck on the compact bar.
+  tucked: null | { pause: boolean; replay: boolean; language: boolean };
 }
 
 export function topBarVisibility(input: TopBarInput): TopBarVisibility {
@@ -38,6 +50,9 @@ export function topBarVisibility(input: TopBarInput): TopBarVisibility {
     pause: input.manipulated,
     tonightSave: input.manipulated,
     returnToView: input.awayFromMainView,
+    tucked: input.compact
+      ? { pause: input.manipulated, replay: true, language: true }
+      : null,
   };
 }
 

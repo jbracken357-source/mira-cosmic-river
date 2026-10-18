@@ -186,7 +186,8 @@ test.describe('touch targets and focus', () => {
 
     // The quiet first look graduates with the visit's first manipulation (#90):
     // 暂停 and 今晚的 Mira join after a zoom, 主视角 once the camera is off the
-    // main view.
+    // main view. On the phone-portrait bar (#111) 暂停, 完整开场 and 语言 live in
+    // the 「更多」 panel — the 44px contract follows them inside.
     await manipulateScene(page);
     await dragOffMainView(page);
 
@@ -194,10 +195,13 @@ test.describe('touch targets and focus', () => {
       'return-to-view',
       'tonight-save',
       'ambient-toggle',
-      'pause-toggle',
-      'replay-opening',
-      'language-toggle',
+      'more-toggle',
     ]) {
+      await expectMinTarget(page, testId);
+    }
+    await page.getByTestId('more-toggle').click();
+    await expect(page.getByTestId('more-panel')).toBeVisible();
+    for (const testId of ['pause-toggle', 'replay-opening', 'language-toggle']) {
       await expectMinTarget(page, testId);
     }
 
@@ -308,11 +312,25 @@ for (const viewport of VIEWPORTS) {
     await gotoExplore(page);
 
     // 第一眼的三件 (#90) are present at once; 暂停 and 今晚的 Mira join after the
-    // visit's first manipulation.
-    for (const testId of ['ambient-toggle', 'replay-opening', 'language-toggle']) {
-      await expect(page.getByTestId(testId)).toBeVisible();
+    // visit's first manipulation. On the portrait phones (#111) 完整开场 and 语言
+    // (and 暂停, once graduated) live inside 「更多」 — the landscape phone keeps
+    // the wide row.
+    const compact = viewport.width < 640;
+    if (compact) {
+      await expect(page.getByTestId('ambient-toggle')).toBeVisible();
+      await expect(page.getByTestId('more-toggle')).toBeVisible();
+      await page.getByTestId('more-toggle').click();
+      for (const testId of ['replay-opening', 'language-toggle']) {
+        await expect(page.getByTestId(testId)).toBeVisible();
+      }
+    } else {
+      for (const testId of ['ambient-toggle', 'replay-opening', 'language-toggle']) {
+        await expect(page.getByTestId(testId)).toBeVisible();
+      }
     }
     await manipulateScene(page);
+    // The wheel does not press, so the compact panel (if open) survives the zoom —
+    // 暂停 is reachable inside it either way.
     for (const testId of ['pause-toggle', 'tonight-save']) {
       await expect(page.getByTestId(testId)).toBeVisible();
     }
