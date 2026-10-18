@@ -4,6 +4,11 @@ on:
   push:
     branches: [master]
   pull_request:
+  # Manual dispatch: today's GitHub incident dropped this repo's pull_request
+  # events for hours while push events flowed; dispatch keeps the suite runnable
+  # on a branch ref when that happens again. Gate merges on the run's
+  # conclusion either way.
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}
