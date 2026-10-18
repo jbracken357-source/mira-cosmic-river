@@ -24,7 +24,7 @@ export default function AmbientToggle() {
       data-ambient-phase={phase}
       aria-pressed={phase !== 'off' && phase !== 'failed'}
       onClick={toggle}
-      className={`pointer-events-auto min-h-11 min-w-11 inline-flex items-center justify-center gap-2 text-[11px] md:text-xs font-extralight tracking-widest uppercase transition-colors ${
+      className={`pointer-events-auto min-h-11 min-w-11 inline-flex items-center justify-center gap-2 text-[11px] md:text-xs font-extralight tracking-widest transition-colors ${
         phase === 'playing' ? 'text-white/70 hover:text-white/90' : 'whisper-btn'
       }`}
     >
