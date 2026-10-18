@@ -47,10 +47,14 @@ export const CAMERA = {
     fov: 45,
   },
   // Idle hold, not explore framing. The look-at biases left so the pair drifts
-  // right of the centered epilogue line instead of sitting under it.
+  // right of the centered epilogue line instead of sitting under it. #115 deepened
+  // the bias (-8 → -9.5): at the real 60s idle 共同前行 has effectively arrived
+  // (~2.4 units down the 去向), and against that settled composition the wider of
+  // the two epilogue lines (English) sat on the giant's ×1.4 disc by ~14px — the
+  // deeper bias keeps both languages' boxes clear of it.
   CLOSING: {
     position: [8, 10, 34] as [number, number, number],
-    lookAt: [-8, 1, 6] as [number, number, number],
+    lookAt: [-9.5, 1, 6] as [number, number, number],
     fov: 48,
   },
   // The pull-back's fov range is CLOSE.fov → FAR.fov; the opening timeline reads it
