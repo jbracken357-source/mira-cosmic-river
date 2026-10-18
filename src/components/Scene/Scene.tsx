@@ -4,7 +4,7 @@ import { OrbitControls as DreiOrbitControls } from '@react-three/drei';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import { useReducedMotion } from 'framer-motion';
 import { useBinaryStar, ambientSpace, tonightFrame, useEntryReadiness } from '../../hooks';
-import { COLORS, PHYSICS, calculateOrbitalPosition, CINEMATIC, CAMERA as LANDSCAPE_CAMERA, TRANSLATIONS, resolveQualityTier, ENTRY_STILL, ENTRY_STILL_BACKDROP, DRAG_NOT_CLICK_PX } from '../../constants';
+import { COLORS, PHYSICS, calculateOrbitalPosition, CINEMATIC, CAMERA as LANDSCAPE_CAMERA, TRANSLATIONS, resolveQualityTier, ENTRY_STILL, ENTRY_STILL_BACKDROP, DRAG_NOT_CLICK_PX, MIRA_B_TOUCH_TARGET_MIN_PX } from '../../constants';
 import type { QualityTier } from '../../constants';
 import { PORTRAIT_CAMERA } from '../../constants/animation';
 import {
@@ -129,6 +129,13 @@ function SceneContent({
   const cinematicStartRef = useRef(0);
   const cinematicElapsedRef = useRef(0);
   const captionMarkRef = useRef(0);
+  // 伴星触控目标 (#112): scratch pair for the per-frame target resize — the view
+  // direction and the camera→companion offset it is read against.
+  const touchDirRef = useRef(new THREE.Vector3());
+  const touchVecRef = useRef(new THREE.Vector3());
+  // 悬停手形 (#112): how many click targets sit under the pointer right now —
+  // over/out notes maintain it, the frame loop reads it.
+  const hoverCountRef = useRef(0);
   // 共同前行 (#86): the pair's shared ride along the tail's heading. The phase is
   // a scene clock like the orbit's — it only runs in free viewing, pauses with the
   // scene, resumes from the held phase, and parks under reduced motion / capture.
@@ -294,6 +301,16 @@ function SceneContent({
     store.setEpilogueText(control.epilogueText);
     const { introComplete, cinematicPhase } = store;
 
+    // 悬停手形 (#112): the hand over the click targets, written write-on-change
+    // like the verdicts around it. The phase decides, not the event that last
+    // fired: inside 自由观看 a hovered target shows the hand — including one the
+    // pointer reached before the opening ended — and the 完整开场 keeps the
+    // default cursor whatever sits under the pointer.
+    const handCursor = cinematicPhase === 'explore' && hoverCountRef.current > 0 ? 'pointer' : '';
+    if (state.gl.domElement.style.cursor !== handCursor) {
+      state.gl.domElement.style.cursor = handCursor;
+    }
+
     // Apply the free-viewing verdicts: the pose (already fitted for the current
     // aspect), the controls enable state, and the landing's one-shot bookkeeping —
     // idle counts from the moment exploration starts, and the opening's start mark
@@ -437,6 +454,28 @@ function SceneContent({
     miraBGroupRef.current?.position.set(companion[0], companion[1], companion[2]);
     miraBTargetRef.current?.position.set(companion[0], companion[1], companion[2]);
 
+    // 伴星触控目标 (#112): portrait rescales the companion's click sphere to the
+    // world radius that projects to the touch minimum at its depth along the
+    // view axis — the impact-parameter distance the raycaster actually tests, so
+    // a tap within half the minimum of the projection lands. Landscape keeps the
+    // desktop radius the explore framing was tuned against (scale 1).
+    if (miraBTargetRef.current) {
+      let touchScale = 1;
+      if (portrait) {
+        camera.getWorldDirection(touchDirRef.current);
+        const alongDepth = touchVecRef.current
+          .set(
+            companion[0] - camera.position.x,
+            companion[1] - camera.position.y,
+            companion[2] - camera.position.z,
+          )
+          .dot(touchDirRef.current);
+        const worldPerPx = (2 * alongDepth * Math.tan((camera.fov * Math.PI) / 360)) / state.size.height;
+        touchScale = Math.max(1, ((MIRA_B_TOUCH_TARGET_MIN_PX / 2) * worldPerPx) / (PHYSICS.MIRA_B.radius * 2));
+      }
+      miraBTargetRef.current.scale.setScalar(touchScale);
+    }
+
     // Ambient sound (#22): the distance to the orbit target (pan is disabled, so
     // the target is the fixed look-at) feeds the barely-there tone shift. A plain
     // write, never a store update — the sound shell polls it a few times a second,
@@ -519,6 +558,16 @@ function SceneContent({
   });
 
   // Tail opacity is computed in useFrame and stored in tailOpacityRef
+
+  // 悬停手形 (#112): the click targets only note that the pointer is on them;
+  // the frame loop below turns the notes into the hand cursor, so the verdict
+  // tracks the phase instead of the event stream — a pointer that sat on a star
+  // through the 完整开场 gets the hand the moment 自由观看 begins, and a replay
+  // takes it back without waiting for a move.
+  const noteHover = (over: boolean) => () => {
+    hoverCountRef.current = Math.max(0, hoverCountRef.current + (over ? 1 : -1));
+  };
+
   return (
     <>
       {/* Portrait stands farther down the tail, so the haze has to reach that far
@@ -549,6 +598,8 @@ function SceneContent({
             drag ending on a star must not fall through to the background's deselect. */}
         <mesh
           userData={{ starName: 'miraA' }}
+          onPointerOver={noteHover(true)}
+          onPointerOut={noteHover(false)}
           onClick={(e) => {
             e.stopPropagation();
             if (e.delta > DRAG_NOT_CLICK_PX) return;
@@ -574,6 +625,8 @@ function SceneContent({
       <mesh
         ref={miraBTargetRef}
         userData={{ starName: 'miraB' }}
+        onPointerOver={noteHover(true)}
+        onPointerOut={noteHover(false)}
         onClick={(e) => {
           e.stopPropagation();
           if (e.delta > DRAG_NOT_CLICK_PX) return;
@@ -607,6 +660,8 @@ function SceneContent({
         ref={tailTargetRef}
         position={occupancy.click.position}
         userData={{ starName: 'tail' }}
+        onPointerOver={noteHover(true)}
+        onPointerOut={noteHover(false)}
         onClick={(e) => {
           e.stopPropagation();
           if (e.delta > DRAG_NOT_CLICK_PX) return;

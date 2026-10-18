@@ -159,6 +159,12 @@ export const MILESTONE_HINT_MS = 8000;
 // the red giant's centre and still opened the card.
 export const DRAG_NOT_CLICK_PX = 4;
 
+// 伴星触控目标 (#112): on portrait screens the companion's click sphere is
+// rescaled every frame so its projected target never falls below this many CSS
+// px — the touch minimum a fingertip can land inside. Landscape keeps the
+// desktop radius the explore framing was tuned against.
+export const MIRA_B_TOUCH_TARGET_MIN_PX = 44;
+
 // Info card (#20): snappy enough that the card reads as an answer to the tap, not a
 // scene change. Enter 180–240ms, exit 120–180ms; the windows are pinned by
 // tests/unit/animationTiming.spec.ts. Under reduced motion the card only fades.
