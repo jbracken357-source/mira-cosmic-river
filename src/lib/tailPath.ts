@@ -161,6 +161,43 @@ export function tailCenterline(t: number, length: number): Vec3 {
   ];
 }
 
+// 穿行体积's near mist (ForegroundDrift): puffs strung along the road but pushed
+// out to the camera's side of it, in the tail's own frame, so they pass between the
+// viewer and the river. t picks where along the road; lateral is the push toward
+// the near side (the in-plane normal of the road's run), vertical a loose scatter.
+// nearFade is the camera distance over which a puff fades in — a close pass never
+// becomes one grey card filling the frame.
+export const FOREGROUND_DRIFT = {
+  count: 12,
+  countLow: 5,
+  // Kept off the pair: mist over the stars veiled the giant in violet.
+  t: [0.45, 1.0] as [number, number],
+  lateral: [3, 9] as [number, number],
+  vertical: [-4, 3.5] as [number, number],
+  scale: [5, 9] as [number, number],
+  opacity: 0.045,
+  color: '#7d88c8',
+  nearFade: [4, 12] as [number, number],
+} as const;
+
+// Where a foreground puff sits, from three unit rolls: along the road, pushed to
+// its near side, scattered vertically. Pure, so its placement is testable.
+export function foregroundPuff(length: number, rollT: number, rollSide: number, rollUp: number): Vec3 {
+  const d = FOREGROUND_DRIFT;
+  const t = d.t[0] + rollT * (d.t[1] - d.t[0]);
+  const c = tailCenterline(t, length);
+  // Toward the explore camera, which sits far out on +z in the tail's frame, and a
+  // little back along the road (-x): pushed along the road's in-plane normal instead,
+  // the puffs swung back over the pair on screen.
+  const n = Math.hypot(0.25, 1);
+  const side = d.lateral[0] + rollSide * (d.lateral[1] - d.lateral[0]);
+  return [
+    c[0] - (0.25 / n) * side,
+    c[1] + d.vertical[0] + rollUp * (d.vertical[1] - d.vertical[0]),
+    c[2] + (1 / n) * side,
+  ];
+}
+
 export function tailSpread(t: number): number {
   // The legacy cone, plus the root's extra reach over the same fade window.
   return 0.3 + t * 3.0 + TAIL_ROOT_SPREAD * (1 - rootFade(t));

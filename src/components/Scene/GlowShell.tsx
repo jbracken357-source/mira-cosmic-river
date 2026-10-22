@@ -18,6 +18,8 @@ interface GlowShellProps {
   falloff: number;
   /** Radius pulse of the star inside, if it has one (fraction of its radius). */
   pulseAmp?: number;
+  /** 0..1: radial filaments in the halo (see Atmosphere_Shader). */
+  fibers?: number;
   /** Parent-owned material ref, for the per-frame uniforms (time, and the real clock). */
   materialRef?: RefObject<THREE.ShaderMaterial | null>;
 }
@@ -30,6 +32,7 @@ export default function GlowShell({
   opacity,
   falloff,
   pulseAmp,
+  fibers,
   materialRef,
 }: GlowShellProps) {
   return (
@@ -46,6 +49,7 @@ export default function GlowShell({
           opacity,
           falloff,
           pulseAmp,
+          fibers,
         })}
         side={THREE.BackSide}
         blending={THREE.AdditiveBlending}

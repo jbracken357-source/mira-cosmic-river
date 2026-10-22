@@ -1,7 +1,8 @@
 import { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls as DreiOrbitControls } from '@react-three/drei';
-import { EffectComposer, Bloom } from '@react-three/postprocessing';
+import { EffectComposer, Bloom, ToneMapping, Vignette, Noise } from '@react-three/postprocessing';
+import { BlendFunction, ToneMappingMode } from 'postprocessing';
 import { useReducedMotion } from 'framer-motion';
 import { useBinaryStar, ambientSpace, tonightFrame, useEntryReadiness } from '../../hooks';
 import { COLORS, PHYSICS, calculateOrbitalPosition, CINEMATIC, CAMERA as LANDSCAPE_CAMERA, TRANSLATIONS, resolveQualityTier, ENTRY_STILL, ENTRY_STILL_BACKDROP, DRAG_NOT_CLICK_PX, MIRA_B_TOUCH_TARGET_MIN_PX } from '../../constants';
@@ -656,6 +657,7 @@ function SceneContent({
           opacityRef={tailOpacityRef}
           particleCount={lod.tailParticles}
           tailLength={PHYSICS.TAIL.length}
+          miraARef={miraAAnchorRef}
           miraBRef={miraBGroupRef}
           portrait={portrait}
           tier={tier}
@@ -746,14 +748,22 @@ function SceneContent({
   );
 }
 
-function PostProcessing({ tier }: { tier: QualityTier }) {
+function PostProcessing({ tier, reduceMotion }: { tier: QualityTier; reduceMotion: boolean }) {
   const sky = useBinaryStar((state) => state.sky);
   const light = pulsationLighting(sky);
+  // Film grain is a fresh random field every frame: it would make two captures of
+  // one URL differ, and under reduced motion it is flicker the viewer asked to drop.
+  const grain = !captureMode().active && !reduceMotion;
   // Bloom is a stack of full-screen passes: keep it off the light tier.
   // Low quality has no bloom — StarField carries the same envelope there.
   if (tier === 'low') return null;
   const levels = qualityBudget(tier).bloomLevels;
 
+  // The composer renders the scene into a half-float target and switches the
+  // renderer's own tone mapping off for the whole chain, so without a closing
+  // ToneMapping pass high and mid presented raw linear light, clipped at 1. The
+  // pass restores the curve the light tier gets from the renderer (r3f's ACES),
+  // after the bloom has read the unclipped HDR values.
   return (
     <EffectComposer enableNormalPass={false}>
       <Bloom
@@ -763,6 +773,12 @@ function PostProcessing({ tier }: { tier: QualityTier }) {
         radius={light.bloomRadius}
         levels={levels}
       />
+      <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
+      {/* A lens's falloff toward the corners keeps the eye on the pair and the river,
+          and a whisper of grain breaks up the banding a smooth HDR gradient leaves
+          in 8-bit output. Both stay well under the threshold of being noticed. */}
+      <Vignette offset={0.32} darkness={0.5} />
+      <Noise premultiply blendFunction={BlendFunction.SCREEN} opacity={grain ? 0.035 : 0} />
     </EffectComposer>
   );
 }
@@ -918,6 +934,7 @@ export default function Scene({ onSelectStar }: SceneProps) {
         alpha: false,
         stencil: false,
         depth: true,
+        toneMappingExposure: 1.6,
       }}
       dpr={qualityBudget(tier).dpr}
       style={{
@@ -940,7 +957,7 @@ export default function Scene({ onSelectStar }: SceneProps) {
         governor={{ enabled: setup.enabled, config: setup.config }}
         onTierChange={handleTierChange}
       />
-      <PostProcessing tier={tier} />
+      <PostProcessing tier={tier} reduceMotion={reduceMotion} />
     </Canvas>
     </>
   );

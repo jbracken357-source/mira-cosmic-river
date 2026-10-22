@@ -201,7 +201,13 @@ export const MiraA_Shader = {
       // dissolves into the mapped surface instead of switching in one frame. Both
       // endpoints match the old hard switch value for value; sampling the unbound map
       // at weight zero yields defined black that never reaches the mix.
-      float mapped = mix(.5, texture2D(uSurfaceMap, uv).r, detailStrength);
+      // Most of the map's weight comes from a blurred read (a coarser mip): the bright
+      // cells merge into a few large mottled patches and the dark network softens, which
+      // is the difference between a ball of gas and a lava-cracked rock. The sharp read
+      // keeps a little grain on top.
+      float sharpTexel = texture2D(uSurfaceMap, uv).r;
+      float softTexel = texture2D(uSurfaceMap, uv, 2.5).r;
+      float mapped = mix(.5, mix(softTexel, sharpTexel, .3), detailStrength);
       // The map's native contrast is crackle; an S-curve through its middle keeps the
       // large light and dark regions and lets the fine network between them fade out.
       mapped = mix(mapped, smoothstep(.22, .78, mapped), .58);
@@ -221,7 +227,11 @@ export const MiraA_Shader = {
       // strength edge to edge.
       float cellLift = mix(${PULSE_CELL_LIFT_DIM}, ${PULSE_CELL_LIFT_BRIGHT}, pulsePhase);
       color += vec3(1.2, .58, .16) * pow(heat, 5.) * cellLift * detailStrength;
-      color *= .36 + .64 * pow(mu, .55);
+      // Limb darkening, and the limb reddens as it darkens: the sight-line grazes cooler,
+      // higher gas. A flat-lit disc of bright cells is what read as lava rock; a centre
+      // that glows through a deepening rim reads as a ball of gas.
+      color *= .2 + .8 * pow(mu, .75);
+      color *= mix(vec3(1., .55, .4), vec3(1.), smoothstep(.0, .55, mu));
       float surfaceLight = 1. + ${PULSE_LIGHT_SWING} * (pulsePhase * 2. - 1.);
       color *= surfaceLight * (.68 + .55 * uBrightness);
       color *= mix(vec3(1., .7, .5), vec3(1., 1., .94), uColorShift);
@@ -248,6 +258,8 @@ export function makeAtmosphereUniforms(overrides: {
   opacity: number;
   falloff: number;
   pulseAmp?: number;
+  /** 0: a smooth halo. 1: the halo breaks into radial filaments (Mira A's corona). */
+  fibers?: number;
 }): Record<string, { value: unknown }> {
   return {
     uColor: { value: new THREE.Color(overrides.color) },
@@ -258,6 +270,7 @@ export function makeAtmosphereUniforms(overrides: {
     uShellRadius: { value: overrides.shellRadius },
     uCoreRadius: { value: overrides.coreRadius ?? 0 },
     uPulseAmp: { value: overrides.pulseAmp ?? 0 },
+    uFibers: { value: overrides.fibers ?? 0 },
   };
 }
 
@@ -294,6 +307,18 @@ export const Atmosphere_Shader = {
     uniform float uShellRadius;
     uniform float uCoreRadius;
     uniform float uPulseAmp;
+    uniform float uFibers;
+
+    // Value noise on a circle: period cells around the full turn, so the seam where
+    // atan wraps from pi to -pi never shows as a line in the corona.
+    float hash1(float n) { return fract(sin(n * 127.1) * 43758.5453); }
+    float ringNoise(float x, float period) {
+      float i = floor(x);
+      float f = fract(x);
+      float a = hash1(mod(i, period));
+      float b = hash1(mod(i + 1., period));
+      return mix(a, b, f * f * (3. - 2. * f));
+    }
 
     void main() {
       vec3 dir = normalize(vViewPos);
@@ -315,6 +340,19 @@ export const Atmosphere_Shader = {
       // shell radius leaves a visible circle in the sky, which is how a volume starts to look
       // like a stack of discs again.
       float glow = exp(-uFalloff * across) * (1.0 - smoothstep(0.68, 1.0, across));
+
+      // Filaments (uFibers): the halo breaks into radial strands that lean and drift a
+      // little with height, the fibrous limb of the reference art instead of an even
+      // airbrushed ring. Angle around the star's centre on screen, wrapped seamlessly.
+      if (uFibers > 0.0) {
+        vec3 toLine = dir * dot(vCentre, dir) - vCentre;
+        float turn = atan(toLine.y, toLine.x) / 6.2831853 + 0.5;
+        float lean = across * 1.8 + uTime * 0.03;
+        float coarse = ringNoise(turn * 61.0 + lean, 61.0);
+        float fine = ringNoise(turn * 173.0 - lean * 1.7, 173.0);
+        float strands = smoothstep(0.15, 1.0, coarse * 0.55 + fine * 0.45);
+        glow *= mix(1.0, 0.55 + 1.15 * strands, uFibers);
+      }
 
       // Slow, cheap wobble so the halo is not a perfect surface of revolution.
       float ripple = 1.0 + 0.07 * sin(dir.y * 9.0 + uTime * 0.7) * sin(dir.x * 7.0 - uTime * 0.5);

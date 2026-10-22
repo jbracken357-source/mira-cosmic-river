@@ -16,6 +16,8 @@ interface MaterialStreamProps {
   turbulence: number;
 }
 
+const STREAM_HDR_GAIN = 1.8;
+
 // Deterministic pseudo-random function seeded by index
 function seededRandom(seed: number): number {
   const x = Math.sin(seed * 12.9898) * 43758.5453;
@@ -39,7 +41,9 @@ export default function MaterialStream({
 
     for (let i = 0; i < particleCount; i++) {
       const t = i / particleCount;
-      const color = colorStart.clone().lerp(colorEnd, t);
+      // HDR: the thread between the pair is the brightest gas in the frame after the
+      // stars themselves, so the bloom traces 牵引 as a line of light.
+      const color = colorStart.clone().lerp(colorEnd, t).multiplyScalar(STREAM_HDR_GAIN);
       colorsArr[i * 3] = color.r;
       colorsArr[i * 3 + 1] = color.g;
       colorsArr[i * 3 + 2] = color.b;
@@ -101,10 +105,10 @@ export default function MaterialStream({
   return (
     <points ref={pointsRef} geometry={geometry}>
       <pointsMaterial
-        size={0.075}
+        size={0.09}
         vertexColors
         transparent
-        opacity={0.2}
+        opacity={0.55}
         sizeAttenuation
         blending={THREE.AdditiveBlending}
         depthWrite={false}

@@ -122,6 +122,7 @@ export default function MiraA({ position, radius, turbulence, segments = 64 }: M
         color={MIRA_A_ATMOSPHERE.mid.color}
         opacity={MIRA_A_ATMOSPHERE.mid.opacity}
         falloff={MIRA_A_ATMOSPHERE.mid.falloff}
+        fibers={MIRA_A_ATMOSPHERE.mid.fibers}
         pulseAmp={MIRA_A_PULSE_AMPLITUDE}
       />
       <GlowShell
@@ -131,6 +132,7 @@ export default function MiraA({ position, radius, turbulence, segments = 64 }: M
         color={MIRA_A_ATMOSPHERE.outer.color}
         opacity={MIRA_A_ATMOSPHERE.outer.opacity}
         falloff={MIRA_A_ATMOSPHERE.outer.falloff}
+        fibers={MIRA_A_ATMOSPHERE.outer.fibers}
         pulseAmp={MIRA_A_PULSE_AMPLITUDE}
       />
 

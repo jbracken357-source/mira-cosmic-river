@@ -22,13 +22,20 @@ async function waitForMappedStars(page: Page) {
       if (!root) return false;
       let companion = false;
       let giant = false;
+      // The river's flow map is optional too and binds on its own clock (FLOW_WEIGHT):
+      // a shot before it lands would differ from a shot after.
+      let flow = false;
       root.store.getState().scene.traverse((obj: { material?: { uniforms?: Record<string, { value?: unknown }> } }) => {
         const uniforms = obj.material?.uniforms;
         if (!uniforms?.uSurfaceReady || uniforms.uSurfaceReady.value !== 1 || !uniforms.uSurfaceMap?.value) return;
         if (uniforms.intensity) companion = true;
         if (uniforms.uColorCore) giant = true;
       });
-      return companion && giant;
+      root.store.getState().scene.traverse((obj: { material?: { uniforms?: Record<string, { value?: unknown }> } }) => {
+        const uniforms = obj.material?.uniforms;
+        if (uniforms?.uFlowReady?.value === 1 && uniforms.uFlow?.value) flow = true;
+      });
+      return companion && giant && flow;
     });
     if (ready) return;
     await page.waitForTimeout(200);
@@ -84,6 +91,7 @@ test.describe('Daily sky', () => {
         page.waitForResponse((r) => r.url().endsWith('/materials/river-density-v1.webp')),
         page.waitForResponse((r) => r.url().endsWith('/materials/surface-density-v2.webp')),
         page.waitForResponse((r) => r.url().endsWith('/materials/companion-surface-density-v1.webp')),
+        page.waitForResponse((r) => r.url().endsWith('/materials/river-flow-v1.webp')),
       ]);
       // A mid-cycle date: no milestone window, so the hint overlay never enters the frame.
       const sky = await visitSky(page, Date.UTC(2026, 8, 12), true);

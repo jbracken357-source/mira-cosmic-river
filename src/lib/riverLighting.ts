@@ -48,6 +48,17 @@ export function riverBrightness(light: number): number {
 export const VEIL_SHADOW_RETAIN = 0.75;
 export const VEIL_LIGHT_LIFT = 0.6;
 
+// The veil's spine lift: how far the dense material inside the lane rises above the
+// body, in HDR. At full sparkle the accent ridges reach ~2.6x their body colour, past
+// the bloom threshold; volume ribbons take 60% of it.
+export const VEIL_SPINE_GAIN = 1.6;
+
+// The flow map's share of the veil density (it can only add threads: max with the
+// smoke), and how far its image stretches across the ribbon — above 1 squeezes the
+// threads toward the lane so the widest strands stay inside the ribbon's own fade.
+export const FLOW_WEIGHT = 1.0;
+export const FLOW_SPREAD = 1.25;
+
 // The veil ribbons are alpha-blended over near-black space, so the multiplicative floor that
 // suits the additive tail would crush them to invisible. Their response is gentler: shadow
 // keeps three quarters of the body, full light lifts it by a third.
@@ -87,6 +98,7 @@ export interface DailySkyCoupling {
   warmth: number;
   brightnessLift: number;
   density: number;
+  sparkle: number;
 }
 
 // The lift peaks near 1% of river gain; the density swing stays within ±4%. Both sit far
@@ -111,7 +123,21 @@ export function dailySkyCoupling(sky: SkyState): DailySkyCoupling {
     // faint one lets material settle. Centred on 0.5 — the exact cycle mean of the two
     // half-cosines — so the year as a whole neither gains nor loses river.
     density: 1 + DAILY_DENSITY_AMPLITUDE * (0.5 - brightness),
+    sparkle: dailySparkle(brightness),
   };
+}
+
+// The one daily channel meant to be SEEN from one night to the next: how hard the
+// river's lit spine and its gold beads shine. Gain, warmth and density above stay
+// whispers (the river is never re-tuned by the sky), and on their own two nights a
+// season apart rendered nearly the same frame. Sparkle carries the cycle where the
+// eye notices it: the river glitters near maximum and banks to embers near
+// minimum, never out. Centred on 1 at the cycle mean brightness (0.5).
+export const DAILY_SPARKLE_FLOOR = 0.5;
+export const DAILY_SPARKLE_SWING = 1.0;
+
+export function dailySparkle(brightness: number): number {
+  return DAILY_SPARKLE_FLOOR + DAILY_SPARKLE_SWING * clamp01(brightness);
 }
 
 // Gold accents are local to the primary's full light: quadratic falloff kills them well
@@ -129,6 +155,16 @@ export function veilLayerWeight(index: number, count: number, accent: boolean): 
   const p = count <= 1 ? 0 : (index / (count - 1)) * 2 - 1; // -1 .. 1 across the spread
   return (1.05 + 0.75 * (1 - p * p)) * 1.4;
 }
+
+// The tail's beads: a share of the points become hot grains riding close to the spine,
+// the gold-and-pearl glitter of the reference art. They are grains, not dust: their
+// opacity does not thin with the particle count, their core sits in HDR so the bloom
+// lights them, and they draw a little smaller than the dust around them.
+export const TAIL_BEAD_FRACTION = 0.05;
+export const TAIL_BEAD_SPREAD = 0.55; // of the dust's lateral spread: beads hug the spine
+export const TAIL_BEAD_OPACITY = 0.8;
+export const TAIL_BEAD_HDR = 2.6;
+export const TAIL_BEAD_SIZE = 0.6;
 
 // Base opacity for the tail points. With the density image the veil carries the body and the
 // points are texture; without it the points alone must keep the river visibly non-empty, and

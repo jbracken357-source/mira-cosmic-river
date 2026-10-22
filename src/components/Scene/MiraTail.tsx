@@ -6,7 +6,7 @@ import { createTailMaterial } from '../../shaders/tail';
 import { useReducedMotion } from 'framer-motion';
 import RiverVeil from './RiverVeil';
 import { advanceTime, captureMode } from '../../lib/captureMode';
-import { dailySkyCoupling, tailBaseOpacity } from '../../lib/riverLighting';
+import { dailySkyCoupling, tailBaseOpacity, TAIL_BEAD_FRACTION, TAIL_BEAD_OPACITY, TAIL_BEAD_SPREAD } from '../../lib/riverLighting';
 import { tailCenterline, tailSpread, PORTRAIT_FAR_FADE_SCALE } from '../../lib/tailPath';
 import { useBinaryStar } from '../../hooks';
 import type { QualityTier } from '../../constants';
@@ -15,6 +15,7 @@ interface MiraTailProps {
   opacityRef: React.MutableRefObject<number>;
   particleCount?: number;
   tailLength?: number;
+  miraARef: MutableRefObject<THREE.Group | null>;
   miraBRef: MutableRefObject<THREE.Group | null>;
   // 竖屏长卷 (#92 review): in the tall frame the far fade eases later so the
   // mist reaches the road's far end; landscape binds the identity, bit-exact.
@@ -34,6 +35,7 @@ function generateTailData(count: number, length: number) {
   const sizes = new Float32Array(count);
   const lengths = new Float32Array(count);
   const spreads = new Float32Array(count);
+  const beads = new Float32Array(count);
 
   // Stable particles keep reloads and quality comparisons visually reproducible.
   let seed = 17;
@@ -55,15 +57,22 @@ function generateTailData(count: number, length: number) {
     sizes[i] = 0.5 + random() * 1.5;
     lengths[i] = t;
     spreads[i] = 0.5 + random() * 1.5;
+    // Drawn last, so the dust keeps the exact sequence it always had.
+    if (random() < TAIL_BEAD_FRACTION) {
+      beads[i] = 1;
+      positions[i * 3 + 1] = Math.cos(angle) * radius * TAIL_BEAD_SPREAD + cy;
+      positions[i * 3 + 2] = Math.sin(angle) * radius * TAIL_BEAD_SPREAD + cz;
+    }
   }
 
-  return { positions, seeds, sizes, lengths, spreads };
+  return { positions, seeds, sizes, lengths, spreads, beads };
 }
 
 export default function MiraTail({
   opacityRef,
   particleCount = 10000,
   tailLength = 25,
+  miraARef,
   miraBRef,
   portrait,
   tier,
@@ -71,6 +80,7 @@ export default function MiraTail({
   const textureReadyRef = useRef(false);
   const pointsRef = useRef<THREE.Points<THREE.BufferGeometry, THREE.ShaderMaterial>>(null);
   const bWorldPos = useRef(new THREE.Vector3());
+  const aWorldPos = useRef(new THREE.Vector3());
   const reduceMotion = Boolean(useReducedMotion());
   const capture = captureMode();
   const skyState = useBinaryStar((state) => state.sky);
@@ -80,7 +90,7 @@ export default function MiraTail({
   const coupling = useMemo(() => dailySkyCoupling(skyState), [skyState]);
 
   const geometry = useMemo(() => {
-    const { positions, seeds, sizes, lengths, spreads } =
+    const { positions, seeds, sizes, lengths, spreads, beads } =
       generateTailData(particleCount, tailLength);
 
     const geo = new THREE.BufferGeometry();
@@ -89,6 +99,7 @@ export default function MiraTail({
     geo.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
     geo.setAttribute('aLength', new THREE.BufferAttribute(lengths, 1));
     geo.setAttribute('aSpread', new THREE.BufferAttribute(spreads, 1));
+    geo.setAttribute('aBead', new THREE.BufferAttribute(beads, 1));
     return geo;
   }, [particleCount, tailLength]);
 
@@ -118,9 +129,15 @@ export default function MiraTail({
     mat.uniforms.uOpacity.value = opacityRef.current * tailBaseOpacity(textureReadyRef.current, particleCount, coupling.density);
     mat.uniforms.uSkyGain.value = coupling.gain;
     mat.uniforms.uSkyWarmth.value = coupling.warmth;
+    mat.uniforms.uBeadOpacity.value = opacityRef.current * TAIL_BEAD_OPACITY * coupling.density;
+    mat.uniforms.uSparkle.value = coupling.sparkle;
     // 竖屏长卷 (#92 review): the far fade eases later in the tall frame; landscape
     // binds the identity 1, bit-exact. Written with the rest so a rotation flips it.
     mat.uniforms.uFarFade.value = portrait ? PORTRAIT_FAR_FADE_SCALE : 1;
+    if (miraARef.current) {
+      miraARef.current.getWorldPosition(aWorldPos.current);
+      mat.uniforms.uMiraAPos.value.copy(aWorldPos.current);
+    }
     if (miraBRef.current) {
       miraBRef.current.getWorldPosition(bWorldPos.current);
       mat.uniforms.uMiraBPos.value.copy(bWorldPos.current);
@@ -133,7 +150,7 @@ export default function MiraTail({
   return (
     <group>
       <points ref={pointsRef} geometry={geometry} material={material} raycast={() => {}} />
-      <RiverVeil opacityRef={opacityRef} readyRef={textureReadyRef} length={tailLength} reduceMotion={reduceMotion} miraBRef={miraBRef} sky={coupling} tier={tier} portrait={portrait} />
+      <RiverVeil opacityRef={opacityRef} readyRef={textureReadyRef} length={tailLength} reduceMotion={reduceMotion} miraARef={miraARef} miraBRef={miraBRef} sky={coupling} tier={tier} portrait={portrait} />
     </group>
   );
 }

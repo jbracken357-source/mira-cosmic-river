@@ -21,6 +21,9 @@ import {
   tailWorldBounds,
   veilRibbon,
   yawY,
+  FOREGROUND_DRIFT,
+  foregroundPuff,
+  TAIL_YAW,
 } from '../../src/lib/tailPath';
 
 const LENGTH = PHYSICS.TAIL.length;
@@ -310,5 +313,35 @@ test.describe('the explore framing reads the pair, the gap (空隙), and the roa
     const dFar = camPos.distanceTo(new THREE.Vector3(far[0], far[1], far[2]));
     const dPair = camPos.distanceTo(new THREE.Vector3(home.primary[0], home.primary[1], home.primary[2]));
     expect(dFar).toBeLessThan(dPair * 0.9);
+  });
+});
+
+// 穿行体积's near mist: off the pair, and between the explore camera and the road.
+test.describe('the foreground mist (ForegroundDrift)', () => {
+  const rolls = [0, 0.25, 0.5, 0.75, 1];
+  const toWorld = (p: [number, number, number]) =>
+    new THREE.Vector3(...p).applyAxisAngle(new THREE.Vector3(0, 1, 0), TAIL_YAW);
+
+  test('no puff sits on the pair, where it would veil the giant', () => {
+    for (const a of rolls) for (const b of rolls) for (const c of rolls) {
+      const puff = new THREE.Vector3(...foregroundPuff(PHYSICS.TAIL.length, a, b, c));
+      expect(puff.length()).toBeGreaterThan(PHYSICS.MIRA_A.radius * 3);
+    }
+  });
+
+  test('every puff is nearer the explore camera than the road point it hangs off', () => {
+    const camera = new THREE.Vector3(...CAMERA.EXPLORE.position);
+    for (const a of rolls) for (const b of rolls) {
+      const puff = toWorld(foregroundPuff(PHYSICS.TAIL.length, a, b, 0.5));
+      const t = FOREGROUND_DRIFT.t[0] + a * (FOREGROUND_DRIFT.t[1] - FOREGROUND_DRIFT.t[0]);
+      const road = toWorld(tailCenterline(t, PHYSICS.TAIL.length));
+      road.y = puff.y;
+      expect(puff.distanceTo(camera)).toBeLessThan(road.distanceTo(camera));
+    }
+  });
+
+  test('the mist stays a whisper', () => {
+    expect(FOREGROUND_DRIFT.opacity).toBeLessThanOrEqual(0.08);
+    expect(FOREGROUND_DRIFT.nearFade[0]).toBeGreaterThan(0);
   });
 });

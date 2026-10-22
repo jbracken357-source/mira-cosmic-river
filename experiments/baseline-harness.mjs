@@ -180,6 +180,11 @@ export async function sceneResourcesReady(page) {
     if (!veil || veil.children.some((mesh) => mesh.material.uniforms.uReady.value !== 1)) {
       return false;
     }
+    // The flow map is optional and binds on its own clock; a capture taken before it
+    // lands is a different picture of the same URL.
+    if (veil.children.some((mesh) => mesh.material.uniforms.uFlowReady?.value === 0)) {
+      return false;
+    }
     let surfaceReady = 0;
     state.scene.traverse((object) => {
       if (object.material?.uniforms?.uSurfaceReady) {

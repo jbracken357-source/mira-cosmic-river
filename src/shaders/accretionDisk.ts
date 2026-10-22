@@ -33,10 +33,14 @@ export const DISK_SHAPE = {
 // of turning the entire disk into a white bloom halo. #91 softened them further:
 // the hot spot is a broad landing glow, and the ring never piles into a hard white
 // bar beside the star.
+// Under the HDR chain (tone mapping after the bloom) the companion itself is far
+// brighter, so the arcs only lift a touch over the clipped chain's numbers and stay
+// inside #91's soft-puff bounds — hotter, the disk closed into a hard white saucer
+// from the side.
 export const DISK_GAIN = {
-  ring: 0.34,
-  hotSpot: 0.42,
-  innerGlow: 0.08,
+  ring: 0.36,
+  hotSpot: 0.46,
+  innerGlow: 0.1,
 } as const;
 
 // The alpha channel's own gains — separate numbers from the colour gains above,
@@ -44,7 +48,7 @@ export const DISK_GAIN = {
 // instead of a solid ring. Exported so the "one calibration source" claim covers
 // the alpha path too, not just the colour path.
 export const DISK_ALPHA_GAIN = {
-  ring: 0.38,
+  ring: 0.36,
   spot: 0.26,
 } as const;
 
@@ -141,6 +145,13 @@ export const AccretionDisk_Shader = {
       color += uHotColor * spot * uHotGain;
 
       float alpha = clamp(ring * beam * ${DISK_ALPHA_GAIN.ring} + spot * ${DISK_ALPHA_GAIN.spot}, 0.0, 1.0) * uOpacity;
+
+      // Thin toward the mid-plane: the mesh is a squashed sphere, and the ring painted
+      // on its upper and lower caps drew a grey dome — a helmet beside the companion —
+      // whenever the disk was seen from the side. Only gas near the plane stays lit.
+      float midplane = 1.0 - smoothstep(0.4, 0.9, abs(vPosition.y));
+      color *= midplane;
+      alpha *= midplane;
 
       gl_FragColor = vec4(color, alpha);
     }
