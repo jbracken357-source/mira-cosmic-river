@@ -30,8 +30,9 @@ async function gotoExplore(page: Page, query: string) {
   // later on a wall-clock timer (#63's fix). Do not tighten this budget toward that
   // schedule: under software GL a seconds-long frame can still hold the unmount commit
   // behind the timer (#63's lesson), so the margin — and this budget's room beyond it —
-  // is honesty about CI reality, not structural slack.
-  await expect(page.getByTestId('loading')).toHaveCount(0, { timeout: 10000 });
+  // is honesty about CI reality, not structural slack. 20s since #129: the lit
+  // high-tier frame under software GL ran past 10s twice on master CI.
+  await expect(page.getByTestId('loading')).toHaveCount(0, { timeout: 20000 });
   // The pose attribute lands at the end of the first completed frame: the loop is
   // really running before any governor assertion is made.
   await expect(canvas(page)).toHaveAttribute('data-camera-pose', /.+/, { timeout: 30000 });
@@ -85,10 +86,15 @@ test.describe('Adaptive quality', () => {
     // quality-start keeps the opening tier off the CI runner's detected mid.
     await gotoExplore(page, 'quality-start=high&quality-probe=slow&quality-window=400&quality-cooldown=10000');
 
-    await expect(canvas(page)).toHaveAttribute('data-quality-tier', 'mid', { timeout: 30000 });
-    // Well past two more slow windows: the cooldown must hold the tier at mid.
+    await expect.poll(async () => (await qualityChanges(page)).length, { timeout: 30000 }).toBeGreaterThan(0);
+    // Well past two more slow windows. Judged from history, on the governor's own
+    // clock: under software GL the first poll can see 'mid' seconds late, and a
+    // wall-clock wait then outlasts the cooldown, so a second step is legitimate.
     await page.waitForTimeout(4000);
-    await expect(canvas(page)).toHaveAttribute('data-quality-tier', 'mid');
+    const changes = await qualityChanges(page);
+    expect(changes[0]).toMatchObject({ from: 'high', to: 'mid', reason: 'sustained-slow' });
+    if (changes.length > 1) expect(changes[1].at - changes[0].at).toBeGreaterThanOrEqual(10000);
+    expect(changes.length).toBeLessThanOrEqual(2);
   });
 
   test('sustained fast frames step back up one rung', async ({ page }) => {
