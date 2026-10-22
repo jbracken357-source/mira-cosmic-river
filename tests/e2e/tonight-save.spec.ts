@@ -229,10 +229,15 @@ test.describe('Tonight\'s Mira save flow', () => {
 
     const downloads: Download[] = [];
     page.on('download', (download) => void downloads.push(download));
-    const exportButton = page.getByTestId('tonight-export');
-    await exportButton.click();
-    await exportButton.click({ force: true }).catch(() => undefined);
-    await exportButton.click({ force: true }).catch(() => undefined);
+    // Press three times inside one task, so every press lands while the first export
+    // is still running. Separate Playwright clicks can take over a second each on a
+    // slow runner; the export then finishes first, and a later press is a legitimate
+    // re-save from success, not a stacked download.
+    await page.getByTestId('tonight-export').evaluate((button: HTMLButtonElement) => {
+      button.click();
+      button.click();
+      button.click();
+    });
 
     await expect(page.getByTestId('tonight-panel')).toHaveAttribute('data-tonight-phase', 'success', { timeout: 30000 });
     // Give any stacked task time to surface before counting.
