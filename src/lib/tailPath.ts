@@ -168,8 +168,6 @@ export function tailCenterline(t: number, length: number): Vec3 {
 // nearFade is the camera distance over which a puff fades in — a close pass never
 // becomes one grey card filling the frame.
 export const FOREGROUND_DRIFT = {
-  count: 12,
-  countLow: 5,
   // Kept off the pair: mist over the stars veiled the giant in violet.
   t: [0.45, 1.0] as [number, number],
   lateral: [3, 9] as [number, number],

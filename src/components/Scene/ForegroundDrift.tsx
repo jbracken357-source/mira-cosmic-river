@@ -3,7 +3,6 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { advanceTime } from '../../lib/captureMode';
 import { FOREGROUND_DRIFT, foregroundPuff } from '../../lib/tailPath';
-import type { QualityTier } from '../../constants';
 
 // 穿行体积 (Wayfinder C): near mist crossing the frame between the viewer and the
 // river, so a turn of the camera slides the foreground past the far road. Each puff
@@ -55,16 +54,16 @@ const fragmentShader = `
   }
 `;
 
-export default function ForegroundDrift({ length, map, ready, opacityRef, tier, reduceMotion }: {
+export default function ForegroundDrift({ count, length, map, ready, opacityRef, reduceMotion }: {
+  // Puffs, from the tier's budget (driftPuffs); the parent skips a zero count.
+  count: number;
   length: number;
   // The river's smoke image, shared with the veil (null until it binds).
   map: React.MutableRefObject<THREE.Texture | null>;
   ready: React.MutableRefObject<number>;
   opacityRef: React.MutableRefObject<number>;
-  tier: QualityTier;
   reduceMotion: boolean;
 }) {
-  const count = tier === 'low' ? FOREGROUND_DRIFT.countLow : FOREGROUND_DRIFT.count;
   const geometry = useMemo(() => {
     const quad = new THREE.PlaneGeometry(1, 1);
     const geo = new THREE.InstancedBufferGeometry();
