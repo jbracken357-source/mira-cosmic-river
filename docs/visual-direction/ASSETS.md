@@ -18,7 +18,7 @@
 | ../../public/materials/companion-surface-density-v1.webp | 伴星星面正式素材 | 381172 bytes；随生产构建复制。不参加入场门禁 |
 | ../../experiments/assets/river-flow-v1.png | 光河流线灰度原始素材 | 1280×576 PNG，221564 bytes；2026-10-22 由 Grok Build 的 image_gen 生成（提示词见下文）；仅源文件 |
 | ../../public/materials/river-flow-v1.webp | 光河流线正式素材：顺流向的长丝，只叠加在体积层上（max），不参加入场门禁 | 1280×576 WebP，15466 bytes；由源文件经竖向 1.4px 模糊与高光软压缩（中心主脊压到约 0.69）得到；随生产构建复制 |
-| ../../public/materials/entry-still-v2.jpg | 加载遮罩与静态后备共用的记录静帧 | 本项目自身场景的基线法捕获（非外部素材，无第三方权利）；来源场景版本与捕获命令见同目录 entry-still-v2.SOURCE.txt；#24 引入、#29（11）按 01/02 后新美术重制，#62 从验收版 b53ed9e 重采（与 v1 逐字节一致，仅刷新溯源） |
+| ../../public/materials/entry-still-v3.jpg | 加载遮罩与静态后备共用的记录静帧 | 本项目自身场景的基线法捕获（非外部素材，无第三方权利）；来源场景版本与捕获命令见同目录 entry-still-v3.SOURCE.txt；#24 引入、#29（11）按 01/02 后新美术重制，#62 从验收版 b53ed9e 重采为 v2，2026-10-22 从 HDR / 光河改版 da2fad0 重采为 v3（v2 已删除，见 git 历史） |
 
 密度图生成约束：纯黑底；单条水平银白薄雾，右窄左宽；细丝与涡流；四边柔和淡出；无星星、双星、文字、颜色或光源；用于弯曲网格的局部纹理。原始文件保持不变。无需假设 PNG 有 alpha，shader 直接读取灰度。
 
