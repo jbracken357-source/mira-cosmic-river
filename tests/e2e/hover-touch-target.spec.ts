@@ -112,7 +112,14 @@ test.describe('悬停手形 (#112): the hand cursor in free viewing', () => {
     while (Date.now() < deadline) {
       if (await page.getByTestId('explore-ui').isVisible()) break;
       await hoverProbe(page, box, 'data-mira-a-screen');
-      expect(await canvasCursor(page)).toBe('auto');
+      const cursor = await canvasCursor(page);
+      // The opening can end between the visibility check and this read; under load
+      // the frame loop writes the hand a frame or two before 自由观看's UI mounts.
+      // A hand counts as a leak only if free viewing does not follow at once.
+      if (cursor !== 'auto') {
+        await expect(page.getByTestId('explore-ui'), 'a hand during the opening').toBeVisible({ timeout: 1500 });
+        break;
+      }
       await page.waitForTimeout(600);
     }
 

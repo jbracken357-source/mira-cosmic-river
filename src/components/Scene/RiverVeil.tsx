@@ -98,6 +98,7 @@ const fragmentShader = `
     // carves the smoke. Optional like the companion map: until it binds, it adds nothing.
     // Volume ribbons only: on the narrow pearl accents the brightest thread became a
     // single lit wire across the frame.
+#ifdef VEIL_FLOW
     vec2 flowUv = vec2(vUv.x, (vUv.y - laneCenter) * ${FLOW_SPREAD.toFixed(3)} + .5 + (uLayer - 4.) * .021);
     flowUv.y += sin(vUv.x * 5.3 + uLayer * 2.3 + uTime * .07) * .018;
     float flow = texture2D(uFlow, flowUv).r * uFlowReady;
@@ -112,6 +113,7 @@ const fragmentShader = `
     // step back well before the ribbon itself does.
     flow *= smoothstep(.4, .85, vFacing);
     density = max(density, flow * ${FLOW_WEIGHT.toFixed(3)} * (1. - uAccent));
+#endif
     float filament = smoothstep(.42, .88, density) * lane;
     // A touch of contrast in the body: the gaps between the flows stay dark enough that
     // the lit ridges read as a river of light rather than an even violet wash.
@@ -166,7 +168,7 @@ const fragmentShader = `
   }
 `;
 
-function createLayer(length: number, index: number, count: number, accent: boolean) {
+function createLayer(length: number, index: number, count: number, accent: boolean, flow: boolean) {
   const geometry = new THREE.PlaneGeometry(1, 1, 64, 1);
   const positions = geometry.attributes.position;
   const uv = geometry.attributes.uv;
@@ -201,6 +203,8 @@ function createLayer(length: number, index: number, count: number, accent: boole
       uSkyWarmth: { value: 0 },
       uSparkle: { value: 1 },
     },
+    // The flow threads cost a texture read per fragment; the low tier skips them.
+    defines: flow ? { VEIL_FLOW: '' } : {},
     vertexShader, fragmentShader,
     transparent: true, depthWrite: false, side: THREE.DoubleSide,
     blending: accent ? THREE.AdditiveBlending : THREE.NormalBlending,
@@ -227,11 +231,11 @@ export default function RiverVeil({ opacityRef, readyRef, length, reduceMotion, 
   const groupRef = useRef<THREE.Group>(null);
   const bWorldPos = useRef(new THREE.Vector3());
   const aWorldPos = useRef(new THREE.Vector3());
-  const { veilVolumes: volumeCount, veilAccents: accentCount } = qualityBudget(tier);
+  const { veilVolumes: volumeCount, veilAccents: accentCount, veilFlow, driftPuffs } = qualityBudget(tier);
   const count = volumeCount + accentCount;
   const layers = useMemo(() => Array.from({ length: count }, (_, i) => (
-    createLayer(length, i, count, i >= volumeCount)
-  )), [length, count, volumeCount]);
+    createLayer(length, i, count, i >= volumeCount, veilFlow > 0)
+  )), [length, count, volumeCount, veilFlow]);
   const mapRef = useRef<THREE.Texture | null>(null);
   // The veil's arrival fade as of this frame, shared with the foreground mist.
   const readyValueRef = useRef(0);
@@ -351,6 +355,8 @@ export default function RiverVeil({ opacityRef, readyRef, length, reduceMotion, 
         <mesh key={i} geometry={geometry} material={material} frustumCulled={false} raycast={() => {}} />
       ))}
     </group>
-    <ForegroundDrift length={length} map={mapRef} ready={readyValueRef} opacityRef={opacityRef} tier={tier} reduceMotion={reduceMotion} />
+    {driftPuffs > 0 && (
+      <ForegroundDrift count={driftPuffs} length={length} map={mapRef} ready={readyValueRef} opacityRef={opacityRef} reduceMotion={reduceMotion} />
+    )}
   </>;
 }

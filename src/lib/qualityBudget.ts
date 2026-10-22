@@ -21,6 +21,10 @@ export interface QualityBudget {
   streamParticles: number;
   veilVolumes: number;
   veilAccents: number;
+  // 1 samples the river's flow map in every volume ribbon; 0 skips it (#129 detail).
+  veilFlow: number;
+  // Near-mist puffs (ForegroundDrift); 0 does not mount it.
+  driftPuffs: number;
   dpr: number | [number, number];
 }
 
@@ -33,6 +37,8 @@ const BUDGET: Record<QualityTier, QualityBudget> = {
     streamParticles: 600,
     veilVolumes: 7,
     veilAccents: 2,
+    veilFlow: 1,
+    driftPuffs: 12,
     dpr: [1, 1.5],
   },
   mid: {
@@ -43,6 +49,8 @@ const BUDGET: Record<QualityTier, QualityBudget> = {
     streamParticles: 600,
     veilVolumes: 7,
     veilAccents: 2,
+    veilFlow: 1,
+    driftPuffs: 12,
     dpr: 1,
   },
   // Software-rendered environments (headless CI, very weak devices)
@@ -54,6 +62,8 @@ const BUDGET: Record<QualityTier, QualityBudget> = {
     streamParticles: 150,
     veilVolumes: 2,
     veilAccents: 0,
+    veilFlow: 0,
+    driftPuffs: 0,
     dpr: 1,
   },
 };

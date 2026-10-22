@@ -13,6 +13,8 @@ const HIGH: QualityBudget = {
   streamParticles: 600,
   veilVolumes: 7,
   veilAccents: 2,
+  veilFlow: 1,
+  driftPuffs: 12,
   dpr: [1, 1.5],
 };
 
@@ -24,6 +26,8 @@ const MID: QualityBudget = {
   streamParticles: 600,
   veilVolumes: 7,
   veilAccents: 2,
+  veilFlow: 1,
+  driftPuffs: 12,
   dpr: 1,
 };
 
@@ -35,6 +39,8 @@ const LOW: QualityBudget = {
   streamParticles: 150,
   veilVolumes: 2,
   veilAccents: 0,
+  veilFlow: 0,
+  driftPuffs: 0,
   dpr: 1,
 };
 
@@ -45,6 +51,8 @@ const DECORATION = [
   'streamParticles',
   'veilVolumes',
   'veilAccents',
+  'veilFlow',
+  'driftPuffs',
 ] as const satisfies readonly (keyof QualityBudget)[];
 
 const COSTS = [...DECORATION, 'bloomLevels'] as const;
