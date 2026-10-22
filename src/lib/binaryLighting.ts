@@ -217,8 +217,8 @@ export function streamClump(t: number, seed: number): number {
 // exponential rate at which each shell's glow dies away between the limb and the shell edge —
 // a low rate for the wide haze, a high one for the dense layer.
 export const MIRA_A_ATMOSPHERE = {
-  mid: { scale: 1.22, opacity: 0.3, falloff: 3.4, color: '#f58b3c' },
-  outer: { scale: 1.8, opacity: 0.12, falloff: 2.5, color: '#df6531' },
+  mid: { scale: 1.3, opacity: 0.42, falloff: 3.0, color: '#f58b3c', fibers: 1 },
+  outer: { scale: 1.8, opacity: 0.12, falloff: 2.5, color: '#df6531', fibers: 0.5 },
 } as const;
 
 // Mira B's corona: same shader, white dwarf colours, a much tighter shell. Kept small on
@@ -231,3 +231,31 @@ export const MIRA_B_CORONA = {
   color: COLORS.MIRA_B_CORONA,
   pulseAmp: 0.015,
 } as const;
+
+// The companion is the other half of the pair, and at viewing distance its body is a
+// few pixels across. Two things keep it findable without fattening the body: the
+// shouldered core is lifted into HDR, so the bloom (and the closing tone curve)
+// carry it as a hot point of light, and a camera-facing beacon never shrinks below
+// a minimum on-screen size however far the camera pulls back. The beacon is a soft
+// glow, not a spiked star: no diffraction cross, no hard disc.
+export const MIRA_B_HDR_GAIN = 2.6;
+
+export const MIRA_B_BEACON = {
+  // World-space radius of the glow at close range, in white-dwarf radii.
+  worldScale: 7,
+  // Floor on the glow's diameter in CSS pixels, so a far camera still finds the star.
+  minPx: 26,
+  // HDR intensity of the beacon's centre; the halo falls off from it.
+  intensity: 1.5,
+  color: '#cfe0ff',
+} as const;
+
+// The beacon's radial profile at normalised radius r (0 centre, 1 sprite edge): a
+// tight hot core over a long soft halo, eased to exactly zero at the edge so the
+// sprite's square never shows.
+export function beaconProfile(r: number): number {
+  const x = clamp01(r);
+  const core = Math.exp(-x * x * 60);
+  const halo = 0.22 / (1 + x * x * 40);
+  return (core + halo) * (1 - smoothstep(0.7, 1, x));
+}

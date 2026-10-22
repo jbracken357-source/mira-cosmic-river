@@ -11,6 +11,12 @@ import {
   skyRiverGain,
   dailySkyCoupling,
   DAILY_DENSITY_AMPLITUDE,
+  DAILY_SPARKLE_FLOOR,
+  DAILY_SPARKLE_SWING,
+  dailySparkle,
+  TAIL_BEAD_FRACTION,
+  TAIL_BEAD_SPREAD,
+  VEIL_SPINE_GAIN,
   goldAccentStrength,
   veilLayerWeight,
   tailBaseOpacity,
@@ -192,6 +198,47 @@ test.describe('daily sky coupling', () => {
     const baseline = dailySkyCoupling(skyStateAt(new Date(Date.UTC(2026, 8, 12))));
     expect(Math.abs(baseline.density - 1)).toBeLessThan(0.03);
     expect(baseline.brightnessLift).toBeLessThan(0.01);
+  });
+});
+
+// The one daily channel meant to be seen night to night (the others stay whispers).
+test.describe('daily sparkle', () => {
+  test('glitters near maximum and banks to embers near minimum, never out', () => {
+    const atMaximum = dailySkyCoupling(skyStateAt(MAXIMUM_DATE));
+    const atMinimum = dailySkyCoupling(skyStateAt(MINIMUM_DATE));
+    expect(atMaximum.sparkle).toBeCloseTo(DAILY_SPARKLE_FLOOR + DAILY_SPARKLE_SWING, 10);
+    expect(atMinimum.sparkle).toBeCloseTo(DAILY_SPARKLE_FLOOR, 10);
+    // Visible, not a whisper: the brightest night sparkles at least twice the dimmest.
+    expect(atMaximum.sparkle / atMinimum.sparkle).toBeGreaterThanOrEqual(2);
+    expect(DAILY_SPARKLE_FLOOR).toBeGreaterThan(0);
+  });
+
+  test('is centred on 1 at the cycle-mean brightness, so the year neither gains nor loses', () => {
+    expect(dailySparkle(0.5)).toBeCloseTo(1, 10);
+  });
+
+  test('is monotonic in brightness and clamped outside 0..1', () => {
+    let previous = dailySparkle(0);
+    for (let b = 0.05; b <= 1; b += 0.05) {
+      expect(dailySparkle(b)).toBeGreaterThan(previous);
+      previous = dailySparkle(b);
+    }
+    expect(dailySparkle(-1)).toBe(dailySparkle(0));
+    expect(dailySparkle(2)).toBe(dailySparkle(1));
+  });
+});
+
+test.describe('the river spine and its beads', () => {
+  test('the spine lift reaches past the bloom threshold without blowing the body out', () => {
+    // At full sparkle the accent ridge is (1 + gain) times its body colour.
+    expect(1 + VEIL_SPINE_GAIN).toBeGreaterThan(2);
+    expect(1 + VEIL_SPINE_GAIN).toBeLessThan(4);
+  });
+
+  test('beads are a sprinkle that hugs the spine, not a second river', () => {
+    expect(TAIL_BEAD_FRACTION).toBeGreaterThan(0);
+    expect(TAIL_BEAD_FRACTION).toBeLessThanOrEqual(0.1);
+    expect(TAIL_BEAD_SPREAD).toBeLessThan(1);
   });
 });
 

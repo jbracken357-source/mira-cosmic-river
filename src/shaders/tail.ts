@@ -6,8 +6,9 @@
 // keep the falloff and shadow-floor formulas in step with it.
 
 import * as THREE from 'three';
-import { MIRA_A_REACH, MIRA_B_REACH, MIRA_B_GAIN, RIVER_SHADOW_FLOOR } from '../lib/riverLighting';
+import { MIRA_A_REACH, MIRA_B_REACH, MIRA_B_GAIN, RIVER_SHADOW_FLOOR, TAIL_BEAD_HDR, TAIL_BEAD_SIZE } from '../lib/riverLighting';
 import { TAIL_FADE_IN, TAIL_FAR_FADE } from '../lib/tailPath';
+import { PHYSICS } from '../constants/physics';
 
 export const TailVertexShader = `
   uniform float uTime;
@@ -16,13 +17,16 @@ export const TailVertexShader = `
   uniform float uMouseInfluence;
   uniform float uParticleSize;
   uniform vec3 uMiraBPos;
+  uniform vec3 uMiraAPos;
   uniform vec3 uReach;  // x: Mira A reach, y: Mira B reach, z: Mira B gain
   uniform float uFarFade;  // far-fade window scale: 1 landscape, <1 lets the mist reach the far end (竖屏长卷)
+  uniform float uBeadOpacity;  // the gold beads' own opacity — they are grains, not dust
 
   attribute float aSeed;
   attribute float aSize;
   attribute float aLength;  // 0 = the root between the pair, 1 = far end of tail
   attribute float aSpread;  // lateral spread factor
+  attribute float aBead;    // 1: a bead — a hot grain riding the spine; 0: dust
 
   varying float vLength;
   varying float vSeed;
@@ -30,6 +34,7 @@ export const TailVertexShader = `
   varying float vLight;   // combined light from the pair (riverLight)
   varying float vLightA;  // Mira A alone — drives the local gold accent
   varying float vLightB;  // Mira B alone — drives the cool pool around the companion
+  varying float vBead;
 
   // Simplex-like noise (simplified for performance)
   vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
@@ -88,6 +93,7 @@ export const TailVertexShader = `
   void main() {
     vLength = aLength;
     vSeed = aSeed;
+    vBead = aBead;
 
     vec3 pos = position;
 
@@ -107,7 +113,8 @@ export const TailVertexShader = `
     // Star light, computed on the displaced world position so the lit pool sits on the
     // stars even as the noise stirs the river. Mira A never leaves the origin.
     vec4 worldPos = modelMatrix * vec4(pos, 1.0);
-    vLightA = starLightFalloff(length(worldPos.xyz), uReach.x);
+    float distA = distance(worldPos.xyz, uMiraAPos);
+    vLightA = starLightFalloff(distA, uReach.x);
     vLightB = starLightFalloff(distance(worldPos.xyz, uMiraBPos), uReach.y);
     vLight = min(1.0, vLightA + uReach.z * vLightB);
 
@@ -126,14 +133,16 @@ export const TailVertexShader = `
     // the tall frame lets the mist reach the road's far end) and binds the identity
     // 1 in landscape, where the multiply by 1.0 is bit-exact.
     float depthFade = smoothstep(0.0, ${TAIL_FADE_IN}, aLength) * (1.0 - smoothstep(${TAIL_FAR_FADE}, 1.0, aLength * uFarFade));
-    vAlpha = depthFade * uOpacity;
+    vAlpha = depthFade * mix(uOpacity, uBeadOpacity, aBead);
+    // Grains inside the giant's limb would sit on the photosphere as specks.
+    vAlpha *= smoothstep(${(PHYSICS.MIRA_A.radius * 1.0).toFixed(3)}, ${(PHYSICS.MIRA_A.radius * 1.5).toFixed(3)}, distA);
 
     vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
     gl_Position = projectionMatrix * mvPosition;
 
     // Size attenuation: bigger near the root, smaller at tail end
     float sizeFactor = (1.0 - aLength * 0.7) * aSize * uParticleSize;
-    gl_PointSize = sizeFactor * (200.0 / -mvPosition.z);
+    gl_PointSize = sizeFactor * (200.0 / -mvPosition.z) * mix(1.0, ${TAIL_BEAD_SIZE.toFixed(3)}, aBead);
   }
 `;
 
@@ -146,6 +155,10 @@ export const TailFragmentShader = `
   uniform float uShadowFloor;
   uniform float uSkyGain;
   uniform float uSkyWarmth;
+  uniform float uSparkle;     // tonight's sparkle (dailySparkle): how hard the beads shine
+  uniform vec3 uColorBeadCool;
+  uniform vec3 uColorBeadGold;
+  uniform float uTime;
 
   varying float vLength;
   varying float vSeed;
@@ -153,6 +166,7 @@ export const TailFragmentShader = `
   varying float vLight;
   varying float vLightA;
   varying float vLightB;
+  varying float vBead;
 
   void main() {
     // Circular particle
@@ -196,7 +210,16 @@ export const TailFragmentShader = `
     float coreGlow = pow(circle, 1.5) * 0.4;
     color += coreGlow * vec3(1.0, 0.9, 0.8) * level;
 
-    gl_FragColor = vec4(color, vAlpha * circle);
+    // The beads (dreamlike/epic references): hot grains strung along the river, most of
+    // them gold, a third pearl-blue. A tight core in HDR, so the bloom — not the sprite
+    // — makes each one a point of light; a slow per-bead twinkle; tonight's sparkle
+    // scales them all.
+    float grain = exp(-dist * dist * 70.0);
+    float twinkle = .65 + .35 * sin(uTime * (1.2 + vSeed * 2.6) + vSeed * 61.0);
+    vec3 bead = mix(uColorBeadGold, uColorBeadCool, step(.66, fract(vSeed * 7.31)));
+    bead *= ${TAIL_BEAD_HDR.toFixed(3)} * twinkle * uSparkle * (.55 + .45 * vLight);
+
+    gl_FragColor = mix(vec4(color, vAlpha * circle), vec4(bead, vAlpha * grain), vBead);
     #include <tonemapping_fragment>
     #include <colorspace_fragment>
   }
@@ -219,6 +242,13 @@ export function createTailMaterial(): THREE.ShaderMaterial {
       uMiraBPos: { value: new THREE.Vector3(0, 0, 0) },
       uReach: { value: new THREE.Vector3(MIRA_A_REACH, MIRA_B_REACH, MIRA_B_GAIN) },
       uFarFade: { value: 1 },
+      uBeadOpacity: { value: 0 },
+      uSparkle: { value: 1 },
+      uColorBeadCool: { value: new THREE.Color('#d6e2ff') },
+      // Deeper than the river's pearl gold: at bead brightness the tone curve lifts
+      // a pale gold to white, and the grain has to land gold.
+      uColorBeadGold: { value: new THREE.Color('#ffae52') },
+      uMiraAPos: { value: new THREE.Vector3(0, 0, 0) },
       uShadowFloor: { value: RIVER_SHADOW_FLOOR },
       uSkyGain: { value: 1 },
       uSkyWarmth: { value: 0 },

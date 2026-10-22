@@ -1,0 +1,7 @@
+file: entry-still-v3.jpg
+source-scene-commit: da2fad0a9ae662e093a6ef0428fba26b64ac4992
+captured-on: 2026-10-22
+epoch: 2026-09-12T00:00:00Z
+view: default (1440x900, dpr 1, quality tier pinned high)
+captured-by: experiments/capture-entry-still.mjs
+note: made from the HDR / river-of-light pass (da2fad0); v2 came from b53ed9e (#62), v1 from d601df1 via ticket 11 (#29)

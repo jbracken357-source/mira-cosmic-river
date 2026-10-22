@@ -68,7 +68,8 @@ Framer Motion for the interface. Local AI-generated density maps supply fine det
 for both stellar surfaces and the layered river; shaders provide colour, motion and depth.
 Procedural material fallbacks keep the scene usable if a map fails to load. The
 companion map arrives on its own and does not hold the opening.
-The three live WebP maps total about 601 KB. The previous red-giant map stays in
+The four live WebP maps total about 616 KB: the smoke density, a flow map of long
+threads that gives the river its direction, and the two stellar surfaces. The previous red-giant map stays in
 the tree for comparison and is not loaded. The full concept images are not runtime
 backgrounds, and the recorded entry still ships alongside them for slow loads and
 draw failures.

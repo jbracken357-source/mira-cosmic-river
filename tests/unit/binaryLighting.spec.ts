@@ -31,6 +31,9 @@ import {
   impactAngleFor,
   STREAM_CLUMP_FLOOR,
   streamClump,
+  MIRA_B_HDR_GAIN,
+  MIRA_B_BEACON,
+  beaconProfile,
 } from '../../src/lib/binaryLighting';
 import { DISK_GAIN } from '../../src/shaders/accretionDisk';
 import { sharedJourney } from '../../src/lib/sharedJourney';
@@ -386,5 +389,32 @@ test.describe('material stream clumping', () => {
       expect(v).toBeGreaterThanOrEqual(STREAM_CLUMP_FLOOR - 1e-9);
       expect(v).toBeLessThanOrEqual(1 + 1e-9);
     }
+  });
+});
+
+// The companion is the other half of the pair: findable at any distance without a
+// fattened body (#87's scale rule above still holds — the beacon is light, not size).
+test.describe('the companion stays findable (beacon)', () => {
+  test('the core is lifted into HDR, past the bloom threshold', () => {
+    // The shouldered core tops out near the knee; the lift must carry it past 0.9.
+    expect(HIGHLIGHT_KNEE * MIRA_B_HDR_GAIN).toBeGreaterThan(0.9);
+  });
+
+  test('the beacon keeps a pixel floor, so a far camera still finds the star', () => {
+    expect(MIRA_B_BEACON.minPx).toBeGreaterThanOrEqual(16);
+    expect(MIRA_B_BEACON.minPx).toBeLessThanOrEqual(48);
+  });
+
+  test('the profile is a soft glow: hot centre, monotonic falloff, exactly zero at the edge', () => {
+    expect(beaconProfile(0)).toBeGreaterThan(1);
+    expect(beaconProfile(1)).toBe(0);
+    let previous = beaconProfile(0);
+    for (let r = 0.02; r <= 1; r += 0.02) {
+      const value = beaconProfile(r);
+      expect(value).toBeLessThanOrEqual(previous);
+      previous = value;
+    }
+    // A long halo, not a hard disc: a third of the way out there is still visible glow.
+    expect(beaconProfile(0.33)).toBeGreaterThan(0.01);
   });
 });

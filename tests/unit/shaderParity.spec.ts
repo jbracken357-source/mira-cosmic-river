@@ -10,6 +10,9 @@ import {
   MIRA_B_REACH,
   MIRA_B_GAIN,
   RIVER_SHADOW_FLOOR,
+  VEIL_SPINE_GAIN,
+  FLOW_WEIGHT,
+  TAIL_BEAD_HDR,
   VEIL_SHADOW_RETAIN,
   VEIL_LIGHT_LIFT,
   veilLightResponse,
@@ -37,10 +40,16 @@ import {
   HOT_SPOT_ANGLE_WIDTH,
   HOT_SPOT_RADIUS,
   HOT_SPOT_RADIAL_WIDTH,
+  MIRA_B_HDR_GAIN,
 } from '../../src/lib/binaryLighting';
 
 const veilSource = readFileSync(
   path.join(process.cwd(), 'src/components/Scene/RiverVeil.tsx'),
+  'utf8',
+);
+
+const beaconSource = readFileSync(
+  path.join(process.cwd(), 'src/components/Scene/CompanionBeacon.tsx'),
   'utf8',
 );
 
@@ -244,5 +253,43 @@ test.describe('accretion disk shader stays in step with binaryLighting', () => {
   // shader. They are named and interpolated now; this pin keeps them that way.
   test('the alpha gains share the calibration source with the colour gains (#91)', () => {
     expect(f).toContain(`clamp(ring * beam * ${DISK_ALPHA_GAIN.ring} + spot * ${DISK_ALPHA_GAIN.spot}, 0.0, 1.0)`);
+  });
+});
+
+// The HDR chain (tone mapping after the bloom): the lifts that carry the river and the
+// companion past the bloom threshold, and tonight's sparkle, reach the GLSL as written.
+test.describe('the HDR lifts stay wired', () => {
+  test('the veil spine lift and the flow share interpolate the exported constants', () => {
+    expect(veilSource).toContain('color *= 1. + ${VEIL_SPINE_GAIN.toFixed(3)} * mix(.6, 1., uAccent) * spine * uSparkle;');
+    expect(veilSource).toContain('density = max(density, flow * ${FLOW_WEIGHT.toFixed(3)} * (1. - uAccent));');
+    expect(veilSource).toContain('material.uniforms.uSparkle.value = sky.sparkle;');
+    // Interpolated as GLSL floats: a bare integer literal fails to compile.
+    expect(VEIL_SPINE_GAIN.toFixed(3)).toMatch(/\./);
+    expect(FLOW_WEIGHT.toFixed(3)).toMatch(/\./);
+  });
+
+  test("the beads read tonight's sparkle and their own HDR literal", () => {
+    const f = TailFragmentShader;
+    expect(f).toContain(`bead *= ${TAIL_BEAD_HDR.toFixed(3)} * twinkle * uSparkle * (.55 + .45 * vLight);`);
+    expect(TailVertexShader).toContain('vAlpha = depthFade * mix(uOpacity, uBeadOpacity, aBead);');
+    const material = createTailMaterial();
+    expect(material.uniforms.uSparkle.value).toBe(1);
+    expect(material.uniforms.uBeadOpacity.value).toBe(0);
+    material.dispose();
+  });
+
+  test('the companion core is lifted after the shoulder, by the exported gain', () => {
+    expect(miraBSource).toContain('finalColor = highlightShoulder(finalColor);');
+    expect(miraBSource.indexOf('finalColor *= uHdrGain;')).toBeGreaterThan(
+      miraBSource.indexOf('finalColor = highlightShoulder(finalColor);'),
+    );
+    expect(miraBSource).toContain('uHdrGain: { value: MIRA_B_HDR_GAIN }');
+    expect(MIRA_B_HDR_GAIN).toBeGreaterThan(1);
+  });
+
+  test('the beacon GLSL mirrors beaconProfile', () => {
+    expect(beaconSource).toContain('float core = exp(-x * x * 60.0);');
+    expect(beaconSource).toContain('float halo = 0.22 / (1.0 + x * x * 40.0);');
+    expect(beaconSource).toContain('float profile = (core + halo) * (1.0 - smoothstep(0.7, 1.0, x));');
   });
 });

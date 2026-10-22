@@ -4,9 +4,10 @@ import * as THREE from 'three';
 import { AccretionDisk_Shader, makeDiskUniforms } from '../../shaders/accretionDisk';
 import { HIGHLIGHT_SHOULDER_GLSL } from '../../shaders/miraA';
 import { COLORS } from '../../constants';
-import { DISK_GEOMETRY, impactAngleFor, MIRA_B_CORONA } from '../../lib/binaryLighting';
+import { DISK_GEOMETRY, impactAngleFor, MIRA_B_CORONA, MIRA_B_HDR_GAIN } from '../../lib/binaryLighting';
 import type { OrbitPositions } from '../../types';
 import GlowShell from './GlowShell';
+import CompanionBeacon from './CompanionBeacon';
 import type { MutableRefObject } from 'react';
 import { useReducedMotion } from 'framer-motion';
 import { advanceTime, parkedFade } from '../../lib/captureMode';
@@ -40,6 +41,7 @@ const miraBShaderMaterial = {
     uniform float intensity;
     uniform sampler2D uSurfaceMap;
     uniform float uSurfaceReady;
+    uniform float uHdrGain;
 
     varying vec2 vUv;
     varying vec3 vNormal;
@@ -84,6 +86,9 @@ const miraBShaderMaterial = {
       finalColor = mix(finalColor, vec3(0.7, 0.85, 1.0), 0.15);
       finalColor *= mix(1.0, grain, weight);
       finalColor = highlightShoulder(finalColor);
+      // Lifted into HDR after the shoulder, so the hue it settled stays put and the
+      // bloom carries the small body as a hot point (MIRA_B_HDR_GAIN).
+      finalColor *= uHdrGain;
 
       gl_FragColor = vec4(finalColor, 1.0);
       #include <tonemapping_fragment>
@@ -116,6 +121,7 @@ export default function MiraB({ position, radius, segments = 64, positionsRef }:
     intensity: { value: 0.8 },
     uSurfaceMap: { value: null as THREE.Texture | null },
     uSurfaceReady: { value: 0 },
+    uHdrGain: { value: MIRA_B_HDR_GAIN },
   }), [color]);
 
   useEffect(() => {
@@ -216,6 +222,8 @@ export default function MiraB({ position, radius, segments = 64, positionsRef }:
         falloff={MIRA_B_CORONA.falloff}
         pulseAmp={MIRA_B_CORONA.pulseAmp}
       />
+
+      <CompanionBeacon radius={radius} />
 
       {/* Point light - white dwarfs are bright but small */}
       <pointLight

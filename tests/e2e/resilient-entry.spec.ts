@@ -16,7 +16,7 @@ import { openTailCardViaKeyboard } from './helpers';
 // luminance is neither flat nor black — never by the mere presence of a canvas.
 
 const APP = '/?quality=low';
-const STILL_VERSION = 'entry-still-v2';
+const STILL_VERSION = 'entry-still-v3';
 
 const wrapper = (page: Page) => page.locator('[data-entry-gate]');
 
