@@ -2,7 +2,9 @@
 
 ## Done
 
-- Run `npm run lint` and `npm run build`. Both exit 0. For scene or UI changes, also run `npm run test:e2e`.
+- Run `npm run lint`, `npm run build` and `npm run test:unit`. All exit 0.
+- For scene or UI changes, also run the e2e specs that cover the change: `npx playwright test --project=chromium <spec>`. CI runs the full e2e suite on the PR (about 7 minutes). Merge only when CI is green.
+- Run one e2e process per machine at a time, and do not raise `--workers`. One run uses about 1.4 GB of memory. A second run fails at once on the busy port 5175. Parallel load also makes the timing tests fail.
 
 ## Rules
 
