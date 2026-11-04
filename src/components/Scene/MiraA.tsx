@@ -15,9 +15,12 @@ interface MiraAProps {
   radius: number;
   turbulence: number;
   segments?: number;
+  // The governed tier's giantStrands (qualityBudget): the plasma strands cost five
+  // simplex reads per fragment, so the low tier keeps the plain convection.
+  strands?: boolean;
 }
 
-export default function MiraA({ position, radius, turbulence, segments = 64 }: MiraAProps) {
+export default function MiraA({ position, radius, turbulence, segments = 64, strands = true }: MiraAProps) {
   const meshRef = useRef<THREE.Mesh>(null);
   const materialRef = useRef<THREE.ShaderMaterial>(null);
   const innerAtmosphereRef = useRef<THREE.ShaderMaterial>(null);
@@ -104,7 +107,11 @@ export default function MiraA({ position, radius, turbulence, segments = 64 }: M
       {/* Core star mesh with custom shader */}
       <mesh ref={meshRef}>
         <sphereGeometry args={[radius, Math.max(24, segments), Math.max(24, segments)]} />
+        {/* A define is compiled in, so a tier change remounts the material; the
+            memoized uniforms (and the bound surface map) carry over. */}
         <shaderMaterial
+          key={strands ? 'strands' : 'plain'}
+          defines={strands ? { MIRA_A_STRANDS: '' } : {}}
           ref={materialRef}
           vertexShader={MiraA_Shader.vertexShader}
           fragmentShader={MiraA_Shader.fragmentShader}

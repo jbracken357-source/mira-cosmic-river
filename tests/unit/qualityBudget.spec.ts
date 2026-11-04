@@ -14,6 +14,7 @@ const HIGH: QualityBudget = {
   veilVolumes: 7,
   veilAccents: 2,
   veilFlow: 1,
+  giantStrands: 1,
   driftPuffs: 12,
   dpr: [1, 1.5],
 };
@@ -27,6 +28,7 @@ const MID: QualityBudget = {
   veilVolumes: 7,
   veilAccents: 2,
   veilFlow: 1,
+  giantStrands: 1,
   driftPuffs: 12,
   dpr: 1,
 };
@@ -40,6 +42,7 @@ const LOW: QualityBudget = {
   veilVolumes: 2,
   veilAccents: 0,
   veilFlow: 0,
+  giantStrands: 0,
   driftPuffs: 0,
   dpr: 1,
 };
@@ -52,6 +55,7 @@ const DECORATION = [
   'veilVolumes',
   'veilAccents',
   'veilFlow',
+  'giantStrands',
   'driftPuffs',
 ] as const satisfies readonly (keyof QualityBudget)[];
 

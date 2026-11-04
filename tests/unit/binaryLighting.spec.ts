@@ -123,12 +123,17 @@ test.describe("Mira A's breathing photosphere (#87)", () => {
 
   // The brightest texel the photosphere can show, evaluated the way the fragment
   // shader computes it: densest cell (heat 1), disc centre (mu 1), full detail
-  // strength, the real clock at maximum (uBrightness = uColorShift = 1).
-  function giantHottestTexel(phaseAngle: number): [number, number, number] {
+  // strength, the real clock at maximum (uBrightness = uColorShift = 1). With the
+  // plasma strands (#132): the rust multiply, no pocket, and the strand field at its
+  // peak (ridge = ridgeFine = 1, so strands = .8 + .35). The limb rim is zero at mu 1.
+  const GIANT_RUST = [0.87, 0.76, 0.73];
+  const STRAND_PEAK = (0.8 + 0.35) * (0.25 + 0.6 * 1);
+  function giantHottestTexel(phaseAngle: number, strands = true): [number, number, number] {
     const surface = rgb(COLORS.MIRA_A_SURFACE);
-    const amber = amberEnd(surface);
+    const amber = amberEnd(surface).map((a, i) => a * GIANT_RUST[i]);
     const lift = surfacePulseCellLift(phaseAngle);
-    let color = amber.map((a, i) => a + [1.2, 0.58, 0.16][i] * lift);
+    let color = amber.map((a, i) => a + (strands ? [1, 0.34, 0.07][i] * STRAND_PEAK : 0));
+    color = color.map((a, i) => a + [1.2, 0.58, 0.16][i] * lift);
     const light = surfacePulseLight(phaseAngle) * (0.68 + 0.55 * 1);
     color = color.map((c) => c * light);
     color = color.map((c, i) => c * [1, 1, 0.94][i]);
@@ -136,8 +141,8 @@ test.describe("Mira A's breathing photosphere (#87)", () => {
   }
 
   test('the hottest texel keeps its hue at both ends of the cycle — no dead white', () => {
-    for (const theta of [0, Math.PI / 2, Math.PI]) {
-      const [r, g, b] = giantHottestTexel(theta);
+    for (const [theta, strands] of [0, Math.PI / 2, Math.PI].flatMap((t) => [[t, true], [t, false]] as const)) {
+      const [r, g, b] = giantHottestTexel(theta, strands);
       expect(r).toBeLessThanOrEqual(HIGHLIGHT_CEILING);
       // Dead white is every channel driven to clip together. The giant's hottest
       // possible texel stays red-dominant with the blue channel held far down.
