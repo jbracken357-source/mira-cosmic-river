@@ -172,6 +172,16 @@ test.describe('Mira A shader stays in step with binaryLighting', () => {
     expect(MiraA_Shader.fragmentShader).toContain('vec3 amber = mix(uColorSurface, vec3(1., .38, .065), .65);');
   });
 
+  // #132: the plasma strands and the rust multiply, spelled as the hottest-texel
+  // evaluator in binaryLighting.spec reads them (GIANT_RUST, STRAND_PEAK).
+  test('the rust multiply and the strand add are pinned where the evaluator reads them (#132)', () => {
+    const f = MiraA_Shader.fragmentShader;
+    expect(f).toContain('color *= vec3(.87, .76, .73);');
+    expect(f).toContain('strands = pow(ridge, 9.) * .8 + pow(ridgeFine, 12.) * .35;');
+    expect(f).toContain('color += vec3(1., .34, .07) * strands * (.25 + .6 * heat) * (1. - .45 * pocket) * smoothstep(0., .35, mu);');
+    expect(f).toContain('#ifdef MIRA_A_STRANDS');
+  });
+
   test('the GLSL curves are the pure functions at theta = uTime * PULSE_RATE + pi/2', () => {
     // pulsePhase = sin(uTime * rate) * .5 + .5 is -cos(theta) * .5 + .5, so the two
     // GLSL expressions above must equal the TS functions value for value.

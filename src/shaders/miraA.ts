@@ -217,6 +217,11 @@ export const MiraA_Shader = {
       vec3 ember = uColorCore * .15 + vec3(.055, .006, .001);
       vec3 amber = mix(uColorSurface, vec3(1., .38, .065), .65);
       vec3 color = mix(ember, amber, heat);
+      // Off the sticker orange, toward rust: the strands carry the saturation.
+      color *= vec3(.87, .76, .73);
+      float strands = 0.;
+      float ridge = 0.;
+#ifdef MIRA_A_STRANDS
       // Plasma strands: a domain-warped ridge field laid over the convection. Curly
       // filaments of hot gas, the fibrous look of the target art
       // (docs/visual-direction/wayfinder/no-plastic-target-v1.png), instead of one
@@ -224,16 +229,15 @@ export const MiraA_Shader = {
       vec3 wq = p * 2.4 + vec3(uTime * .015, -uTime * .011, uTime * .008);
       vec3 warp = vec3(snoise(wq), snoise(wq + 7.31), snoise(wq + 13.7));
       vec3 fq = p * 4.2 + warp * 1.1;
-      float ridge = 1. - abs(snoise(fq));
+      ridge = 1. - abs(snoise(fq));
       float ridgeFine = 1. - abs(snoise(fq * 2.1 + warp * .6 + 3.1));
-      float strands = pow(ridge, 9.) * .8 + pow(ridgeFine, 12.) * .35;
+      strands = pow(ridge, 9.) * .8 + pow(ridgeFine, 12.) * .35;
       // Deep pockets between the strands: the surface keeps real shadow, so the lit
       // gas reads as depth, not as a sticker on a flat orange ball.
       float pocket = smoothstep(.15, .7, .5 + .5 * warp.x) * (1. - heat * .6);
       color *= 1. - .72 * pocket;
-      // Off the sticker orange, toward rust: the strands carry the saturation.
-      color *= mix(vec3(1.), vec3(.74, .52, .46), .5);
       color += vec3(1., .34, .07) * strands * (.25 + .6 * heat) * (1. - .45 * pocket) * smoothstep(0., .35, mu);
+#endif
       // The photosphere's light breathes with the same phase as the radius — bright
       // when swollen, dim when shrunk, or the surface reads as a static shell behind
       // a breathing halo (#87). pulsePhase is the radius sine lifted to 0..1; the two

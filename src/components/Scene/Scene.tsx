@@ -596,6 +596,7 @@ function SceneContent({
           radius={PHYSICS.MIRA_A.radius}
           turbulence={0.3}
           segments={lod.sphereSegments}
+          strands={lod.giantStrands > 0}
         />
         {/* Invisible click target — inner atmosphere, so a click on the halo selects the star. */}
         {/* 拖拽不算点击 (#108): e.delta is the pointerdown-to-pointerup travel r3f

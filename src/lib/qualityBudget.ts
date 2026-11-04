@@ -23,6 +23,9 @@ export interface QualityBudget {
   veilAccents: number;
   // 1 samples the river's flow map in every volume ribbon; 0 skips it (#129 detail).
   veilFlow: number;
+  // 1 draws Mira A's plasma strands (five extra simplex reads per giant fragment);
+  // 0 keeps the plain convection.
+  giantStrands: number;
   // Near-mist puffs (ForegroundDrift); 0 does not mount it.
   driftPuffs: number;
   dpr: number | [number, number];
@@ -38,6 +41,7 @@ const BUDGET: Record<QualityTier, QualityBudget> = {
     veilVolumes: 7,
     veilAccents: 2,
     veilFlow: 1,
+    giantStrands: 1,
     driftPuffs: 12,
     dpr: [1, 1.5],
   },
@@ -50,6 +54,7 @@ const BUDGET: Record<QualityTier, QualityBudget> = {
     veilVolumes: 7,
     veilAccents: 2,
     veilFlow: 1,
+    giantStrands: 1,
     driftPuffs: 12,
     dpr: 1,
   },
@@ -63,6 +68,7 @@ const BUDGET: Record<QualityTier, QualityBudget> = {
     veilVolumes: 2,
     veilAccents: 0,
     veilFlow: 0,
+    giantStrands: 0,
     driftPuffs: 0,
     dpr: 1,
   },
