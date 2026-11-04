@@ -8,7 +8,9 @@ export default defineConfig({
   // Generous: the opening sequence alone runs 15s of wall clock, and CI renders in software.
   timeout: 60000,
   // One dev server and one WebGL context at a time keeps the suite honest on CI runners.
-  fullyParallel: false,
+  // fullyParallel only lets `--shard` split at test level (CI runs 4 shards, one runner
+  // each); with one worker, the tests in a shard still run one at a time, in file order.
+  fullyParallel: true,
   workers: 1,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
@@ -16,7 +18,8 @@ export default defineConfig({
     baseURL: BASE_URL,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
-    video: 'retain-on-failure',
+    // Recording every test costs CPU under software GL; the retry records the failure.
+    video: 'on-first-retry',
   },
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
@@ -30,5 +33,5 @@ export default defineConfig({
     reuseExistingServer: !process.env.CI,
     timeout: 120000,
   },
-  reporter: [['html'], ['junit', { outputFile: 'test-results/junit.xml' }]],
+  reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : [['html']],
 });

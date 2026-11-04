@@ -3,6 +3,7 @@ import type { Page } from '@playwright/test';
 import { MIRA_MAXIMUM_EPOCH_MS } from '../../src/lib/starClock';
 import {
   dragOffMainView,
+  evidencePath,
   expectTextFloor,
   IDLE_FAST,
   manipulateScene,
@@ -339,19 +340,22 @@ test.describe('信息卡的程序焦点 (#113)', () => {
 const EVIDENCE = 'docs/evidence-113';
 
 test.describe('evidence captures (#113)', () => {
+  // Shots with no check of their own: they run only when the proof is re-taken.
+  test.skip(!process.env.MIRA_EVIDENCE, 'evidence only: run with MIRA_EVIDENCE=1');
+
   test('after: desktop explore graduated', async ({ page }) => {
     await gotoExplore(page);
     await manipulateScene(page);
     await expect(page.getByTestId('tonight-save')).toBeVisible();
     await page.waitForTimeout(800);
-    await page.screenshot({ path: `${EVIDENCE}/after-desktop-1280x720-explore.png` });
+    await page.screenshot({ path: evidencePath(`${EVIDENCE}/after-desktop-1280x720-explore.png`) });
   });
 
   test('after: desktop info card (keyboard-opened, no default outline)', async ({ page }) => {
     await gotoExplore(page);
     await openTailCardViaKeyboard(page);
     await page.waitForTimeout(1000);
-    await page.screenshot({ path: `${EVIDENCE}/after-desktop-1280x720-info-card.png` });
+    await page.screenshot({ path: evidencePath(`${EVIDENCE}/after-desktop-1280x720-info-card.png`) });
   });
 
   test('after: desktop tonight panel', async ({ page }) => {
@@ -360,7 +364,7 @@ test.describe('evidence captures (#113)', () => {
     await page.getByTestId('tonight-save').click();
     await expect(page.getByTestId('tonight-preview')).toBeVisible({ timeout: 15000 });
     await page.waitForTimeout(500);
-    await page.screenshot({ path: `${EVIDENCE}/after-desktop-1280x720-tonight-panel.png` });
+    await page.screenshot({ path: evidencePath(`${EVIDENCE}/after-desktop-1280x720-tonight-panel.png`) });
   });
 
   test('after: 390 graduated bar + more panel', async ({ page }) => {
@@ -369,11 +373,11 @@ test.describe('evidence captures (#113)', () => {
     await manipulateScene(page);
     await expect(page.getByTestId('tonight-save')).toBeVisible();
     await page.waitForTimeout(800);
-    await page.screenshot({ path: `${EVIDENCE}/after-mobile-390x844-bar.png` });
+    await page.screenshot({ path: evidencePath(`${EVIDENCE}/after-mobile-390x844-bar.png`) });
     await page.getByTestId('more-toggle').click();
     await expect(page.getByTestId('more-panel')).toBeVisible();
     await page.waitForTimeout(400);
-    await page.screenshot({ path: `${EVIDENCE}/after-mobile-390x844-more-panel.png` });
+    await page.screenshot({ path: evidencePath(`${EVIDENCE}/after-mobile-390x844-more-panel.png`) });
   });
 
   test('after: 390 info card sheet', async ({ page }) => {
@@ -381,6 +385,6 @@ test.describe('evidence captures (#113)', () => {
     await gotoExplore(page);
     await openTailCardViaKeyboard(page);
     await page.waitForTimeout(1000);
-    await page.screenshot({ path: `${EVIDENCE}/after-mobile-390x844-info-card.png` });
+    await page.screenshot({ path: evidencePath(`${EVIDENCE}/after-mobile-390x844-info-card.png`) });
   });
 });

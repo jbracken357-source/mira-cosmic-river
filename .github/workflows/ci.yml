@@ -16,19 +16,12 @@ concurrency:
 
 jobs:
   checks:
-    name: lint + build + e2e
+    name: lint + build + unit
     # Pinned (2026-11-04): ubuntu-latest moved to 26.04, and Playwright 1.59.1
     # refuses to install chromium there ("does not support chromium on
     # ubuntu26.04-x64"). Unpin once a Playwright release supports 26.04.
     runs-on: ubuntu-24.04
-    # The suite alone runs ~14.5m under CI's software GL and every PR adds a little
-    # more; at 15 the wall cancelled #104's run AFTER all 494 tests had passed,
-    # mid-report-upload. 20 held until the suite reached ~557 tests (#108–#115);
-    # then the wall cancelled two master runs mid-suite at 20m21s and 21m46s.
-    # 25 fell to #111's additions (25m18s). 35 leaves room for the suite, #113's
-    # text-floor walk, setup and the report — the wall exists to catch hangs, and
-    # a hung run is loud long before 35.
-    timeout-minutes: 35
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
 
@@ -46,16 +39,48 @@ jobs:
       - name: Build
         run: npm run build
 
+      # Pure Node specs: no browser to install.
+      - name: Unit tests
+        run: npx playwright test --project=unit
+
+  e2e:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-24.04
+    # One runner per job keeps one WebGL context per machine, as the config
+    # demands. The serial suite took ~23m on one runner (#132); split four ways,
+    # each job holds about 6m of tests. The wall exists to catch hangs.
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: e2e 1/3, args: --shard=1/3 --grep-invert "real idle timing" }
+          - { name: e2e 2/3, args: --shard=2/3 --grep-invert "real idle timing" }
+          - { name: e2e 3/3, args: --shard=3/3 --grep-invert "real idle timing" }
+          # The #115 epilogue checks wait the real 60s each (~5m in all): they
+          # get their own runner so they never make one shard the long pole.
+          - { name: e2e real idle timing, args: --grep "real idle timing" }
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
 
       - name: End-to-end tests
-        run: npm run test:e2e
+        run: npx playwright test --project=chromium ${{ matrix.args }}
 
       - name: Upload Playwright report
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
+          name: playwright-report-${{ strategy.job-index }}
           path: playwright-report/
           retention-days: 7
