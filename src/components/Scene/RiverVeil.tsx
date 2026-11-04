@@ -85,6 +85,11 @@ const fragmentShader = `
     float secondary = texture2D(uMap, secondaryUv).r;
     float density = primary * .68 + secondary * .32;
     float smoke = density;
+    // A blurred read of the same smoke: what this point's neighbourhood looks like.
+    // Where the sharp density stands above it, the fragment sits on the lit edge of a
+    // flow — the gilded rim the target art traces along every ridge.
+    float soft = texture2D(uMap, uv, 3.).r;
+    float rim = smoothstep(.04, .2, primary - soft);
 
     // A long, gently wandering lane makes the brightest material follow the tail instead
     // of tracing every closed eddy in the source image as a luminous ring.
@@ -98,6 +103,7 @@ const fragmentShader = `
     // carves the smoke. Optional like the companion map: until it binds, it adds nothing.
     // Volume ribbons only: on the narrow pearl accents the brightest thread became a
     // single lit wire across the frame.
+    float threads = 0.;
 #ifdef VEIL_FLOW
     vec2 flowUv = vec2(vUv.x, (vUv.y - laneCenter) * ${FLOW_SPREAD.toFixed(3)} + .5 + (uLayer - 4.) * .021);
     flowUv.y += sin(vUv.x * 5.3 + uLayer * 2.3 + uTime * .07) * .018;
@@ -113,6 +119,7 @@ const fragmentShader = `
     // step back well before the ribbon itself does.
     flow *= smoothstep(.4, .85, vFacing);
     density = max(density, flow * ${FLOW_WEIGHT.toFixed(3)} * (1. - uAccent));
+    threads = flow;
 #endif
     float filament = smoothstep(.42, .88, density) * lane;
     // A touch of contrast in the body: the gaps between the flows stay dark enough that
@@ -150,6 +157,19 @@ const fragmentShader = `
     // ribbons pick out the densest threads in gold the whole length of the river.
     // (The smoke's ridges, not the flow threads: gold on a straight thread reads as a wire.)
     color = mix(color, uColorGold, uAccent * smoothstep(.6, .95, smoke) * lane * .6);
+    // Pearl along the run: the flow threads and the lane's dense smoke whiten toward
+    // the moonlit blue-white of the target, so the river reads lit rather than tinted
+    // one even violet. Weighted by the lane, never by the smoke alone: lit smoke crests
+    // outside it are the closed eddies the SPEC forbids as bright rings.
+    // (The smoke is sparse: mean density ~.06, 90th percentile ~.22.)
+    // Nearer the giant the same threads warm toward gold: the pearl-and-gold pairing of
+    // the target, still local to the light (SPEC: 金色仅局部提亮).
+    float pearl = smoothstep(.15, .6, threads) * .42 + smoothstep(.25, .6, smoke) * lane * .25;
+    vec3 pearlTint = mix(vec3(.8, .86, 1.), uColorGold, clamp(lightA * .9, 0., .7));
+    color = mix(color, pearlTint, pearl * (1. - uAccent));
+    // Gold on the rims, strongest near the giant and fading down the river — local
+    // warmth (SPEC: 金色仅局部提亮), never the whole body.
+    color = mix(color, uColorGold * 1.15, rim * lane * (.25 + .6 * lightA) * (.75 + .5 * uSkyWarmth));
     color *= 1. + ${VEIL_SPINE_GAIN.toFixed(3)} * mix(.6, 1., uAccent) * spine * uSparkle;
     color *= uSkyGain;
     color = mix(color, color * vec3(1.06, .96, .84), uSkyWarmth);
@@ -157,6 +177,7 @@ const fragmentShader = `
     float alpha = mix(volume * .62, filament * .95, uAccent);
     // The lit pool reads denser as well as brighter; shadow thins but never vanishes.
     alpha *= mix(.85, 1.15, light);
+    alpha *= 1. + .5 * rim * lane + .25 * pearl;
     // The ribbons pass the giant on their way to the root: inside its limb they would
     // paint over the photosphere with a hard ribbon edge, so they thin out there and
     // leave the star's own atmosphere to carry the join.
