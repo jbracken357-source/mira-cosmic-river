@@ -3,20 +3,21 @@
 // Provenance is part of the contract (TICKETS.md, ticket 08): a static image
 // that stands in for the scene must record which scene version it came from,
 // and must never be passed off as newer art. Ticket 11 (#29) made v1 from the
-// 01/02 art; #62 re-made it from the accepted b53ed9e scene (v2); v3 follows the
-// HDR / river-of-light pass, so the veil no longer shows a darker scene than the
-// one it uncovers (public/materials/entry-still-v3.SOURCE.txt has the commit,
+// 01/02 art; #62 re-made it from the accepted b53ed9e scene (v2); v3 followed the
+// HDR / river-of-light pass; v4 follows the living-giant pass (#132), so the veil
+// never dissolves the old lava giant into the plasma one
+// (public/materials/entry-still-v4.SOURCE.txt has the commit,
 // epoch, and capture command). `version` is what the UI stamps into
 // data-still-source.
 import type { CSSProperties } from 'react';
 import { COLORS } from './colors';
 
 export const ENTRY_STILL = {
-  src: 'materials/entry-still-v3.jpg',
-  version: 'entry-still-v3',
+  src: 'materials/entry-still-v4.jpg',
+  version: 'entry-still-v4',
   sourceEpoch: '2026-09-12T00:00:00Z',
-  capturedOn: '2026-10-22',
-  sourceSceneCommit: 'da2fad0',
+  capturedOn: '2026-11-04',
+  sourceSceneCommit: 'd413266',
 } as const;
 
 // The one backdrop for every place the still holds the screen — the loading

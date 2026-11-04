@@ -1,0 +1,7 @@
+file: entry-still-v4.jpg
+source-scene-commit: d4132669e0873f2efd2cd23375764033c3797841
+captured-on: 2026-11-04
+epoch: 2026-09-12T00:00:00Z
+view: default (1440x900, dpr 1, quality tier pinned high)
+captured-by: experiments/capture-entry-still.mjs
+note: made from the living-giant pass (#132); v3 came from da2fad0 (#129), v2 from b53ed9e (#62), v1 from d601df1 via ticket 11 (#29)
