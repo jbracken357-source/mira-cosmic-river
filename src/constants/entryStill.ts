@@ -17,7 +17,7 @@ export const ENTRY_STILL = {
   version: 'entry-still-v4',
   sourceEpoch: '2026-09-12T00:00:00Z',
   capturedOn: '2026-11-04',
-  sourceSceneCommit: 'd413266',
+  sourceSceneCommit: '5f8c926',
 } as const;
 
 // The one backdrop for every place the still holds the screen — the loading

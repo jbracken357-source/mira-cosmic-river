@@ -1,5 +1,5 @@
 file: entry-still-v4.jpg
-source-scene-commit: d4132669e0873f2efd2cd23375764033c3797841
+source-scene-commit: 5f8c9261ff749b8899e9c9aceae0ceddbf0208ae
 captured-on: 2026-11-04
 epoch: 2026-09-12T00:00:00Z
 view: default (1440x900, dpr 1, quality tier pinned high)
