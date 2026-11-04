@@ -41,7 +41,7 @@ jobs:
 
       # Pure Node specs: no browser to install.
       - name: Unit tests
-        run: npx playwright test --project=unit
+        run: npm run test:unit
 
   e2e:
     name: ${{ matrix.name }}

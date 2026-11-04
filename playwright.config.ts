@@ -30,8 +30,12 @@ export default defineConfig({
   webServer: {
     command: `npm run dev -- --port ${PORT} --strictPort --host 127.0.0.1`,
     url: BASE_URL,
-    reuseExistingServer: !process.env.CI,
+    // Never reuse: a second run on the same machine (another agent or worktree)
+    // fails at once on the busy port, instead of testing the first run's code
+    // and doubling the memory.
+    reuseExistingServer: false,
     timeout: 120000,
   },
-  reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : [['html']],
+  // open: 'never' so a failed run exits; read the report with `npx playwright show-report`.
+  reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : [['html', { open: 'never' }]],
 });
