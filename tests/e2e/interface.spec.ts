@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { dragOffMainView, manipulateScene, MID_DECLINE_EPOCH, openStarCardViaKeyboard, openTailCardViaKeyboard } from './helpers';
+import { dragOffMainView, evidencePath, manipulateScene, MID_DECLINE_EPOCH, openStarCardViaKeyboard, openTailCardViaKeyboard } from './helpers';
 
 // Interface (#20): keyboard reachability of the star info cards, Esc + focus
 // restore, 44px targets and accessible names, document language
@@ -345,7 +345,7 @@ for (const viewport of VIEWPORTS) {
     await close.click();
     await expect(card).toHaveCount(0);
 
-    await page.screenshot({ path: `${EVIDENCE}/interface-20-${viewport.name}.png` });
+    await page.screenshot({ path: evidencePath(`${EVIDENCE}/interface-20-${viewport.name}.png`) });
   });
 }
 
@@ -364,7 +364,7 @@ test.describe('evidence captures', () => {
     // Let the enter animation settle before the shot.
     await page.waitForTimeout(1000);
 
-    await page.screenshot({ path: `${EVIDENCE}/interface-20-card-open.png` });
+    await page.screenshot({ path: evidencePath(`${EVIDENCE}/interface-20-card-open.png`) });
   });
 
   test('the epilogue renders in its own face', async ({ page }) => {
@@ -383,6 +383,6 @@ test.describe('evidence captures', () => {
     expect(faceLoaded).toBe(true);
     await page.waitForTimeout(1000);
 
-    await page.screenshot({ path: `${EVIDENCE}/interface-20-epilogue.png` });
+    await page.screenshot({ path: evidencePath(`${EVIDENCE}/interface-20-epilogue.png`) });
   });
 });

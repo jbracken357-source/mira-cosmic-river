@@ -1,7 +1,13 @@
-import { expect } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
 // Shared e2e seams. Not a spec (helpers.ts matches no testMatch pattern).
+
+// Evidence shots go to their tracked docs/ path only on demand (MIRA_EVIDENCE=1).
+// A normal run writes them under test-results/, so it never rewrites committed proof.
+export function evidencePath(docsPath: string): string {
+  return process.env.MIRA_EVIDENCE ? docsPath : test.info().outputPath(docsPath.split('/').pop()!);
+}
 
 // The pinned mid-decline date: no milestone window, so the lower edge (#88) always
 // holds the closing line in specs that assert it (the same date integration-journey

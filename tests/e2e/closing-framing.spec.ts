@@ -5,7 +5,7 @@ import { PHYSICS, calculateOrbitalPosition } from '../../src/constants/physics';
 import { PORTRAIT_TILT, projectToScreenPercent, screenDiscRadiusPercent } from '../../src/lib/portraitFraming';
 import { sharedJourney } from '../../src/lib/sharedJourney';
 import { tailHeading } from '../../src/lib/tailPath';
-import { MID_DECLINE_EPOCH } from './helpers';
+import { evidencePath, MID_DECLINE_EPOCH } from './helpers';
 
 // 结语不压红巨星 (#115): the epilogue re-verified at the REAL idle timing — no
 // ?idle-* overrides anywhere in these URLs. The compressed review round watched
@@ -100,7 +100,7 @@ async function readClearance(page: Page, language: 'ch' | 'en', screenshot: stri
       `${text!.width.toFixed(0)}×${text!.height.toFixed(0)}, disc r ${discPx.toFixed(0)}px, ` +
       `worst gaps x=${worst.gapX.toFixed(0)}px y=${worst.gapY.toFixed(0)}px`,
   );
-  await page.screenshot({ path: screenshot });
+  await page.screenshot({ path: evidencePath(screenshot) });
   return worst;
 }
 
