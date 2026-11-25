@@ -1,10 +1,8 @@
 import { test, expect } from '@playwright/test';
-import { openTailCardViaKeyboard } from './helpers';
+import { collectRuntimeErrors, openTailCardViaKeyboard } from './helpers';
 
 test('image-backed river loads without blocking exploration or replay', async ({ page }) => {
-  const errors: string[] = [];
-  page.on('pageerror', error => errors.push(error.message));
-  page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
+  const errors = collectRuntimeErrors(page);
   await page.addInitScript(() => localStorage.setItem('mira:seen-opening', '1'));
   const texture = page.waitForResponse(response => response.url().endsWith('/materials/river-density-v1.webp'));
   const surface = page.waitForResponse(response => response.url().endsWith('/materials/surface-density-v2.webp'));
