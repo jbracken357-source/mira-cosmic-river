@@ -56,6 +56,20 @@ export function topBarVisibility(input: TopBarInput): TopBarVisibility {
   };
 }
 
+// 顶栏衬底 (#137): a dark gradient behind the compact bar, for exactly as long as
+// 「主视角」 exists. The 竖屏长卷 pins the pair into the upper right, so a zoom
+// brings the red giant's disc under the row and its 55% words drop to about 2:1.
+// Only the tall frame is backed: the scene lays out by height over width, so a
+// 568×320 landscape phone is compact (the breakpoint) but not tall. The wide bar —
+// landscape phone, desktop — and the main view never carry it.
+export function topBarBacking(input: {
+  compact: boolean;
+  portrait: boolean;
+  awayFromMainView: boolean;
+}): boolean {
+  return input.compact && input.portrait && input.awayFromMainView;
+}
+
 // 镜头离开主视角: how far off the explore framing the camera must sit before
 // 「主视角」 exists. Small enough that the idle creep (0.05 units/s) earns it
 // within seconds of visible drift; large enough that the return flight's exact

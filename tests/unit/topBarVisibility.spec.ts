@@ -3,6 +3,7 @@ import { CAMERA, PORTRAIT_CAMERA } from '../../src/constants/animation';
 import {
   cameraAwayFromMainView,
   MAIN_VIEW_AWAY_TOLERANCE,
+  topBarBacking,
   topBarVisibility,
 } from '../../src/lib/topBarVisibility';
 
@@ -106,5 +107,27 @@ test.describe('cameraAwayFromMainView (镜头离开主视角)', () => {
     // wrong table it would read as away forever.
     expect(cameraAwayFromMainView([...PORTRAIT_CAMERA.EXPLORE.position], true)).toBe(false);
     expect(cameraAwayFromMainView([...explore], true)).toBe(true);
+  });
+});
+
+// 顶栏衬底 (#137): a dark gradient backs the compact bar while the zoomed-in red
+// giant sits under its words. It exists for exactly as long as 主视角 does, and
+// only in the tall frame.
+test.describe('topBarBacking (顶栏衬底)', () => {
+  test('the compact bar is backed in the tall frame, for exactly as long as 主视角 exists', () => {
+    expect(topBarBacking({ compact: true, portrait: true, awayFromMainView: true })).toBe(true);
+    // 回到主视角之后没有.
+    expect(topBarBacking({ compact: true, portrait: true, awayFromMainView: false })).toBe(false);
+  });
+
+  test('a narrow landscape phone is compact but not tall, so it is never backed', () => {
+    // 568×320 sits inside the compact breakpoint, yet the scene lays out the wide
+    // framing there: height over width, not the breakpoint, decides.
+    expect(topBarBacking({ compact: true, portrait: false, awayFromMainView: true })).toBe(false);
+  });
+
+  test('the wide bar is never backed, in either orientation', () => {
+    expect(topBarBacking({ compact: false, portrait: true, awayFromMainView: true })).toBe(false);
+    expect(topBarBacking({ compact: false, portrait: false, awayFromMainView: true })).toBe(false);
   });
 });

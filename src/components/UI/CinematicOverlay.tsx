@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import { useBinaryStar, useMobile, useEntryReadiness, useTonightSave } from '../../hooks';
+import { useBinaryStar, useMobile, usePortrait, useEntryReadiness, useTonightSave } from '../../hooks';
 import { TRANSLATIONS } from '../../constants/translations';
 import { TRANSITIONS } from '../../constants/animation';
 import { openingSegment } from '../../lib/openingTimeline';
-import { topBarVisibility } from '../../lib/topBarVisibility';
+import { topBarBacking, topBarVisibility } from '../../lib/topBarVisibility';
 import { rememberFlag, rememberedFlag } from '../../lib/rememberedFlag';
 import type { StarName } from './InfoCards';
 import AmbientToggle from './AmbientToggle';
@@ -159,6 +159,7 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
   const tonightOpen = useTonightSave((state) => state.phase !== 'idle');
   const t = TRANSLATIONS[language];
   const isMobile = useMobile();
+  const portrait = usePortrait();
   const reduceMotion = Boolean(useReducedMotion());
 
   // The epilogue is the emotional close: the whole interface lets go of the screen,
@@ -174,6 +175,9 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
   // the row never wraps: 暂停 (once it exists), 完整开场 and 语言 tuck into 「更多」.
   const bar = topBarVisibility({ manipulated, awayFromMainView, compact: isMobile });
   const tucked = bar.tucked;
+  // 顶栏衬底 (#137): see topBarBacking — the compact bar, in the tall frame, for
+  // exactly as long as 「主视角」 exists.
+  const backing = topBarBacking({ compact: isMobile, portrait, awayFromMainView });
 
   // 「更多」 (#111): the panel below the bar. It opens on the button, closes on an
   // outside press or Esc, and hands focus back to the button on the way out (#114's
@@ -258,6 +262,18 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
           epilogueHush ? 'opacity-0 pointer-events-none' : 'opacity-100'
         }`}
       >
+        {/* 顶栏衬底 (#137): the 竖屏长卷 pins the pair into the upper right, so a zoom
+            brings the red giant's disc under the compact bar and the row's 55% words
+            drop to about 2:1. A gradient in the page's own void black backs the row
+            while 「主视角」 exists, in the tall frame only (topBarBacking). It mounts
+            and leaves with the control, so there is nothing to animate. */}
+        {backing && (
+          <div
+            data-testid="top-bar-backing"
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 top-0 h-[160%] -z-10 bg-gradient-to-b from-void-black/85 via-void-black/70 to-transparent"
+          />
+        )}
         <div className="flex items-center gap-3 md:gap-6">
           <motion.span
             initial={{ opacity: 0 }}

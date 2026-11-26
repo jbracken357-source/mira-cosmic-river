@@ -19,6 +19,13 @@
 import { PORTRAIT_CAMERA } from '../constants/animation';
 import { TAIL_ROOT } from './tailPath';
 
+// The tall frame itself: height over width. The scene's framing and the 顶栏's
+// backing (#137) both read this one rule, so they can never disagree about which
+// frame is which — a 568×320 landscape phone is narrow, not tall.
+export function isTallFrame(width: number, height: number): boolean {
+  return height > width;
+}
+
 export type Vec3 = [number, number, number];
 
 export interface FramingPose {

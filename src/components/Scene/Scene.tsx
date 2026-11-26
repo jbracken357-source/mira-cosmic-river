@@ -22,7 +22,7 @@ import { cameraAwayFromMainView } from '../../lib/topBarVisibility';
 import { cancelReturnFlight, fittedFov, initialFreeViewState, stepFreeViewCamera } from '../../lib/freeViewCamera';
 import type { FlightPose } from '../../lib/freeViewCamera';
 import { sharedJourney } from '../../lib/sharedJourney';
-import { PORTRAIT_TILT, portraitExplorePose } from '../../lib/portraitFraming';
+import { PORTRAIT_TILT, isTallFrame, portraitExplorePose } from '../../lib/portraitFraming';
 import { TAIL_OCCUPANCY, TAIL_ROOT, tailFarEnd, tailHeading, tailMidProbe } from '../../lib/tailPath';
 import {
   driveQualityGovernor,
@@ -94,7 +94,7 @@ function SceneContent({
   governor: { enabled: boolean; config: GovernorConfig };
   onTierChange: (from: QualityTier, to: QualityTier, reason: 'sustained-slow' | 'sustained-fast') => void;
 }) {
-  const portrait = useThree(state => state.size.height > state.size.width);
+  const portrait = useThree(state => isTallFrame(state.size.width, state.size.height));
   const CAMERA = portrait ? PORTRAIT_CAMERA : LANDSCAPE_CAMERA;
   const cinematicPhase = useBinaryStar((state) => state.cinematicPhase);
   const setCinematicPhase = useBinaryStar((state) => state.setCinematicPhase);
@@ -802,7 +802,7 @@ function noteEntryMark(canvas: HTMLCanvasElement, key: 'contextCreatedMs' | 'fir
 }
 
 export default function Scene({ onSelectStar }: SceneProps) {
-  const CAMERA = window.innerHeight > window.innerWidth ? PORTRAIT_CAMERA : LANDSCAPE_CAMERA;
+  const CAMERA = isTallFrame(window.innerWidth, window.innerHeight) ? PORTRAIT_CAMERA : LANDSCAPE_CAMERA;
   // The governor's opening tier is the detected one, unless a dev ?quality-start=
   // asks otherwise; an explicit ?quality= pin keeps the governor off, so the tier
   // state below never moves away from the pin.

@@ -48,6 +48,11 @@ export async function manipulateScene(page: Page) {
   await page.mouse.wheel(0, 120);
 }
 
+// The compact bar's frames: the two named portrait phones. The landscape phone
+// (844×390) stays wide.
+export const PORTRAIT_FRAME = { width: 390, height: 844 };
+export const SE_FRAME = { width: 320, height: 568 };
+
 // 镜头离开主视角 (#90): a real drag that carries the camera off the main view, so
 // 「主视角」 appears. Starts from empty sky (upper right) so no click target opens
 // a card on the way.

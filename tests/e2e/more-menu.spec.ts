@@ -1,6 +1,12 @@
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { IDLE_FAST, manipulateScene, MID_DECLINE_EPOCH } from './helpers';
+import {
+  IDLE_FAST,
+  manipulateScene,
+  MID_DECLINE_EPOCH,
+  PORTRAIT_FRAME,
+  SE_FRAME,
+} from './helpers';
 import { calculateOrbitalPosition, PHYSICS } from '../../src/constants/physics';
 import {
   PORTRAIT_TILT,
@@ -20,10 +26,8 @@ import {
 // other specs.
 const APP = `/?quality=low&epoch=${MID_DECLINE_EPOCH}`;
 const SEEN_KEY = 'mira:seen-opening';
-// The compact verdict's frames: the two named portrait phones. The landscape
-// phone (844×390) stays wide — its pin is at the bottom of this file.
-const PORTRAIT_FRAME = { width: 390, height: 844 };
-const SE_FRAME = { width: 320, height: 568 };
+// The compact verdict's frames are the two named portrait phones (helpers). The
+// landscape phone (844×390) stays wide — its pin is at the bottom of this file.
 
 async function gotoExplore(page: Page, url = APP) {
   await page.addInitScript(
