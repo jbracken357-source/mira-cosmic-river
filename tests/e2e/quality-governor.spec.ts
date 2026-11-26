@@ -20,11 +20,9 @@ const SCALED = 'quality-window=400&quality-cooldown=1200';
 
 // Runtime errors (#135): a shader that fails to compile only writes the console —
 // three.js does not throw — so a broken branch the low tier never compiles would
-// ride a green suite (an undeclared name inside the high/mid-only MIRA_A_STRANDS
-// branch left lint, build, the unit specs and every low-tier e2e green). Every
-// other spec pins `?quality=low`; these are the only tests that open on the high
-// and mid tiers, the tiers that compile the budget's tier-gated branches, so each
-// of them also holds the scene to a clean console.
+// ride a green suite. Every other spec pins `?quality=low`; these are the only
+// tests that open on the high and mid tiers, the tiers that compile the budget's
+// tier-gated branches, so each of them also holds the scene to a clean console.
 type RuntimeErrors = string[];
 
 const test = base.extend<{ runtimeErrors: RuntimeErrors }>({
