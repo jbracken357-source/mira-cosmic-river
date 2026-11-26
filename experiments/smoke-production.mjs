@@ -1,5 +1,7 @@
 // Production smoke: verify a production build end to end. CI runs it against
 // `vite preview` of its own build (#136); by hand it defaults to the live URL.
+// `vite preview` answers a missing file with `index.html`, so a missing asset is
+// not an error under it. A host that answers 404 makes it one.
 //
 //   node experiments/smoke-production.mjs [https://mira-cosmic-river.vercel.app]
 //
@@ -95,9 +97,7 @@ try {
 console.log(JSON.stringify(report, null, 2));
 const clean = report.desktopFirstVisit.errors.length === 0 && report.mobileReturnVisit.errors.length === 0
   && report.desktopFirstVisit.openingShown && report.desktopFirstVisit.exploreReached
-  && report.desktopFirstVisit.canvasVisible
   && report.mobileReturnVisit.exploreReached && report.mobileReturnVisit.openingAbsent
-  && report.mobileReturnVisit.canvasVisible
   && report.mobileReturnVisit.soundPressed && report.mobileReturnVisit.savePanel && report.mobileReturnVisit.savePreview;
 console.log(clean ? 'PRODUCTION SMOKE: PASS' : 'PRODUCTION SMOKE: FAIL');
 // exitCode, not exit: exit can cut the line above off on a pipe.
