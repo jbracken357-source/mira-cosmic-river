@@ -19,6 +19,18 @@ export const MID_DECLINE_EPOCH = '2026-09-12T00%3A00%3A00Z';
 // viewer-control.spec's SCALED set.
 export const IDLE_FAST = '&idle-resume=1000&idle-ramp=800&idle-epilogue=4000&idle-lead=800';
 
+// Runtime errors the viewer's browser would print: uncaught exceptions and console
+// errors. A shader that fails to compile only reaches the console — three.js does
+// not throw (#135) — so the specs that care read both.
+export function collectRuntimeErrors(page: Page): string[] {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(`pageerror: ${error.message}`));
+  page.on('console', (message) => {
+    if (message.type() === 'error') errors.push(`console: ${message.text()}`);
+  });
+  return errors;
+}
+
 // The tail's keyboard entry (#88): with the treasure-hunt hint gone from the lower
 // edge, the scene itself and this sr-only trigger are the tail's doors.
 export async function openTailCardViaKeyboard(page: Page) {

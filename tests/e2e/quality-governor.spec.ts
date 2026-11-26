@@ -1,5 +1,6 @@
-import { test, expect } from '@playwright/test';
+import { test as base, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
+import { collectRuntimeErrors } from './helpers';
 
 // Adaptive quality (#26): the runtime governor's hysteresis, cooldown, stepping,
 // pinning and the background draw control, observed through the canvas data
@@ -16,6 +17,23 @@ import type { Page } from '@playwright/test';
 // Compressed enough that two windows and the cooldown land in a few seconds even
 // at software-rendering frame rates.
 const SCALED = 'quality-window=400&quality-cooldown=1200';
+
+// Runtime errors (#135): a shader that fails to compile only writes the console —
+// three.js does not throw — so a broken branch the low tier never compiles would
+// ride a green suite. Every other spec pins `?quality=low`; these are the only
+// tests that open on the high and mid tiers, the tiers that compile the budget's
+// tier-gated branches, so each of them also holds the scene to a clean console.
+type RuntimeErrors = string[];
+
+const test = base.extend<{ runtimeErrors: RuntimeErrors }>({
+  runtimeErrors: [async ({ page }, use) => {
+    await use(collectRuntimeErrors(page));
+  }, { auto: true }],
+});
+
+test.afterEach(async ({ runtimeErrors }) => {
+  expect(runtimeErrors, 'the scene raised a runtime error').toEqual([]);
+});
 
 const canvas = (page: Page) => page.locator('canvas');
 
