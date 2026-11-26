@@ -26,8 +26,8 @@ import {
 // other specs.
 const APP = `/?quality=low&epoch=${MID_DECLINE_EPOCH}`;
 const SEEN_KEY = 'mira:seen-opening';
-// The compact verdict's frames are the two named portrait phones (helpers). The
-// landscape phone (844×390) stays wide — its pin is at the bottom of this file.
+// The compact verdict's frames: the two named portrait phones. The landscape
+// phone (844×390) stays wide — its pin is at the bottom of this file.
 
 async function gotoExplore(page: Page, url = APP) {
   await page.addInitScript(

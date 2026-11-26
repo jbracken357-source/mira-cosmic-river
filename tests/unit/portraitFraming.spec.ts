@@ -345,8 +345,6 @@ test.describe('横屏 keeps its own vista — not the wide frame cropped narrow'
   });
 });
 
-// The tall frame itself (#137): one rule for the scene's framing and the 顶栏's
-// backing, so the two can never disagree about which frame is which.
 test.describe('isTallFrame (竖屏的判定)', () => {
   test('height over width: the named portrait phones are tall, landscape is not', () => {
     expect(isTallFrame(390, 844)).toBe(true);
@@ -356,7 +354,6 @@ test.describe('isTallFrame (竖屏的判定)', () => {
   });
 
   test('a narrow landscape phone is compact-width but not tall', () => {
-    // 568×320 sits inside the compact breakpoint; the frame is still landscape.
     expect(isTallFrame(568, 320)).toBe(false);
   });
 

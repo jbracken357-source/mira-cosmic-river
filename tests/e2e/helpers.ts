@@ -48,8 +48,6 @@ export async function manipulateScene(page: Page) {
   await page.mouse.wheel(0, 120);
 }
 
-// The compact bar's frames: the two named portrait phones. The landscape phone
-// (844×390) stays wide.
 export const PORTRAIT_FRAME = { width: 390, height: 844 };
 export const SE_FRAME = { width: 320, height: 568 };
 

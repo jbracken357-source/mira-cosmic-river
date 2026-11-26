@@ -6,7 +6,6 @@ const MOBILE_BREAKPOINT = 640;
 const isPhoneWidth = () => window.innerWidth < MOBILE_BREAKPOINT;
 const readTallFrame = () => isTallFrame(window.innerWidth, window.innerHeight);
 
-// Re-reads one window measurement whenever the window is resized.
 function useWindowFlag(read: () => boolean): boolean {
   const [flag, setFlag] = useState<boolean>(() => {
     // SSR-safe: default to false on server

@@ -175,8 +175,6 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
   // the row never wraps: 暂停 (once it exists), 完整开场 and 语言 tuck into 「更多」.
   const bar = topBarVisibility({ manipulated, awayFromMainView, compact: isMobile });
   const tucked = bar.tucked;
-  // 顶栏衬底 (#137): see topBarBacking — the compact bar, in the tall frame, for
-  // exactly as long as 「主视角」 exists.
   const backing = topBarBacking({ compact: isMobile, portrait, awayFromMainView });
 
   // 「更多」 (#111): the panel below the bar. It opens on the button, closes on an

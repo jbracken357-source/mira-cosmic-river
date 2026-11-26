@@ -95,7 +95,7 @@ test.describe('Mobile first-class', () => {
 // 竖屏长卷 (#92): the portrait long scroll, proven geometrically — the scene's own
 // dev probes (screen percents it writes every frame) against the DOM boxes of the
 // 终幕标题 and the 顶栏, cross-checked against the pure framing math in
-// lib/portraitFraming. The named frame is the 390×844 PORTRAIT_FRAME (helpers).
+// lib/portraitFraming. The named frame is 390×844.
 
 // Read one dev probe ("x,y" screen percents) off the canvas.
 async function probe(page: Page, name: string): Promise<[number, number]> {
