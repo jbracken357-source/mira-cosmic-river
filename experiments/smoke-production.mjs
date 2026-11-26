@@ -60,9 +60,8 @@ try {
     await page.getByTestId('ambient-toggle').click();
     report.mobileReturnVisit.soundPressed = await page.getByTestId('ambient-toggle').getAttribute('aria-pressed') === 'true';
 
-    // The visit's first drag or zoom graduates the quiet bar: 今晚的 Mira appears
-    // (the 顶栏's quiet first look), so drag the scene once first. A drag is never a
-    // click, so no star card opens on the way.
+    // The visit's first drag or zoom graduates the quiet bar: 今晚的 Mira appears.
+    // A drag is never a click, so no star card opens on the way.
     const canvas = page.locator('canvas');
     const box = await canvas.boundingBox();
     if (!box) throw new Error('the canvas has no box on the phone return visit');
@@ -101,6 +100,5 @@ const clean = report.desktopFirstVisit.errors.length === 0 && report.mobileRetur
   && report.mobileReturnVisit.canvasVisible
   && report.mobileReturnVisit.soundPressed && report.mobileReturnVisit.savePanel && report.mobileReturnVisit.savePreview;
 console.log(clean ? 'PRODUCTION SMOKE: PASS' : 'PRODUCTION SMOKE: FAIL');
-// CI reads the exit code, not the line above. exitCode, not exit: exit can cut the
-// line above off on a pipe.
+// exitCode, not exit: exit can cut the line above off on a pipe.
 process.exitCode = clean ? 0 : 1;
