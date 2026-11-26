@@ -1,10 +1,12 @@
-// Production smoke: verify the deployed build end to end against the live URL.
+// Production smoke: verify a production build end to end. CI runs it against
+// `vite preview` of its own build (#136); by hand it defaults to the live URL.
 //
 //   node experiments/smoke-production.mjs [https://mira-cosmic-river.vercel.app]
 //
 // Desktop first visit must play the full cinematic and reach the scene; a
-// mobile-viewport return visit must enter directly, flip the sound toggle, open the
-// save flow, and survive a touch tap — with zero page errors anywhere. Production
+// mobile-viewport return visit must enter directly, flip the sound toggle, drag the
+// scene once, open the save flow, and survive a touch tap — with zero page errors
+// anywhere. The exit code carries the verdict: 0 for PASS, 1 for FAIL. Production
 // strips the dev-only observability attributes, so this asserts only what the shipped
 // build exposes (testIds, aria state, canvas presence). Pair it with a bundle-hash
 // comparison (local `npm run build` vs the live index.html asset names) to pin WHICH
@@ -58,6 +60,17 @@ try {
     await page.getByTestId('ambient-toggle').click();
     report.mobileReturnVisit.soundPressed = await page.getByTestId('ambient-toggle').getAttribute('aria-pressed') === 'true';
 
+    // The visit's first drag or zoom graduates the quiet bar: 今晚的 Mira appears
+    // (the 顶栏's quiet first look), so drag the scene once first. A drag is never a
+    // click, so no star card opens on the way.
+    const canvas = page.locator('canvas');
+    const box = await canvas.boundingBox();
+    if (!box) throw new Error('the canvas has no box on the phone return visit');
+    await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.6);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width * 0.58, box.y + box.height * 0.64, { steps: 8 });
+    await page.mouse.up();
+
     // Tonight's Mira: the entry opens the panel and locks a preview.
     await page.getByTestId('tonight-save').click();
     const panel = page.getByTestId('tonight-panel');
@@ -70,12 +83,8 @@ try {
       await page.getByTestId('tonight-close').click();
     }
 
-    // Touch drag on the canvas does not break anything.
-    const canvas = page.locator('canvas');
-    const box = await canvas.boundingBox();
-    if (box) {
-      await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2).catch(() => {});
-    }
+    // Touch tap on the canvas does not break anything.
+    await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2).catch(() => {});
     await page.waitForTimeout(1500);
     report.mobileReturnVisit.errors = errors;
     await context.close();
@@ -87,6 +96,11 @@ try {
 console.log(JSON.stringify(report, null, 2));
 const clean = report.desktopFirstVisit.errors.length === 0 && report.mobileReturnVisit.errors.length === 0
   && report.desktopFirstVisit.openingShown && report.desktopFirstVisit.exploreReached
+  && report.desktopFirstVisit.canvasVisible
   && report.mobileReturnVisit.exploreReached && report.mobileReturnVisit.openingAbsent
+  && report.mobileReturnVisit.canvasVisible
   && report.mobileReturnVisit.soundPressed && report.mobileReturnVisit.savePanel && report.mobileReturnVisit.savePreview;
 console.log(clean ? 'PRODUCTION SMOKE: PASS' : 'PRODUCTION SMOKE: FAIL');
+// CI reads the exit code, not the line above. exitCode, not exit: exit can cut the
+// line above off on a pipe.
+process.exitCode = clean ? 0 : 1;

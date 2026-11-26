@@ -98,5 +98,8 @@ docs/archive/         Gen 1 material, kept for history only
 
 Pushes to `master` deploy to Vercel automatically. GitHub Actions runs lint, build and
 the Chromium end-to-end suite on every pull request and on every push to `master`.
+A production smoke runs there too: it serves the build with `vite preview` and plays a
+desktop first visit and a phone return visit through `experiments/smoke-production.mjs`,
+failing on any page error.
 See [ADR-0002](./docs/adr/0002-vercel-github-cicd-over-cloudbase.md) for why Vercel
 rather than CloudBase.
