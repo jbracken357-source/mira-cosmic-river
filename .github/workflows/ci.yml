@@ -70,7 +70,8 @@ jobs:
         run: |
           printf 'deb http://127.0.0.1:9999/ubuntu/24.04/prod noble main\n' | sudo tee /etc/apt/sources.list.d/microsoft-prod.list > /dev/null
           node -e "require('http').createServer((_, res) => { res.statusCode = 403; res.end(); }).listen(9999, '127.0.0.1')" &
-          # Fails the step if the stand-in server did not come up.
+          # Fails the step if the stand-in server did not come up. A missing server
+          # must not pass, because apt only warns on a refused connection.
           curl --silent --retry 20 --retry-connrefused --retry-delay 1 --output /dev/null http://127.0.0.1:9999/
           sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list
           npx playwright install --with-deps chromium
