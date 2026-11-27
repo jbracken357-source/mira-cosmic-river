@@ -61,17 +61,18 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # #141: the runner image ships a Microsoft apt source that the browser
-      # dependencies do not need. When it answers 403, the `apt-get update`
-      # inside `--with-deps` exits 100 before any test runs. This job replaces
-      # that source with a copy that a local server answers 403, so the install
-      # step has to survive the failure on every run.
+      # #141: the runner image ships a Microsoft apt source, and the browser
+      # dependencies do not need it. When it answers 403, the `apt-get update`
+      # inside `--with-deps` exits 100 before any test runs. This job first
+      # points that source at a local server that answers 403, so a `rm` that
+      # stops working fails this job on every run.
       - name: Install Playwright browser
         run: |
           printf 'deb http://127.0.0.1:9999/ubuntu/24.04/prod noble main\n' | sudo tee /etc/apt/sources.list.d/microsoft-prod.list > /dev/null
           node -e "require('http').createServer((_, res) => { res.statusCode = 403; res.end(); }).listen(9999, '127.0.0.1')" &
           # Fails the step if the stand-in server did not come up.
           curl --silent --retry 20 --retry-connrefused --retry-delay 1 --output /dev/null http://127.0.0.1:9999/
+          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list
           npx playwright install --with-deps chromium
 
       - name: Build
@@ -118,8 +119,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Drops the runner's Microsoft apt source first, for the reason the smoke
+      # job gives (#141).
       - name: Install Playwright browser
-        run: npx playwright install --with-deps chromium
+        run: |
+          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list
+          npx playwright install --with-deps chromium
 
       - name: End-to-end tests
         run: npx playwright test --project=chromium ${{ matrix.args }}
