@@ -61,6 +61,20 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # #141: shows which file holds the Microsoft source before the fix names it.
+      - name: List the apt sources the runner ships
+        run: |
+          ls -la /etc/apt/sources.list.d/
+          grep -rn -E '^(deb |URIs:)' /etc/apt/sources.list /etc/apt/sources.list.d/ || true
+
+      # #141: the runner image ships a Microsoft apt source that the browser
+      # dependencies do not need. When it answers 403, the `apt-get update`
+      # inside `--with-deps` exits 100 before any test runs. This job points
+      # that host at the loopback address, so the source fails on every run.
+      - name: Force the Microsoft apt source to fail
+        run: |
+          printf '127.0.0.1 packages.microsoft.com\n::1 packages.microsoft.com\n' | sudo tee -a /etc/hosts
+
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
 
