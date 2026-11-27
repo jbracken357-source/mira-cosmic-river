@@ -216,7 +216,7 @@ test.describe('文字底线：静态后备页', () => {
         ...args: unknown[]
       ) {
         if (type === 'webgl' || type === 'webgl2' || type === 'experimental-webgl') return null;
-        return original.call(this, type, ...args);
+        return Reflect.apply(original, this, [type, ...args]);
       } as typeof HTMLCanvasElement.prototype.getContext;
     });
     await page.goto(APP, { waitUntil: 'domcontentloaded' });

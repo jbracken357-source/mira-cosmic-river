@@ -155,7 +155,7 @@ test.describe('竖屏长卷: the road runs down the long axis at 390×844', () =
       [a, PHYSICS.MIRA_A.radius],
       [b, PHYSICS.MIRA_B.radius],
     ] as const) {
-      const disc = screenDiscRadiusPercent(star, radius * DISC_MARGIN, pose, REF, PORTRAIT_TILT);
+      const disc = screenDiscRadiusPercent(star, radius * DISC_MARGIN, pose, REF);
       expect(star.y - disc).toBeGreaterThan(TOP_BAR_BOTTOM_PERCENT + 2);
     }
   });
@@ -167,7 +167,7 @@ test.describe('竖屏长卷: the road runs down the long axis at 390×844', () =
       [HOME_B, PHYSICS.MIRA_B.radius],
     ] as const) {
       const star = projectToScreenPercent(home, poseSe, SE, PORTRAIT_TILT);
-      const core = screenDiscRadiusPercent(star, radius, poseSe, SE, PORTRAIT_TILT);
+      const core = screenDiscRadiusPercent(star, radius, poseSe, SE);
       // The star's body stays below the bar; only the faint outer haze may brush it.
       expect(star.y - core).toBeGreaterThan(TOP_BAR_BOTTOM_PERCENT_SE);
     }
@@ -187,7 +187,7 @@ test.describe('竖屏长卷: the road runs down the long axis at 390×844', () =
       [HOME_B, PHYSICS.MIRA_B.radius],
     ] as const) {
       const star = projectToScreenPercent(home, poseSe, SE, PORTRAIT_TILT);
-      const disc = screenDiscRadiusPercent(star, radius * DISC_MARGIN, poseSe, SE, PORTRAIT_TILT);
+      const disc = screenDiscRadiusPercent(star, radius * DISC_MARGIN, poseSe, SE);
       expect(star.y - disc).toBeGreaterThan(TOP_BAR_BOTTOM_PERCENT_SE + 0.5);
     }
   });
@@ -211,7 +211,6 @@ test.describe('竖屏长卷: the road runs down the long axis at 390×844', () =
         PHYSICS.MIRA_A.radius * MIRA_A_ATMOSPHERE.outer.scale,
         poseHaze,
         aspect,
-        PORTRAIT_TILT,
       );
       expect(star.y - haze).toBeGreaterThan(CONTROL_ROW_BOTTOM[aspect] + 1);
     }
@@ -225,22 +224,22 @@ test.describe('竖屏长卷: the road runs down the long axis at 390×844', () =
     const poseSe = portraitExplorePose(SE);
     const aSe = projectToScreenPercent(HOME_A, poseSe, SE, PORTRAIT_TILT);
     const bSe = projectToScreenPercent(HOME_B, poseSe, SE, PORTRAIT_TILT);
-    const discA = screenDiscRadiusPercent(aSe, PHYSICS.MIRA_A.radius * DISC_MARGIN, poseSe, SE, PORTRAIT_TILT);
-    const discB = screenDiscRadiusPercent(bSe, PHYSICS.MIRA_B.radius * DISC_MARGIN, poseSe, SE, PORTRAIT_TILT);
+    const discA = screenDiscRadiusPercent(aSe, PHYSICS.MIRA_A.radius * DISC_MARGIN, poseSe, SE);
+    const discB = screenDiscRadiusPercent(bSe, PHYSICS.MIRA_B.radius * DISC_MARGIN, poseSe, SE);
     expect(aSe.y + discA).toBeLessThan(TITLE_TOP_PERCENT - 0.3);
     expect(bSe.y + discB).toBeLessThan(TITLE_TOP_PERCENT - 1);
   });
 
   test('the explore framing clears the 终幕标题 band (reduced motion pins this framing)', () => {
-    const disc = screenDiscRadiusPercent(a, PHYSICS.MIRA_A.radius * DISC_MARGIN, pose, REF, PORTRAIT_TILT);
+    const disc = screenDiscRadiusPercent(a, PHYSICS.MIRA_A.radius * DISC_MARGIN, pose, REF);
     expect(a.y + disc).toBeLessThan(TITLE_TOP_PERCENT - 1);
-    const discB = screenDiscRadiusPercent(b, PHYSICS.MIRA_B.radius * DISC_MARGIN, pose, REF, PORTRAIT_TILT);
+    const discB = screenDiscRadiusPercent(b, PHYSICS.MIRA_B.radius * DISC_MARGIN, pose, REF);
     expect(b.y + discB).toBeLessThan(TITLE_TOP_PERCENT - 1);
   });
 
   test('the red giant still dwarfs the companion on screen', () => {
-    const discA = screenDiscRadiusPercent(a, PHYSICS.MIRA_A.radius, pose, REF, PORTRAIT_TILT);
-    const discB = screenDiscRadiusPercent(b, PHYSICS.MIRA_B.radius, pose, REF, PORTRAIT_TILT);
+    const discA = screenDiscRadiusPercent(a, PHYSICS.MIRA_A.radius, pose, REF);
+    const discB = screenDiscRadiusPercent(b, PHYSICS.MIRA_B.radius, pose, REF);
     expect(discA).toBeGreaterThan(discB * 4);
   });
 });
@@ -270,8 +269,8 @@ test.describe('竖屏长卷: the 终幕 title beat (the far pose) keeps the pair
     for (const aspect of [REF, SE]) {
       const a = projectToScreenPercent(HOME_A, far, aspect, PORTRAIT_TILT);
       const b = projectToScreenPercent(HOME_B, far, aspect, PORTRAIT_TILT);
-      const discA = screenDiscRadiusPercent(a, PHYSICS.MIRA_A.radius * DISC_MARGIN, far, aspect, PORTRAIT_TILT);
-      const discB = screenDiscRadiusPercent(b, PHYSICS.MIRA_B.radius * DISC_MARGIN, far, aspect, PORTRAIT_TILT);
+      const discA = screenDiscRadiusPercent(a, PHYSICS.MIRA_A.radius * DISC_MARGIN, far, aspect);
+      const discB = screenDiscRadiusPercent(b, PHYSICS.MIRA_B.radius * DISC_MARGIN, far, aspect);
       expect(a.y + discA).toBeLessThan(TITLE_TOP_PERCENT - 1);
       expect(b.y + discB).toBeLessThan(TITLE_TOP_PERCENT - 1);
       // ...and nothing has left the frame to get there.

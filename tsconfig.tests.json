@@ -1,6 +1,9 @@
 {
   "extends": "./tsconfig.app.json",
   "compilerOptions": {
+    // daily-sky.spec.ts imports the dev server's pre-bundled @react-three/fiber in
+    // the page. That URL exists only in the dev server, so it maps to a stub.
+    "paths": { "/node_modules/.vite/deps/@react-three_fiber.js": ["./tests/e2e/react-three-fiber-roots.d.ts"] },
     "types": ["node", "vite/client"]
   },
   "include": ["tests", "playwright.config.ts"]
