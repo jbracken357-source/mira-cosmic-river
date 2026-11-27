@@ -24,11 +24,11 @@ const types = {
 };
 
 createServer(async (request, response) => {
-  const { pathname } = new URL(request.url, 'http://localhost');
-  const file = pathname.endsWith('/')
-    ? path.join(root, decodeURIComponent(pathname), 'index.html')
-    : path.join(root, decodeURIComponent(pathname));
   try {
+    const { pathname } = new URL(request.url, 'http://localhost');
+    const file = pathname.endsWith('/')
+      ? path.join(root, decodeURIComponent(pathname), 'index.html')
+      : path.join(root, decodeURIComponent(pathname));
     if (!file.startsWith(root + path.sep)) throw new Error('outside the folder');
     if (!(await fs.stat(file)).isFile()) throw new Error('not a file');
     response.writeHead(200, { 'content-type': types[path.extname(file)] ?? 'application/octet-stream' });
