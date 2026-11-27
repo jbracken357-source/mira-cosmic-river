@@ -58,7 +58,7 @@ function blockWebGL(page: Page) {
     const original = HTMLCanvasElement.prototype.getContext;
     HTMLCanvasElement.prototype.getContext = function (this: HTMLCanvasElement, type: string, ...args: unknown[]) {
       if (type === 'webgl' || type === 'webgl2' || type === 'experimental-webgl') return null;
-      return original.call(this, type, ...args);
+      return Reflect.apply(original, this, [type, ...args]);
     } as typeof HTMLCanvasElement.prototype.getContext;
   });
 }

@@ -254,7 +254,7 @@ test.describe('viewerControlNow (store snapshot assembly)', () => {
   });
 
   test('a fresh snapshot leaves the camera with the viewer', () => {
-    const control = viewerControlNow(snapshot());
+    const control = viewerControlNow(snapshot(), false);
     expect(control.autoCamera).toBe('off');
     expect(control.epilogueCamera).toBe(false);
     expect(control.epilogueText).toBe(false);
@@ -264,9 +264,9 @@ test.describe('viewerControlNow (store snapshot assembly)', () => {
   test('idle thresholds are measured against the snapshot clock', () => {
     // Comfortable margins so the assertions cannot race Date.now(): 35s is past the
     // 30s+3s ramp but well before the 52s closing-camera arm; 61s is past the 60s line.
-    const rested = viewerControlNow(snapshot({ lastIntentionalInputAt: Date.now() - 35_000 }));
+    const rested = viewerControlNow(snapshot({ lastIntentionalInputAt: Date.now() - 35_000 }), false);
     expect(rested.autoCamera).toBe('on');
-    const epilogue = viewerControlNow(snapshot({ lastIntentionalInputAt: Date.now() - 61_000 }));
+    const epilogue = viewerControlNow(snapshot({ lastIntentionalInputAt: Date.now() - 61_000 }), false);
     expect(epilogue.epilogueCamera).toBe(true);
     expect(epilogue.epilogueText).toBe(true);
   });
@@ -286,7 +286,7 @@ test.describe('viewerControlNow (store snapshot assembly)', () => {
   });
 
   test('a fresh return to the main view holds the camera for its settle window', () => {
-    const settled = viewerControlNow(snapshot({ lastIntentionalInputAt: Date.now() - 61_000, returnToExploreAt: Date.now() - 5_000 }));
+    const settled = viewerControlNow(snapshot({ lastIntentionalInputAt: Date.now() - 61_000, returnToExploreAt: Date.now() - 5_000 }), false);
     expect(settled.reason).toBe('return-settle');
     expect(settled.holdsIdle).toBe(true);
     expect(settled.autoCamera).toBe('off');
@@ -294,12 +294,12 @@ test.describe('viewerControlNow (store snapshot assembly)', () => {
     expect(settled.epilogueText).toBe(false);
 
     // The window is anchored to the request, not renewed by the hold's restamps.
-    const aged = viewerControlNow(snapshot({ lastIntentionalInputAt: Date.now() - 61_000, returnToExploreAt: Date.now() - RETURN_SETTLE_MS - 1_000 }));
+    const aged = viewerControlNow(snapshot({ lastIntentionalInputAt: Date.now() - 61_000, returnToExploreAt: Date.now() - RETURN_SETTLE_MS - 1_000 }), false);
     expect(aged.reason).toBe('epilogue');
   });
 
   test('the settle window belongs to free viewing, not the opening', () => {
-    const opening = viewerControlNow(snapshot({ introComplete: false, returnToExploreAt: Date.now() }));
+    const opening = viewerControlNow(snapshot({ introComplete: false, returnToExploreAt: Date.now() }), false);
     expect(opening.reason).toBe('cinematic');
   });
 });

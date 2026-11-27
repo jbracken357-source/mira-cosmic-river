@@ -48,7 +48,7 @@ interface ClearanceRead {
 async function readClearance(page: Page, language: 'ch' | 'en', screenshot: string): Promise<ClearanceRead> {
   const canvas = page.locator('canvas');
   const canvasBox = await canvas.boundingBox();
-  expect(canvasBox, 'canvas has a box').toBeTruthy();
+  if (!canvasBox) throw new Error('canvas has no box');
 
   // The settled framing, derived from the stored pose so a retune moves both
   // together: the closing flight parks the camera exactly on CLOSING (fov fitting
@@ -68,7 +68,7 @@ async function readClearance(page: Page, language: 'ch' | 'en', screenshot: stri
     (screenDiscRadiusPercent(projected, PHYSICS.MIRA_A.radius * 1.4, pose, aspect) / 100) * canvasBox.height;
 
   const text = await page.getByTestId('epilogue-text').boundingBox();
-  expect(text, 'epilogue text has a box').toBeTruthy();
+  if (!text) throw new Error('epilogue text has no box');
   // The language anchor is part of the read: the line's box is what may differ.
   await expect(page.getByTestId('epilogue-line-1')).toHaveText(
     language === 'ch' ? '我们都是星尘。' : 'We are made of starstuff.',
@@ -85,8 +85,8 @@ async function readClearance(page: Page, language: 'ch' | 'en', screenshot: stri
 
     const cx = canvasBox.x + (px / 100) * canvasBox.width;
     const cy = canvasBox.y + (py / 100) * canvasBox.height;
-    const gapX = Math.max(text!.x - (cx + discPx), cx - discPx - (text!.x + text!.width));
-    const gapY = Math.max(text!.y - (cy + discPx), cy - discPx - (text!.y + text!.height));
+    const gapX = Math.max(text.x - (cx + discPx), cx - discPx - (text.x + text.width));
+    const gapY = Math.max(text.y - (cy + discPx), cy - discPx - (text.y + text.height));
     console.log(
       `[115] sample ${i}: live ${px.toFixed(2)},${py.toFixed(2)} seam ${projected.x.toFixed(2)},${projected.y.toFixed(2)} ` +
         `cx ${cx.toFixed(0)} r ${discPx.toFixed(0)} gapX ${gapX.toFixed(0)} gapY ${gapY.toFixed(0)}`,

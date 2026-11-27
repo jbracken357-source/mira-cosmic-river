@@ -36,6 +36,10 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      # The build's tsc -b covers src and vite.config.ts only.
+      - name: Type-check tests
+        run: npx tsc --noEmit -p tsconfig.tests.json
+
       - name: Build
         run: npm run build
 
