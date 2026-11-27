@@ -1,5 +1,5 @@
 export { useBinaryStar } from './useBinaryStar';
-export { useMobile } from './useMobile';
+export { useMobile, usePortrait } from './useMobile';
 export { useIntentionalInput } from './useIntentionalInput';
 export { useAmbientSound, initAmbientSound, ambientSpace } from './useAmbientSound';
 export { useMilestoneHint } from './useMilestoneHint';

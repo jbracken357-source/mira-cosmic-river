@@ -19,6 +19,12 @@
 import { PORTRAIT_CAMERA } from '../constants/animation';
 import { TAIL_ROOT } from './tailPath';
 
+// The one rule for the tall frame. The scene's framing and the 顶栏's backing both
+// read it, so they cannot disagree about which frame is which.
+export function isTallFrame(width: number, height: number): boolean {
+  return height > width;
+}
+
 export type Vec3 = [number, number, number];
 
 export interface FramingPose {

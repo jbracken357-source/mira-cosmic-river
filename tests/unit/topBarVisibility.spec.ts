@@ -3,6 +3,7 @@ import { CAMERA, PORTRAIT_CAMERA } from '../../src/constants/animation';
 import {
   cameraAwayFromMainView,
   MAIN_VIEW_AWAY_TOLERANCE,
+  topBarBacking,
   topBarVisibility,
 } from '../../src/lib/topBarVisibility';
 
@@ -106,5 +107,21 @@ test.describe('cameraAwayFromMainView (镜头离开主视角)', () => {
     // wrong table it would read as away forever.
     expect(cameraAwayFromMainView([...PORTRAIT_CAMERA.EXPLORE.position], true)).toBe(false);
     expect(cameraAwayFromMainView([...explore], true)).toBe(true);
+  });
+});
+
+test.describe('topBarBacking (顶栏衬底)', () => {
+  test('the compact bar is backed in the tall frame, for exactly as long as 主视角 exists', () => {
+    expect(topBarBacking({ compact: true, portrait: true, awayFromMainView: true })).toBe(true);
+    expect(topBarBacking({ compact: true, portrait: true, awayFromMainView: false })).toBe(false);
+  });
+
+  test('a narrow landscape phone is compact but not tall, so it is never backed', () => {
+    expect(topBarBacking({ compact: true, portrait: false, awayFromMainView: true })).toBe(false);
+  });
+
+  test('the wide bar is never backed, in either orientation', () => {
+    expect(topBarBacking({ compact: false, portrait: true, awayFromMainView: true })).toBe(false);
+    expect(topBarBacking({ compact: false, portrait: false, awayFromMainView: true })).toBe(false);
   });
 });

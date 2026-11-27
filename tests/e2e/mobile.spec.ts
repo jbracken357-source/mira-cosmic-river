@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { openTailCardViaKeyboard } from './helpers';
+import { openTailCardViaKeyboard, PORTRAIT_FRAME } from './helpers';
 import { calculateOrbitalPosition, PHYSICS } from '../../src/constants/physics';
 import { TRANSLATIONS } from '../../src/constants/translations';
 import { resolveOpeningPose } from '../../src/lib/openingTimeline';
@@ -96,7 +96,6 @@ test.describe('Mobile first-class', () => {
 // dev probes (screen percents it writes every frame) against the DOM boxes of the
 // 终幕标题 and the 顶栏, cross-checked against the pure framing math in
 // lib/portraitFraming. The named frame is 390×844.
-const PORTRAIT_FRAME = { width: 390, height: 844 };
 
 // Read one dev probe ("x,y" screen percents) off the canvas.
 async function probe(page: Page, name: string): Promise<[number, number]> {

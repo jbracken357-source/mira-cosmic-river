@@ -6,6 +6,7 @@ import { fittedFov } from '../../src/lib/freeViewCamera';
 import {
   PORTRAIT_REFERENCE_ASPECT,
   PORTRAIT_TILT,
+  isTallFrame,
   portraitExplorePose,
   projectToScreenPercent,
   screenDiscRadiusPercent,
@@ -341,5 +342,22 @@ test.describe('横屏 keeps its own vista — not the wide frame cropped narrow'
       expect(p.y).toBeGreaterThan(3);
       expect(p.y).toBeLessThan(97);
     }
+  });
+});
+
+test.describe('isTallFrame (竖屏的判定)', () => {
+  test('height over width: the named portrait phones are tall, landscape is not', () => {
+    expect(isTallFrame(390, 844)).toBe(true);
+    expect(isTallFrame(320, 568)).toBe(true);
+    expect(isTallFrame(844, 390)).toBe(false);
+    expect(isTallFrame(1440, 900)).toBe(false);
+  });
+
+  test('a narrow landscape phone is compact-width but not tall', () => {
+    expect(isTallFrame(568, 320)).toBe(false);
+  });
+
+  test('a square frame is not tall', () => {
+    expect(isTallFrame(600, 600)).toBe(false);
   });
 });

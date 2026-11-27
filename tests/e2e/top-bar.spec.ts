@@ -1,7 +1,14 @@
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { TRANSITIONS } from '../../src/constants/animation';
-import { dragOffMainView, IDLE_FAST, manipulateScene, MID_DECLINE_EPOCH } from './helpers';
+import {
+  dragOffMainView,
+  IDLE_FAST,
+  manipulateScene,
+  MID_DECLINE_EPOCH,
+  PORTRAIT_FRAME,
+  SE_FRAME,
+} from './helpers';
 
 // 顶栏 (#90): free viewing opens with three controls only — 环境音, 语言, 完整开场.
 // The visit's first drag or zoom graduates 暂停 and 今晚的 Mira; 主视角 exists only
@@ -105,6 +112,57 @@ test.describe('the epilogue hush', () => {
     );
     // …and once it has run, the bar is fully gone while the epilogue holds the screen.
     await expect(topBar).toHaveCSS('opacity', '0', { timeout: 5000 });
+  });
+});
+
+// 顶栏衬底 (#137): the rule and its reason live at topBarBacking.
+test.describe('顶栏衬底 (#137)', () => {
+  const backing = (page: Page) => page.getByTestId('top-bar-backing');
+
+  for (const frame of [PORTRAIT_FRAME, SE_FRAME]) {
+    test(`${frame.width}×${frame.height} 竖屏 carries it only while the camera is off the main view`, async ({ page }) => {
+      await page.setViewportSize(frame);
+      await gotoExplore(page);
+      await expect(backing(page)).toHaveCount(0);
+
+      await manipulateScene(page);
+      await expect(page.getByTestId('return-to-view')).toBeVisible({ timeout: 15000 });
+      await expect(backing(page)).toHaveCount(1);
+      // Painted, not merely mounted, and behind the row's words.
+      await expect(backing(page)).toHaveCSS('background-image', /linear-gradient/);
+      const barBox = await page.getByTestId('top-bar').boundingBox();
+      const backingBox = await backing(page).boundingBox();
+      expect(backingBox!.y).toBe(barBox!.y);
+      expect(backingBox!.height / barBox!.height).toBeCloseTo(1.6, 1);
+      const paint = await backing(page).evaluate((el) => getComputedStyle(el));
+      expect(Number(paint.zIndex)).toBeLessThan(0);
+      expect(paint.pointerEvents).toBe('none');
+
+      await page.getByTestId('return-to-view').click();
+      await expect(page.getByTestId('return-to-view')).toHaveCount(0, { timeout: 15000 });
+      await expect(backing(page)).toHaveCount(0);
+    });
+  }
+
+  test('横屏 carries none, wide or narrow, even off the main view', async ({ page }) => {
+    await page.setViewportSize({ width: 844, height: 390 });
+    await gotoExplore(page);
+    await expect(backing(page)).toHaveCount(0);
+
+    await manipulateScene(page);
+    await expect(page.getByTestId('return-to-view')).toBeVisible({ timeout: 15000 });
+    await expect(backing(page)).toHaveCount(0);
+
+    // 568×320 is inside the compact breakpoint — 「更多」 proves it — and still
+    // landscape: compact, but not tall.
+    await page.setViewportSize({ width: 568, height: 320 });
+    await gotoExplore(page);
+    await expect(page.getByTestId('more-toggle')).toBeVisible();
+    await expect(backing(page)).toHaveCount(0);
+
+    await manipulateScene(page);
+    await expect(page.getByTestId('return-to-view')).toBeVisible({ timeout: 15000 });
+    await expect(backing(page)).toHaveCount(0);
   });
 });
 
