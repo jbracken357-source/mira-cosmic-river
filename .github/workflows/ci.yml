@@ -82,13 +82,16 @@ jobs:
       - name: Smoke-test the production build
         run: |
           base=http://127.0.0.1:4173
-          npx vite preview --port 4173 --strictPort --host 127.0.0.1 &
-          # A failed attempt is expected while the preview starts, so this one is quiet.
+          # serve-dist answers a missing file with 404, as the live host does.
+          # vite preview answers it with index.html, so a build that lacks an
+          # asset passes under it (#143).
+          node experiments/serve-dist.mjs dist 4173 &
+          # A failed attempt is expected while the server starts, so this one is quiet.
           for attempt in $(seq 1 60); do
             if curl --silent --fail "$base/" > /dev/null 2>&1; then break; fi
             sleep 1
           done
-          # Fails the step, with curl's reason, if the preview never came up.
+          # Fails the step, with curl's reason, if the server never came up.
           curl --silent --show-error --fail "$base/" > /dev/null
           node experiments/smoke-production.mjs "$base"
 
