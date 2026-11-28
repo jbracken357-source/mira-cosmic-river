@@ -191,7 +191,6 @@ test.describe('手机顶栏一行排下 (#111)', () => {
       quietHeight,
     );
 
-    // Home again, it returns.
     await page.getByTestId('return-to-view').click();
     await expect(page.getByTestId('return-to-view')).toHaveCount(0, { timeout: 15000 });
     await expect(wordmark).toBeVisible();

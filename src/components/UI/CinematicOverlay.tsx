@@ -178,8 +178,9 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
   const backing = topBarBacking({ compact: isMobile, portrait, awayFromMainView });
 
   // The wordmark gives way when the controls do not fit beside it (#149). On a
-  // 320-wide phone in English the fullest row is wider than the bar. The row
-  // decides by measurement, so a new label or another frame needs no number here.
+  // 320-wide phone in English the fullest row is wider than the bar beside the
+  // wordmark. The row decides by measurement, so a new label or another frame
+  // needs no number here.
   const headerRef = useRef<HTMLElement>(null);
   const controlsRef = useRef<HTMLDivElement>(null);
   const wordmarkRef = useRef<HTMLSpanElement>(null);
@@ -194,21 +195,17 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
       const style = getComputedStyle(header);
       const room = header.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
       const gap = parseFloat(getComputedStyle(controls).columnGap) || 0;
-      // Every control and a gap after it: the gaps between them, and air before the wordmark.
-      let row = 0;
-      for (const child of controls.children) row += child.getBoundingClientRect().width + gap;
-      setWordmarkYields(row + wordmark.offsetWidth > room);
+      const children = [...controls.children];
+      const widths = children.reduce((sum, child) => sum + child.getBoundingClientRect().width, 0);
+      // One gap between each pair of controls, and the same air before the wordmark.
+      const gaps = gap * children.length;
+      setWordmarkYields(widths + gaps + wordmark.offsetWidth > room);
     };
     fit();
     const observer = new ResizeObserver(fit);
     observer.observe(header);
     for (const child of controls.children) observer.observe(child);
-    // A late font changes the widths, the wordmark's included, without a resize of anything observed.
-    document.fonts.addEventListener('loadingdone', fit);
-    return () => {
-      observer.disconnect();
-      document.fonts.removeEventListener('loadingdone', fit);
-    };
+    return () => observer.disconnect();
   }, [tucked, rowControls, language]);
 
   // 「更多」 (#111): the panel below the bar. It opens on the button, closes on an
