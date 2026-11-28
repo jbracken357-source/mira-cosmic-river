@@ -186,27 +186,33 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
   const wordmarkRef = useRef<HTMLSpanElement>(null);
   const [wordmarkYields, setWordmarkYields] = useState(false);
   const rowControls = 1 + Number(bar.returnToView) + Number(bar.tonightSave);
+  // `tucked` is a fresh object on every render; the fit keys on the fact, not the object.
+  const compact = tucked !== null;
   useLayoutEffect(() => {
     const header = headerRef.current;
     const controls = controlsRef.current;
     const wordmark = wordmarkRef.current;
     if (!header || !controls || !wordmark) return;
+    // Only what sits in the row counts. 「今晚的 Mira」 opens its panel from inside
+    // this element, and a panel out of the flow takes no room in the row.
+    const row = [...controls.children].filter(
+      (child) => !/^(absolute|fixed)$/.test(getComputedStyle(child).position),
+    );
     const fit = () => {
       const style = getComputedStyle(header);
       const room = header.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
       const gap = parseFloat(getComputedStyle(controls).columnGap) || 0;
-      const children = [...controls.children];
-      const widths = children.reduce((sum, child) => sum + child.getBoundingClientRect().width, 0);
+      const widths = row.reduce((sum, child) => sum + child.getBoundingClientRect().width, 0);
       // The gaps between the controls.
-      const gaps = gap * (children.length - 1);
+      const gaps = gap * (row.length - 1);
       setWordmarkYields(widths + gaps + wordmark.offsetWidth > room);
     };
     fit();
     const observer = new ResizeObserver(fit);
     observer.observe(header);
-    for (const child of controls.children) observer.observe(child);
+    for (const child of row) observer.observe(child);
     return () => observer.disconnect();
-  }, [tucked, rowControls, language]);
+  }, [compact, rowControls, language]);
 
   // 「更多」 (#111): the panel below the bar. It opens on the button, closes on an
   // outside press or Esc, and hands focus back to the button on the way out (#114's
@@ -336,8 +342,8 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
               {t.returnToView}
             </button>
           )}
-          {bar.tonightSave && <TonightSave compact={Boolean(tucked)} />}
-          <AmbientToggle compact={Boolean(tucked)} />
+          {bar.tonightSave && <TonightSave compact={compact} />}
+          <AmbientToggle compact={compact} />
           {bar.pause && !tucked && (
             <button
               data-testid="pause-toggle"

@@ -162,6 +162,20 @@ test.describe('手机顶栏一行排下 (#111)', () => {
     );
     // The fullest row still fits beside the wordmark here, so the wordmark stays.
     await expect(page.getByTestId('top-bar-wordmark')).toBeVisible();
+
+    // 「今晚的 Mira」 opens its panel over the page. The panel is not a control
+    // on the row, so the wordmark stays while it is open and after it closes.
+    await page.getByTestId('tonight-save').click();
+    await expect(page.getByTestId('tonight-panel')).toBeVisible();
+    await expect(page.getByTestId('top-bar-wordmark')).toBeVisible();
+    await expectOneRow(
+      page,
+      ['return-to-view', 'tonight-save', 'ambient-toggle', 'more-toggle'],
+      quietHeight,
+    );
+    await page.getByTestId('tonight-close').click();
+    await expect(page.getByTestId('tonight-panel')).toHaveCount(0);
+    await expect(page.getByTestId('top-bar-wordmark')).toBeVisible();
   });
 
   // #149: at 320 wide the fullest row in English is wider than the space beside
