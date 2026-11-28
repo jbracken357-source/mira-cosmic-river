@@ -16,7 +16,7 @@
 // frame labelled with the backing's computed opacity. With ffmpeg on PATH it also
 // writes one side-by-side video per moment, real time then four times slower.
 // `sheets` writes the strips again from a `strips` run, without a new capture.
-// A label may hold one "|" for a line break.
+// A label may hold one "|": a line break in the strips, a middle dot in the videos.
 import { spawn, execFileSync } from 'node:child_process';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
@@ -266,16 +266,15 @@ async function recordBuild(browser, base, outDir) {
     await page.getByTestId('return-to-view').tap();
     build.exit = await saveTake(outDir, 'exit', await exitFrames, await page.evaluate(() => window.__fade), { tapAt });
 
-    // 3. No input from here: the idle creep carries the camera off again. After a
-    // return the camera holds for 10 s (RETURN_SETTLE_MS) and the idle clock then
-    // needs its 30 s. Measured, 「主视角」 comes back about 48 s after the tap.
+    // 3. No input from here: the idle creep carries the camera off again. The take
+    // keeps the tap's page time, so the wait is on record.
     await page.waitForFunction((t) => performance.now() >= t, tapAt + 40_000, { polling: 200, timeout: 120_000 });
     const idleFrames = [];
     while (await page.evaluate((t) => performance.now() < t, tapAt + 58_000)) {
       idleFrames.push(await shot(page));
       await sleep(70);
     }
-    build.idle = await saveTake(outDir, 'idle', idleFrames, await page.evaluate(() => window.__fade));
+    build.idle = await saveTake(outDir, 'idle', idleFrames, await page.evaluate(() => window.__fade), { tapAt });
     await context.close();
   }
 
@@ -336,11 +335,13 @@ function pick(take, anchor) {
 const MOMENTS = [
   ['enter', 'Enter: the camera leaves the main view. 390×844, the visit\'s first drag.', mountAt],
   ['exit', 'Exit: 「主视角」 brings the camera back. 390×844.', exitStart],
-  ['idle', 'Idle creep: the camera leaves the main view on its own, about 48 s after the tap. 390×844.', lastMountAt],
+  ['idle', 'Idle creep: the camera leaves the main view on its own, about 46.5 s after the tap. 390×844.', lastMountAt],
   ['reduced', 'Reduced motion: the same first moment. 390×844.', mountAt],
 ];
 
 async function renderMoments(browser, out, base, head, baseLabel, headLabel) {
+  const secondsAfterTap = (take) => ((lastMountAt(take) - take.tapAt) / 1000).toFixed(1);
+  console.log(`idle: the backing mounts ${secondsAfterTap(base.idle)} s after the tap (base), ${secondsAfterTap(head.idle)} s (head)`);
   for (const [name, title, anchorOf] of MOMENTS) {
     const cut = (build) => pick(build[name], anchorOf(build[name]));
     const rows = [[baseLabel, cut(base)], [headLabel, cut(head)]];
@@ -424,7 +425,7 @@ async function videos(out, base, head, baseLabel, headLabel) {
           '-framerate', String(FPS), '-i', inputs[0],
           '-framerate', String(FPS), '-i', inputs[1],
           '-filter_complex',
-          `[0:v]${half(baseLabel.replaceAll('|', '  '), speed)}[a];[1:v]${half(headLabel.replaceAll('|', '  '), speed)}[b];[a][b]hstack=inputs=2[v]`,
+          `[0:v]${half(baseLabel.replaceAll('|', ' · '), speed)}[a];[1:v]${half(headLabel.replaceAll('|', ' · '), speed)}[b];[a][b]hstack=inputs=2[v]`,
           '-map', '[v]', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '18', '-r', String(FPS),
           segment,
         ]);

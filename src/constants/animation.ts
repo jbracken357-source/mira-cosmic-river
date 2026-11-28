@@ -145,11 +145,10 @@ export const TRANSITIONS = {
   // 「更多」面板 (#111): the compact bar's second shelf fades in and out — opacity
   // only, no displacement, and 0 under reduced motion.
   MORE_PANEL_FADE: 0.16,
-  // 顶栏衬底 (#137, #148): the backing behind the compact bar fades in and out
-  // — opacity only, 0 under reduced motion. It mounts with 「主视角」, which the
-  // idle creep can summon while the viewer only watches, so an instant mount
-  // would darken the top of the frame in one frame. Same window as the bar's
-  // own exit, pinned by tests/unit/animationTiming.spec.ts.
+  // 顶栏衬底 (#137, #148): the backing mounts with 「主视角」, which the idle creep
+  // can summon while the viewer only watches, so an instant mount would darken
+  // the top of the frame in one frame. Same window as the bar's own exit, pinned
+  // by tests/unit/animationTiming.spec.ts.
   TOP_BAR_BACKING_FADE: 0.4,
   // The milestone hint's own enter/exit fade while it borrows the lower edge.
   MILESTONE_HINT_FADE: 0.4,

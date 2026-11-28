@@ -119,21 +119,21 @@ test.describe('the epilogue hush', () => {
 test.describe('顶栏衬底 (#137)', () => {
   const backing = (page: Page) => page.getByTestId('top-bar-backing');
 
-  // #148: the page reads the backing's computed opacity when the element enters
-  // the DOM and on every frame after that, up to the first frame at full
-  // opacity. Reading inside the page keeps the result off the test's own timing.
+  // #148: the opacity is read inside the page, which keeps the result off the
+  // test's own timing.
   const recordBackingFade = (page: Page) => page.evaluate(
-    () => new Promise<{ at: number; opacity: number }[]>((resolve) => {
+    () => new Promise<{ at: number; opacity: number }[]>((resolve, reject) => {
       const samples: { at: number; opacity: number }[] = [];
+      const giveUp = () => reject(new Error('the backing did not reach full opacity within 20 s'));
+      setTimeout(giveUp, 20_000);
       const read = () => {
         const el = document.querySelector('[data-testid="top-bar-backing"]');
         if (el) samples.push({ at: performance.now(), opacity: Number(getComputedStyle(el).opacity) });
         return el !== null;
       };
-      const deadline = performance.now() + 20_000;
       const tick = () => {
         read();
-        if (samples.at(-1)?.opacity === 1 || performance.now() > deadline) resolve(samples);
+        if (samples.at(-1)?.opacity === 1) resolve(samples);
         else requestAnimationFrame(tick);
       };
       const observer = new MutationObserver(() => {
@@ -197,7 +197,6 @@ test.describe('顶栏衬底 (#137)', () => {
     const fade = recordBackingFade(page);
     await manipulateScene(page);
     const samples = await fade;
-    // Mounted transparent, and at full opacity one fade later.
     expect(samples[0].opacity).toBe(0);
     expect(samples.at(-1)!.opacity).toBe(1);
     const seconds = (samples.at(-1)!.at - samples[0].at) / 1000;
@@ -212,7 +211,7 @@ test.describe('顶栏衬底 (#137)', () => {
     const fade = recordBackingFade(page);
     await manipulateScene(page);
     const samples = await fade;
-    // No ramp: full opacity within two frames of mounting, whatever the frame rate.
+    // Counted in frames, so the bound holds whatever the frame rate.
     expect(samples.findIndex((sample) => sample.opacity === 1)).toBeLessThanOrEqual(2);
   });
 });

@@ -30,8 +30,7 @@ test.describe('the top bar’s epilogue exit', () => {
   });
 });
 
-// 顶栏衬底 (#148): the backing fades in and out in the top bar's own exit window,
-// 0.3–0.5s. Faster would still read as a jump on a phone. Slower would lag
+// 顶栏衬底 (#148): faster would still read as a jump on a phone. Slower would lag
 // 「主视角」, which appears at once.
 test.describe('the top bar backing’s fade', () => {
   test('stays within 0.3–0.5s', () => {

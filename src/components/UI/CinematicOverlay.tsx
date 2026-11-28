@@ -264,8 +264,8 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
             brings the red giant's disc under the compact bar and the row's 55% words
             drop to about 2:1. A gradient in the page's own void black backs the row
             while 「主视角」 exists, in the tall frame only (topBarBacking). It mounts
-            and leaves with the control, and fades on TOP_BAR_BACKING_FADE: the idle
-            creep can summon the control while the viewer only watches (#148). */}
+            with the control and fades out after it, because the idle creep can
+            summon the control while the viewer only watches (#148). */}
         <AnimatePresence>
           {backing && (
             <motion.div
