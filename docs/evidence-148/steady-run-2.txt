@@ -1,0 +1,6 @@
+backing once settled: {"base":{"portrait390-default":{"present":false,"opacity":null},"portrait390-near":{"present":true,"opacity":"1"},"portrait390-near-reduced":{"present":true,"opacity":"1"},"desktop1440-near":{"present":false,"opacity":null}},"head":{"portrait390-default":{"present":false,"opacity":null},"portrait390-near":{"present":true,"opacity":"1"},"portrait390-near-reduced":{"present":true,"opacity":"1"},"desktop1440-near":{"present":false,"opacity":null}}}
+portrait390-default: base vs head {"maxDiff":0,"diffPixels":0,"totalPixels":329160}
+portrait390-near: base vs head {"maxDiff":0,"diffPixels":0,"totalPixels":329160}
+portrait390-near-reduced: base vs head {"maxDiff":0,"diffPixels":0,"totalPixels":329160}
+desktop1440-near: base vs head {"maxDiff":0,"diffPixels":0,"totalPixels":1296000}
+steady exit=0

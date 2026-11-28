@@ -119,6 +119,32 @@ test.describe('the epilogue hush', () => {
 test.describe('顶栏衬底 (#137)', () => {
   const backing = (page: Page) => page.getByTestId('top-bar-backing');
 
+  // #148: the opacity is read inside the page, which keeps the result off the
+  // test's own timing.
+  const recordBackingFade = (page: Page) => page.evaluate(
+    () => new Promise<{ at: number; opacity: number }[]>((resolve, reject) => {
+      const samples: { at: number; opacity: number }[] = [];
+      const giveUp = () => reject(new Error('the backing did not reach full opacity within 20 s'));
+      setTimeout(giveUp, 20_000);
+      const read = () => {
+        const el = document.querySelector('[data-testid="top-bar-backing"]');
+        if (el) samples.push({ at: performance.now(), opacity: Number(getComputedStyle(el).opacity) });
+        return el !== null;
+      };
+      const tick = () => {
+        read();
+        if (samples.at(-1)?.opacity === 1) resolve(samples);
+        else requestAnimationFrame(tick);
+      };
+      const observer = new MutationObserver(() => {
+        if (!read()) return;
+        observer.disconnect();
+        requestAnimationFrame(tick);
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+    }),
+  );
+
   for (const frame of [PORTRAIT_FRAME, SE_FRAME]) {
     test(`${frame.width}×${frame.height} 竖屏 carries it only while the camera is off the main view`, async ({ page }) => {
       await page.setViewportSize(frame);
@@ -163,6 +189,30 @@ test.describe('顶栏衬底 (#137)', () => {
     await manipulateScene(page);
     await expect(page.getByTestId('return-to-view')).toBeVisible({ timeout: 15000 });
     await expect(backing(page)).toHaveCount(0);
+  });
+
+  test('390×844 竖屏 fades it in behind 「主视角」 (#148)', async ({ page }) => {
+    await page.setViewportSize(PORTRAIT_FRAME);
+    await gotoExplore(page);
+    const fade = recordBackingFade(page);
+    await manipulateScene(page);
+    const samples = await fade;
+    expect(samples[0].opacity).toBe(0);
+    expect(samples.at(-1)!.opacity).toBe(1);
+    const seconds = (samples.at(-1)!.at - samples[0].at) / 1000;
+    expect(seconds).toBeGreaterThanOrEqual(TRANSITIONS.TOP_BAR_BACKING_FADE / 2);
+    expect(seconds).toBeLessThanOrEqual(TRANSITIONS.TOP_BAR_BACKING_FADE * 2);
+  });
+
+  test('390×844 竖屏 shows it at once under reduced motion (#148)', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.setViewportSize(PORTRAIT_FRAME);
+    await gotoExplore(page);
+    const fade = recordBackingFade(page);
+    await manipulateScene(page);
+    const samples = await fade;
+    // Full opacity on the frame it mounts: nothing animates under reduced motion.
+    expect(samples[0].opacity).toBe(1);
   });
 });
 

@@ -1,0 +1,11 @@
+renderer: ANGLE (NVIDIA, NVIDIA GeForce RTX 4060 Laptop GPU (0x000028A0) Direct3D11 vs_5_0 ps_5_0, D3D11)
+idle: the backing mounts 46.5 s after the tap (base), 46.5 s (head)
+enter BEFORE master d005a5d: -61:absent  16:1.00  86:1.00  217:1.00  287:1.00  440:1.00
+enter AFTER this branch: -55:absent  7:0.04  98:0.38  192:0.68  313:0.94  464:1.00
+exit BEFORE master d005a5d: -13:1.00  69:absent  148:absent  227:absent  300:absent  456:absent
+exit AFTER this branch: -31:1.00  54:0.75  136:0.48  226:0.23  300:0.08  457:absent
+idle BEFORE master d005a5d: -120:absent  -16:absent  82:1.00  190:1.00  298:1.00  408:1.00
+idle AFTER this branch: -54:absent  58:0.25  160:0.59  261:0.84  368:0.99  479:1.00
+reduced BEFORE master d005a5d: -58:absent  -2:absent  111:1.00  202:1.00  294:1.00  445:1.00
+reduced AFTER this branch: -54:absent  13:1.00  95:1.00  213:1.00  305:1.00  458:1.00
+strips exit=0

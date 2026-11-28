@@ -264,14 +264,21 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
             brings the red giant's disc under the compact bar and the row's 55% words
             drop to about 2:1. A gradient in the page's own void black backs the row
             while 「主视角」 exists, in the tall frame only (topBarBacking). It mounts
-            and leaves with the control, so there is nothing to animate. */}
-        {backing && (
-          <div
-            data-testid="top-bar-backing"
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-x-0 top-0 h-[160%] -z-10 bg-gradient-to-b from-void-black/85 via-void-black/70 to-transparent"
-          />
-        )}
+            with the control and fades out after it, because the idle creep can
+            summon the control while the viewer only watches (#148). */}
+        <AnimatePresence>
+          {backing && (
+            <motion.div
+              data-testid="top-bar-backing"
+              aria-hidden="true"
+              initial={reduceMotion ? false : { opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0, transition: { duration: reduceMotion ? 0 : TRANSITIONS.TOP_BAR_BACKING_FADE } }}
+              transition={{ duration: reduceMotion ? 0 : TRANSITIONS.TOP_BAR_BACKING_FADE }}
+              className="pointer-events-none absolute inset-x-0 top-0 h-[160%] -z-10 bg-gradient-to-b from-void-black/85 via-void-black/70 to-transparent"
+            />
+          )}
+        </AnimatePresence>
         <div className="flex items-center gap-3 md:gap-6">
           <motion.span
             initial={{ opacity: 0 }}
