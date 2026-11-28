@@ -14,7 +14,8 @@
 // every frame with its page time, writes one strip per moment, before above after,
 // at the same offsets from the moment the backing mounts or starts to leave, each
 // frame labelled with the backing's computed opacity. With ffmpeg on PATH it also
-// writes one side-by-side video per moment, real time then four times slower.
+// writes one side-by-side video per moment that has a ramp, real time then four
+// times slower.
 // `sheets` writes the strips again from a `strips` run, without a new capture.
 // A label may hold one "|": a line break in the strips, a middle dot in the videos.
 import { spawn, execFileSync } from 'node:child_process';
@@ -412,7 +413,8 @@ async function videos(out, base, head, baseLabel, headLabel) {
   }
   const tmp = await mkdtemp(path.join(os.tmpdir(), 'backing-fade-'));
   try {
-    for (const [name, anchorOf] of [['enter', mountAt], ['exit', exitStart], ['idle', lastMountAt], ['reduced', mountAt]]) {
+    // Reduced motion has no ramp to show, so its strip is the whole record.
+    for (const [name, anchorOf] of [['enter', mountAt], ['exit', exitStart], ['idle', lastMountAt]]) {
       const segments = [];
       for (const [index, speed] of SPEEDS.entries()) {
         const inputs = [];

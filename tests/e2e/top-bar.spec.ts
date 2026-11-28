@@ -211,8 +211,8 @@ test.describe('顶栏衬底 (#137)', () => {
     const fade = recordBackingFade(page);
     await manipulateScene(page);
     const samples = await fade;
-    // Counted in frames, so the bound holds whatever the frame rate.
-    expect(samples.findIndex((sample) => sample.opacity === 1)).toBeLessThanOrEqual(2);
+    // Full opacity on the frame it mounts: nothing animates under reduced motion.
+    expect(samples[0].opacity).toBe(1);
   });
 });
 
