@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { useBinaryStar, useMobile, usePortrait, useEntryReadiness, useTonightSave } from '../../hooks';
 import { TRANSLATIONS } from '../../constants/translations';
@@ -177,6 +177,40 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
   const tucked = bar.tucked;
   const backing = topBarBacking({ compact: isMobile, portrait, awayFromMainView });
 
+  // The wordmark gives way when the controls do not fit beside it (#149). On a
+  // 320-wide phone in English the fullest row is wider than the bar. The row
+  // decides by measurement, so a new label or another frame needs no number here.
+  const headerRef = useRef<HTMLElement>(null);
+  const controlsRef = useRef<HTMLDivElement>(null);
+  const wordmarkRef = useRef<HTMLSpanElement>(null);
+  const [wordmarkYields, setWordmarkYields] = useState(false);
+  const rowControls = 1 + Number(bar.returnToView) + Number(bar.tonightSave);
+  useLayoutEffect(() => {
+    const header = headerRef.current;
+    const controls = controlsRef.current;
+    const wordmark = wordmarkRef.current;
+    if (!header || !controls || !wordmark) return;
+    const fit = () => {
+      const style = getComputedStyle(header);
+      const room = header.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+      const gap = parseFloat(getComputedStyle(controls).columnGap) || 0;
+      // Every control and a gap after it: the gaps between them, and air before the wordmark.
+      let row = 0;
+      for (const child of controls.children) row += child.getBoundingClientRect().width + gap;
+      setWordmarkYields(row + wordmark.offsetWidth > room);
+    };
+    fit();
+    const observer = new ResizeObserver(fit);
+    observer.observe(header);
+    for (const child of controls.children) observer.observe(child);
+    // A late font changes the widths, the wordmark's included, without a resize of anything observed.
+    document.fonts.addEventListener('loadingdone', fit);
+    return () => {
+      observer.disconnect();
+      document.fonts.removeEventListener('loadingdone', fit);
+    };
+  }, [tucked, rowControls, language]);
+
   // 「更多」 (#111): the panel below the bar. It opens on the button, closes on an
   // outside press or Esc, and hands focus back to the button on the way out (#114's
   // pattern — the panel never traps the keyboard). A language switch inside only
@@ -250,6 +284,7 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
           TOP_BAR_EPILOGUE_RETURN) comes after the interrupt. CSS takes the
           duration from the destination state, so one property carries both. */}
       <header
+        ref={headerRef}
         data-testid="top-bar"
         style={{
           transitionDuration: epilogueHush
@@ -280,17 +315,21 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
           )}
         </AnimatePresence>
         <div className="flex items-center gap-3 md:gap-6">
+          {/* Out of the row and unseen while it gives way; it keeps its width, so
+              the measurement can bring it back. */}
           <motion.span
+            ref={wordmarkRef}
+            data-testid="top-bar-wordmark"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: reduceMotion ? 0 : TRANSITIONS.EXPLORE_TRANSITION }}
-            className={`font-display ${tucked ? 'text-xl' : 'text-2xl md:text-3xl'} text-white/90 font-light tracking-widest`}
+            className={`font-display ${tucked ? 'text-xl' : 'text-2xl md:text-3xl'} text-white/90 font-light tracking-widest ${wordmarkYields ? 'absolute invisible' : ''}`}
           >
             Mira
           </motion.span>
         </div>
 
-        <div className={`flex items-center justify-end flex-wrap ${tucked ? 'gap-2' : 'gap-3 md:gap-7'}`}>
+        <div ref={controlsRef} className={`ml-auto flex items-center justify-end flex-wrap ${tucked ? 'gap-2' : 'gap-3 md:gap-7'}`}>
           {bar.returnToView && (
             <button
               data-testid="return-to-view"

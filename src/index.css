@@ -129,8 +129,9 @@ body {
    to 12px — CJK strokes go muddy below it — and Chinese holds the one-row
    contract at both phone frames even at 12px. English keeps #111's 10px, the
    size that margin was tuned to: at 12px 「Ambient sound」 alone measures 103px
-   and the 320px row cannot hold the labels (measured; en with 主视角 at 320 was
-   already two-line at 10px). The document's lang attribute carries the split,
+   and the 320px row cannot hold the labels (measured: even at 10px the fullest
+   English row is wider than the bar beside the wordmark at 320px, so there the
+   wordmark gives way, #149). The document's lang attribute carries the split,
    so the row re-flows with the labels on a language switch. */
 .compact-label {
   font-size: 10px;

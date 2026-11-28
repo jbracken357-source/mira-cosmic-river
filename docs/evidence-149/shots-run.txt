@@ -1,0 +1,9 @@
+portrait320-near-en: base vs head {"maxDiff":229,"diffPixels":59306,"totalPixels":181760}
+  base rows=2 bar=128px wordmark=shown group=245.3
+  head rows=1 bar=76px wordmark=yielded group=278.5
+portrait320-near-zh: base vs head {"maxDiff":0,"diffPixels":0,"totalPixels":181760}
+  base rows=1 bar=76px wordmark=shown group=233.1
+  head rows=1 bar=76px wordmark=shown group=233.1
+portrait390-near-en: base vs head {"maxDiff":0,"diffPixels":0,"totalPixels":329160}
+  base rows=1 bar=76px wordmark=shown group=278.5
+  head rows=1 bar=76px wordmark=shown group=278.5

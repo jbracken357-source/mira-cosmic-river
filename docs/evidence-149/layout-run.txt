@@ -1,0 +1,40 @@
+base 320 zh-CN [live] rows=1 bar=76px wordmark=shown group=233.1 controls=44/70/52/44
+base 320 zh-CN [环境音] rows=1 bar=76px wordmark=shown group=233.1 controls=44/70/52/44
+base 320 zh-CN [点按开启环境音] rows=2 bar=128px wordmark=shown group=245.3 controls=44/70/103/44
+base 320 zh-CN [正在开启环境音…] rows=2 bar=128px wordmark=shown group=245.3 controls=44/70/113/44
+base 320 zh-CN [重试环境音] rows=2 bar=128px wordmark=shown group=245.3 controls=44/70/77/44
+base 320 en    [live] rows=2 bar=128px wordmark=shown group=245.3 controls=51/73/89/44
+base 320 en    [Ambient sound] rows=2 bar=128px wordmark=shown group=245.3 controls=51/73/89/44
+base 320 en    [Tap to start ambient sound] rows=2 bar=128px wordmark=shown group=245.3 controls=51/73/147/44
+base 320 en    [Starting ambient sound…] rows=2 bar=128px wordmark=shown group=245.3 controls=51/73/138/44
+base 320 en    [Retry ambient sound] rows=2 bar=128px wordmark=shown group=245.3 controls=51/73/117/44
+base 390 zh-CN [live] rows=1 bar=76px wordmark=shown group=233.1 controls=44/70/52/44
+base 390 zh-CN [环境音] rows=1 bar=76px wordmark=shown group=233.1 controls=44/70/52/44
+base 390 zh-CN [点按开启环境音] rows=1 bar=76px wordmark=shown group=283.5 controls=44/70/103/44
+base 390 zh-CN [正在开启环境音…] rows=1 bar=76px wordmark=shown group=293.8 controls=44/70/113/44
+base 390 zh-CN [重试环境音] rows=1 bar=76px wordmark=shown group=258.3 controls=44/70/77/44
+base 390 en    [live] rows=1 bar=76px wordmark=shown group=278.5 controls=51/73/89/44
+base 390 en    [Ambient sound] rows=1 bar=76px wordmark=shown group=278.5 controls=51/73/89/44
+base 390 en    [Tap to start ambient sound] rows=2 bar=128px wordmark=shown group=315.3 controls=51/73/147/44
+base 390 en    [Starting ambient sound…] rows=2 bar=128px wordmark=shown group=315.3 controls=51/73/138/44
+base 390 en    [Retry ambient sound] rows=1 bar=76px wordmark=shown group=306.5 controls=51/73/117/44
+head 320 zh-CN [live] rows=1 bar=76px wordmark=shown group=233.1 controls=44/70/52/44
+head 320 zh-CN [环境音] rows=1 bar=76px wordmark=shown group=233.1 controls=44/70/52/44
+head 320 zh-CN [点按开启环境音] rows=1 bar=76px wordmark=yielded group=283.5 controls=44/70/103/44
+head 320 zh-CN [正在开启环境音…] rows=1 bar=76px wordmark=yielded group=293.8 controls=44/70/113/44
+head 320 zh-CN [重试环境音] rows=1 bar=76px wordmark=yielded group=258.3 controls=44/70/77/44
+head 320 en    [live] rows=1 bar=76px wordmark=yielded group=278.5 controls=51/73/89/44
+head 320 en    [Ambient sound] rows=1 bar=76px wordmark=yielded group=278.5 controls=51/73/89/44
+head 320 en    [Tap to start ambient sound] rows=2 bar=128px wordmark=yielded group=296 controls=51/73/147/44
+head 320 en    [Starting ambient sound…] rows=2 bar=128px wordmark=yielded group=296 controls=51/73/138/44
+head 320 en    [Retry ambient sound] rows=2 bar=128px wordmark=yielded group=296 controls=51/73/117/44
+head 390 zh-CN [live] rows=1 bar=76px wordmark=shown group=233.1 controls=44/70/52/44
+head 390 zh-CN [环境音] rows=1 bar=76px wordmark=shown group=233.1 controls=44/70/52/44
+head 390 zh-CN [点按开启环境音] rows=1 bar=76px wordmark=shown group=283.5 controls=44/70/103/44
+head 390 zh-CN [正在开启环境音…] rows=1 bar=76px wordmark=shown group=293.8 controls=44/70/113/44
+head 390 zh-CN [重试环境音] rows=1 bar=76px wordmark=shown group=258.3 controls=44/70/77/44
+head 390 en    [live] rows=1 bar=76px wordmark=shown group=278.5 controls=51/73/89/44
+head 390 en    [Ambient sound] rows=1 bar=76px wordmark=shown group=278.5 controls=51/73/89/44
+head 390 en    [Tap to start ambient sound] rows=1 bar=76px wordmark=yielded group=336.7 controls=51/73/147/44
+head 390 en    [Starting ambient sound…] rows=1 bar=76px wordmark=yielded group=327.9 controls=51/73/138/44
+head 390 en    [Retry ambient sound] rows=1 bar=76px wordmark=shown group=306.5 controls=51/73/117/44

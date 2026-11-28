@@ -160,6 +160,56 @@ test.describe('手机顶栏一行排下 (#111)', () => {
       ['return-to-view', 'tonight-save', 'ambient-toggle', 'more-toggle'],
       quietHeight,
     );
+    // The fullest row still fits beside the wordmark here, so the wordmark stays.
+    await expect(page.getByTestId('top-bar-wordmark')).toBeVisible();
+  });
+
+  // #149: at 320 wide the fullest row in English is wider than the space beside
+  // the wordmark. The wordmark gives way, and only when it must.
+  test('320×568 keeps the row with 主视角 present (en): the wordmark gives way', async ({ page }) => {
+    await page.setViewportSize(SE_FRAME);
+    await gotoExplore(page);
+    const quietHeight = await quietBarHeight(page);
+    const wordmark = page.getByTestId('top-bar-wordmark');
+
+    await page.getByTestId('more-toggle').click();
+    await page.getByTestId('language-toggle').click();
+    await page.keyboard.press('Escape');
+
+    // Graduated and back home, the row fits beside the wordmark.
+    await graduateHome(page);
+    await expectOneRow(page, ['tonight-save', 'ambient-toggle', 'more-toggle'], quietHeight);
+    await expect(wordmark).toBeVisible();
+
+    // Away from the main view the row is at its fullest: the wordmark steps out.
+    await manipulateScene(page);
+    await expect(page.getByTestId('return-to-view')).toBeVisible({ timeout: 15000 });
+    await expect(wordmark).toBeHidden();
+    await expectOneRow(
+      page,
+      ['return-to-view', 'tonight-save', 'ambient-toggle', 'more-toggle'],
+      quietHeight,
+    );
+
+    // Home again, it returns.
+    await page.getByTestId('return-to-view').click();
+    await expect(page.getByTestId('return-to-view')).toHaveCount(0, { timeout: 15000 });
+    await expect(wordmark).toBeVisible();
+  });
+
+  test('320×568 keeps the wordmark in 中文, 主视角 present', async ({ page }) => {
+    await page.setViewportSize(SE_FRAME);
+    await gotoExplore(page);
+    const quietHeight = await quietBarHeight(page);
+
+    await manipulateScene(page);
+    await expect(page.getByTestId('return-to-view')).toBeVisible({ timeout: 15000 });
+    await expectOneRow(
+      page,
+      ['return-to-view', 'tonight-save', 'ambient-toggle', 'more-toggle'],
+      quietHeight,
+    );
+    await expect(page.getByTestId('top-bar-wordmark')).toBeVisible();
   });
 
   test('「更多」 opens and closes by keyboard, handing focus back', async ({ page }) => {
