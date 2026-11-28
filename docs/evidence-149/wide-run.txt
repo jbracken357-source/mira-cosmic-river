@@ -1,0 +1,41 @@
+320 cells per build. 307 read the same on both builds, 13 differ:
+  660 en [Tap to start ambient sound]: base 2 rows, 132px, wordmark shown; head 1 rows, 76px, wordmark yielded
+  660 en [Starting ambient sound…]: base 2 rows, 132px, wordmark shown; head 1 rows, 76px, wordmark yielded
+  680 en [Tap to start ambient sound]: base 2 rows, 132px, wordmark shown; head 1 rows, 76px, wordmark yielded
+  780 en [Tap to start ambient sound]: base 2 rows, 164px, wordmark shown; head 2 rows, 164px, wordmark yielded
+  780 en [Starting ambient sound…]: base 2 rows, 164px, wordmark shown; head 1 rows, 92px, wordmark yielded
+  780 en [Retry ambient sound]: base 2 rows, 164px, wordmark shown; head 1 rows, 92px, wordmark yielded
+  800 en [Tap to start ambient sound]: base 2 rows, 164px, wordmark shown; head 1 rows, 92px, wordmark yielded
+  800 en [Starting ambient sound…]: base 2 rows, 164px, wordmark shown; head 1 rows, 92px, wordmark yielded
+  800 en [Retry ambient sound]: base 2 rows, 164px, wordmark shown; head 1 rows, 92px, wordmark yielded
+  820 en [Tap to start ambient sound]: base 2 rows, 164px, wordmark shown; head 1 rows, 92px, wordmark yielded
+  820 en [Starting ambient sound…]: base 2 rows, 164px, wordmark shown; head 1 rows, 92px, wordmark yielded
+  840 en [Tap to start ambient sound]: base 2 rows, 164px, wordmark shown; head 1 rows, 92px, wordmark yielded
+  840 en [Starting ambient sound…]: base 2 rows, 164px, wordmark shown; head 1 rows, 92px, wordmark yielded
+The differing cells on fresh pages:
+  base 660 en [Tap to start ambient sound]: 2 rows, 132px, wordmark shown
+  base 660 en [Starting ambient sound…]: 2 rows, 132px, wordmark shown
+  base 680 en [Tap to start ambient sound]: 2 rows, 132px, wordmark shown
+  base 780 en [Tap to start ambient sound]: 2 rows, 164px, wordmark shown
+  base 780 en [Starting ambient sound…]: 2 rows, 164px, wordmark shown
+  base 780 en [Retry ambient sound]: 2 rows, 164px, wordmark shown
+  base 800 en [Tap to start ambient sound]: 2 rows, 164px, wordmark shown
+  base 800 en [Starting ambient sound…]: 2 rows, 164px, wordmark shown
+  base 800 en [Retry ambient sound]: 2 rows, 164px, wordmark shown
+  base 820 en [Tap to start ambient sound]: 2 rows, 164px, wordmark shown
+  base 820 en [Starting ambient sound…]: 2 rows, 164px, wordmark shown
+  base 840 en [Tap to start ambient sound]: 2 rows, 164px, wordmark shown
+  base 840 en [Starting ambient sound…]: 2 rows, 164px, wordmark shown
+  head 660 en [Tap to start ambient sound]: 1 rows, 76px, wordmark yielded
+  head 660 en [Starting ambient sound…]: 1 rows, 76px, wordmark yielded
+  head 680 en [Tap to start ambient sound]: 1 rows, 76px, wordmark yielded
+  head 780 en [Tap to start ambient sound]: 2 rows, 164px, wordmark yielded
+  head 780 en [Starting ambient sound…]: 1 rows, 92px, wordmark yielded
+  head 780 en [Retry ambient sound]: 1 rows, 92px, wordmark yielded
+  head 800 en [Tap to start ambient sound]: 1 rows, 92px, wordmark yielded
+  head 800 en [Starting ambient sound…]: 1 rows, 92px, wordmark yielded
+  head 800 en [Retry ambient sound]: 1 rows, 92px, wordmark yielded
+  head 820 en [Tap to start ambient sound]: 1 rows, 92px, wordmark yielded
+  head 820 en [Starting ambient sound…]: 1 rows, 92px, wordmark yielded
+  head 840 en [Tap to start ambient sound]: 1 rows, 92px, wordmark yielded
+  head 840 en [Starting ambient sound…]: 1 rows, 92px, wordmark yielded
