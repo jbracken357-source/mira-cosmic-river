@@ -211,6 +211,27 @@ test.describe('手机顶栏一行排下 (#111)', () => {
     await expect(page.getByTestId('top-bar-wordmark')).toBeVisible();
   });
 
+  // 360 is the common Android width. The fullest English row fits there beside the
+  // wordmark, with 7 px to spare, so the wordmark must stay.
+  test('360 wide keeps the wordmark with 主视角 present (en)', async ({ page }) => {
+    await page.setViewportSize({ width: 360, height: 740 });
+    await gotoExplore(page);
+    const quietHeight = await quietBarHeight(page);
+
+    await page.getByTestId('more-toggle').click();
+    await page.getByTestId('language-toggle').click();
+    await page.keyboard.press('Escape');
+
+    await manipulateScene(page);
+    await expect(page.getByTestId('return-to-view')).toBeVisible({ timeout: 15000 });
+    await expectOneRow(
+      page,
+      ['return-to-view', 'tonight-save', 'ambient-toggle', 'more-toggle'],
+      quietHeight,
+    );
+    await expect(page.getByTestId('top-bar-wordmark')).toBeVisible();
+  });
+
   test('「更多」 opens and closes by keyboard, handing focus back', async ({ page }) => {
     await page.setViewportSize(PORTRAIT_FRAME);
     await gotoExplore(page);

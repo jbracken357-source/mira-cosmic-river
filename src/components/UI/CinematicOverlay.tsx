@@ -177,10 +177,10 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
   const tucked = bar.tucked;
   const backing = topBarBacking({ compact: isMobile, portrait, awayFromMainView });
 
-  // The wordmark gives way when the controls do not fit beside it (#149). On a
-  // 320-wide phone in English the fullest row is wider than the bar beside the
-  // wordmark. The row decides by measurement, so a new label or another frame
-  // needs no number here.
+  // The wordmark gives way only where the row would otherwise wrap (#149). On a
+  // 320-wide phone in English the fullest row and the wordmark are wider than the
+  // bar. The row decides by measurement, so a new label or another frame needs
+  // no number here.
   const headerRef = useRef<HTMLElement>(null);
   const controlsRef = useRef<HTMLDivElement>(null);
   const wordmarkRef = useRef<HTMLSpanElement>(null);
@@ -197,8 +197,8 @@ function ExploreUI({ onSelectStar }: { onSelectStar: (star: StarName | null) => 
       const gap = parseFloat(getComputedStyle(controls).columnGap) || 0;
       const children = [...controls.children];
       const widths = children.reduce((sum, child) => sum + child.getBoundingClientRect().width, 0);
-      // One gap between each pair of controls, and the same air before the wordmark.
-      const gaps = gap * children.length;
+      // The gaps between the controls.
+      const gaps = gap * (children.length - 1);
       setWordmarkYields(widths + gaps + wordmark.offsetWidth > room);
     };
     fit();

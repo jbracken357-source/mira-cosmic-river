@@ -4,10 +4,10 @@
 //   node experiments/bar-row-evidence.mjs shots <base-checkout> <head-checkout> <out-dir>
 //   node experiments/bar-row-evidence.mjs contrast <checkout> <out-dir>
 //
-// `layout` serves both production builds and measures the bar at 320 and 390 wide,
-// in both languages, with the camera off the main view: once as the page has it,
-// then once per label state of the ambient toggle, each label swapped into the
-// toggle's text node. It prints one line per case and writes layout.json.
+// `layout` serves both production builds and measures the bar at 320, 360, 375 and
+// 390 wide, in both languages, with the camera off the main view: once as the page
+// has it, then once per label state of the ambient toggle, each label swapped into
+// the toggle's text node. It prints one line per case and writes layout.json.
 //
 // `shots` captures the frozen near view on each checkout's dev server, through the
 // waits of baseline-harness.mjs, after a drag that brings 今晚的 Mira into the bar.
@@ -29,7 +29,14 @@ const [mode, ...args] = process.argv.slice(2);
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const IDS = ['return-to-view', 'tonight-save', 'ambient-toggle', 'more-toggle'];
-const FRAMES = [{ width: 320, height: 568 }, { width: 390, height: 844 }];
+// 320 and 390 are the compact verdict's frames (#111). 360 is the common Android
+// width and 375 the small iPhone one: there the wordmark must stay.
+const FRAMES = [
+  { width: 320, height: 568 },
+  { width: 360, height: 740 },
+  { width: 375, height: 812 },
+  { width: 390, height: 844 },
+];
 // The ambient toggle's label in each of its states, by language.
 const LABELS = {
   en: ['Ambient sound', 'Tap to start ambient sound', 'Starting ambient sound…', 'Retry ambient sound'],
