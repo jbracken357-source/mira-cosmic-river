@@ -29,3 +29,13 @@ test.describe('the top bar’s epilogue exit', () => {
     expect(TRANSITIONS.TOP_BAR_EPILOGUE_RETURN).toBe(1.2);
   });
 });
+
+// 顶栏衬底 (#148): the backing fades in and out in the top bar's own exit window,
+// 0.3–0.5s. Faster would still read as a jump on a phone. Slower would lag
+// 「主视角」, which appears at once.
+test.describe('the top bar backing’s fade', () => {
+  test('stays within 0.3–0.5s', () => {
+    expect(TRANSITIONS.TOP_BAR_BACKING_FADE).toBeGreaterThanOrEqual(0.3);
+    expect(TRANSITIONS.TOP_BAR_BACKING_FADE).toBeLessThanOrEqual(0.5);
+  });
+});
