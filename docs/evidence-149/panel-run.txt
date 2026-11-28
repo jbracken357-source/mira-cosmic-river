@@ -1,0 +1,24 @@
+base 390 en    away, panel closed             ResizeObservers= 2 rows=1 bar=76px wordmark=shown group=278.5 controls=51/73/89/44
+base 390 en    panel opened                   ResizeObservers= 2 rows=1 bar=76px wordmark=shown group=278.5 controls=51/73/89/44
+base 390 en    resized with the panel open    ResizeObservers= 2 rows=1 bar=76px wordmark=shown group=278.5 controls=51/73/89/44
+base 390 en    panel closed                   ResizeObservers= 2 rows=1 bar=76px wordmark=shown group=278.5 controls=51/73/89/44
+base 320 zh-CN away, panel closed             ResizeObservers= 2 rows=1 bar=76px wordmark=shown group=233.1 controls=44/70/52/44
+base 320 zh-CN panel opened                   ResizeObservers= 2 rows=1 bar=76px wordmark=shown group=233.1 controls=44/70/52/44
+base 320 zh-CN resized with the panel open    ResizeObservers= 2 rows=1 bar=76px wordmark=shown group=233.1 controls=44/70/52/44
+base 320 zh-CN panel closed                   ResizeObservers= 2 rows=1 bar=76px wordmark=shown group=233.1 controls=44/70/52/44
+base 1024 en    away, panel closed             ResizeObservers= 2 rows=1 bar=92px wordmark=shown group=591.6 controls=66/95/111
+base 1024 en    panel opened                   ResizeObservers= 2 rows=1 bar=92px wordmark=shown group=591.6 controls=66/95/111
+base 1024 en    resized with the panel open    ResizeObservers= 2 rows=1 bar=92px wordmark=shown group=591.6 controls=66/95/111
+base 1024 en    panel closed                   ResizeObservers= 2 rows=1 bar=92px wordmark=shown group=591.6 controls=66/95/111
+head 390 en    away, panel closed             ResizeObservers= 6 rows=1 bar=76px wordmark=shown group=278.5 controls=51/73/89/44
+head 390 en    panel opened                   ResizeObservers= 6 rows=1 bar=76px wordmark=shown group=278.5 controls=51/73/89/44
+head 390 en    resized with the panel open    ResizeObservers= 6 rows=1 bar=76px wordmark=shown group=278.5 controls=51/73/89/44
+head 390 en    panel closed                   ResizeObservers= 6 rows=1 bar=76px wordmark=shown group=278.5 controls=51/73/89/44
+head 320 zh-CN away, panel closed             ResizeObservers= 5 rows=1 bar=76px wordmark=shown group=233.1 controls=44/70/52/44
+head 320 zh-CN panel opened                   ResizeObservers= 5 rows=1 bar=76px wordmark=shown group=233.1 controls=44/70/52/44
+head 320 zh-CN resized with the panel open    ResizeObservers= 5 rows=1 bar=76px wordmark=shown group=233.1 controls=44/70/52/44
+head 320 zh-CN panel closed                   ResizeObservers= 5 rows=1 bar=76px wordmark=shown group=233.1 controls=44/70/52/44
+head 1024 en    away, panel closed             ResizeObservers= 6 rows=1 bar=92px wordmark=shown group=591.6 controls=66/95/111
+head 1024 en    panel opened                   ResizeObservers= 6 rows=1 bar=92px wordmark=shown group=591.6 controls=66/95/111
+head 1024 en    resized with the panel open    ResizeObservers= 6 rows=1 bar=92px wordmark=shown group=591.6 controls=66/95/111
+head 1024 en    panel closed                   ResizeObservers= 6 rows=1 bar=92px wordmark=shown group=591.6 controls=66/95/111

@@ -1,0 +1,5 @@
+bar rows=2 height=128px wordmark=shown group=245.3
+return-to-view   box 81,16,51,44  median 6.26:1  below 4.5:1 0.0%  (222 px)
+tonight-save     box 139,16,73,44  median 6.25:1  below 4.5:1 0.0%  (324 px)
+ambient-toggle   box 219,16,89,44  median 5.83:1  below 4.5:1 0.0%  (358 px)
+more-toggle      box 264,68,44,44  median 6.26:1  below 4.5:1 0.0%  (125 px)

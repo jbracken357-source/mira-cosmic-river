@@ -1,0 +1,5 @@
+bar rows=1 height=76px wordmark=yielded group=278.5
+return-to-view   box 29,16,51,44  median 6.26:1  below 4.5:1 0.0%  (222 px)
+tonight-save     box 87,16,73,44  median 6.26:1  below 4.5:1 0.0%  (324 px)
+ambient-toggle   box 167,16,89,44  median 5.47:1  below 4.5:1 0.0%  (358 px)
+more-toggle      box 264,16,44,44  median 5.70:1  below 4.5:1 0.0%  (125 px)
