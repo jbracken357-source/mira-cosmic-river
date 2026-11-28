@@ -7,3 +7,9 @@ portrait320-near-zh: base vs head {"maxDiff":0,"diffPixels":0,"totalPixels":1817
 portrait390-near-en: base vs head {"maxDiff":0,"diffPixels":0,"totalPixels":329160}
   base rows=1 bar=76px wordmark=shown group=278.5
   head rows=1 bar=76px wordmark=shown group=278.5
+portrait390-near-en-tonight: base vs head {"maxDiff":0,"diffPixels":0,"totalPixels":329160}
+  base rows=1 bar=76px wordmark=shown group=278.5
+  head rows=1 bar=76px wordmark=shown group=278.5
+tablet820-near-en-tap: base vs head {"maxDiff":230,"diffPixels":4475,"totalPixels":967600}
+  base rows=2 bar=164px wordmark=shown group=632
+  head rows=1 bar=92px wordmark=yielded group=669.2
